@@ -150,6 +150,7 @@ export function ManutencaoEpiFormDialog({
                 {entregaVinculada.data_entrega} ·{" "}
                 {entregaVinculada.colaborador?.profile?.nome ||
                   entregaVinculada.colaborador?.recurso?.nome ||
+                  entregaVinculada.colaborador?.nome ||
                   "trabalhador"}
               </p>
             </div>

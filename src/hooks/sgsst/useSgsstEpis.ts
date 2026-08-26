@@ -97,6 +97,8 @@ export interface SgsstEpiEntrega {
   colaborador?: {
     id: string;
     cpf: string;
+    /** Nome cadastrado direto no colaborador, usado quando ele não tem profile nem recurso vinculado. */
+    nome?: string | null;
     profile?: { id: string; nome: string } | null;
     recurso?: { id: string; nome: string } | null;
     funcao?: { id: string; nome: string } | null;
@@ -311,7 +313,7 @@ export function useSgsstEpiEntregas(params?: {
         .select(`
           *,
           colaborador:sgsst_colaborador_dados(
-            id, cpf,
+            id, cpf, nome,
             profile:profiles(id, nome),
             recurso:recursos(id, nome),
             funcao:sgsst_funcoes(id, nome)
@@ -459,7 +461,7 @@ export function useSgsstEpiDevolucoes(params?: { page?: number; pageSize?: numbe
           entrega:sgsst_epi_entregas(
             *,
             colaborador:sgsst_colaborador_dados(
-              id, cpf,
+              id, cpf, nome,
               profile:profiles(id, nome),
               recurso:recursos(id, nome)
             ),
@@ -619,7 +621,7 @@ export function useSgsstFichaEpiDoColaborador(
         .select(`
           *,
           colaborador:sgsst_colaborador_dados(
-            id, cpf,
+            id, cpf, nome,
             profile:profiles(id, nome),
             recurso:recursos(id, nome),
             funcao:sgsst_funcoes(id, nome)
@@ -707,6 +709,8 @@ export interface SgsstEpiManutencao {
     colaborador_id: string;
     colaborador?: {
       id: string;
+      /** Nome cadastrado direto no colaborador, usado quando ele não tem profile nem recurso vinculado. */
+      nome?: string | null;
       profile?: { nome: string } | null;
       recurso?: { nome: string } | null;
     } | null;
@@ -772,7 +776,7 @@ export function useSgsstEpiManutencoes(params?: {
            entrega:sgsst_epi_entregas(
              id, data_entrega, colaborador_id,
              colaborador:sgsst_colaborador_dados(
-               id, profile:profiles(nome), recurso:recursos(nome)
+               id, nome, profile:profiles(nome), recurso:recursos(nome)
              )
            ),
            executado_por:profiles!sgsst_epi_manutencoes_executado_por_id_fkey(id, nome)`,

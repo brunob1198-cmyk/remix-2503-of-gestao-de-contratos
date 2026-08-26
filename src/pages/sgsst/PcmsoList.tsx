@@ -603,7 +603,7 @@ export default function SgsstPcmsoListPage() {
                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum ASO encontrado.</TableCell></TableRow>
                   ) : (
                     asos.map((a) => {
-                      const colabNome = a.colaborador?.profile?.nome || a.colaborador?.recurso?.nome || "Sem Nome";
+                      const colabNome = a.colaborador?.profile?.nome || a.colaborador?.recurso?.nome || a.colaborador?.nome || "Sem Nome";
                       return (
                         <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => { setViewingAso(a); setIsAsoDetailOpen(true); }}>
                           <TableCell>
@@ -752,7 +752,7 @@ export default function SgsstPcmsoListPage() {
                     <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum exame cadastrado.</TableCell></TableRow>
                   ) : (
                     exames.map((e) => {
-                      const colabNome = e.colaborador?.profile?.nome || e.colaborador?.recurso?.nome || "Sem Nome";
+                      const colabNome = e.colaborador?.profile?.nome || e.colaborador?.recurso?.nome || e.colaborador?.nome || "Sem Nome";
                       return (
                         <TableRow key={e.id}>
                           <TableCell className="font-semibold text-xs sm:text-sm">{e.nome_exame}</TableCell>

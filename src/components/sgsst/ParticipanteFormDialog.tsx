@@ -107,7 +107,7 @@ export function ParticipanteFormDialog({
           ) : (
             <div className="p-3 bg-muted/40 rounded border space-y-1">
               <div className="font-bold text-sm">
-                {participante.colaborador?.profile?.nome || participante.colaborador?.recurso?.nome || "Sem Nome"}
+                {participante.colaborador?.profile?.nome || participante.colaborador?.recurso?.nome || participante.colaborador?.nome || "Sem Nome"}
               </div>
               <div className="text-xs text-muted-foreground">
                 CPF: {participante.colaborador?.cpf || "—"} | Função: {participante.colaborador?.funcao?.nome || "—"}

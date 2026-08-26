@@ -112,7 +112,7 @@ export function SgsstCatsTab() {
   };
 
   const nomeTrabalhador = (c: SgsstCat) =>
-    c.colaborador?.profile?.nome || c.colaborador?.recurso?.nome || "Não informado";
+    c.colaborador?.profile?.nome || c.colaborador?.recurso?.nome || c.colaborador?.nome || "Não informado";
 
   const handleSave = async (data: Parameters<typeof createCat.mutateAsync>[0]) => {
     if (editingCat) {

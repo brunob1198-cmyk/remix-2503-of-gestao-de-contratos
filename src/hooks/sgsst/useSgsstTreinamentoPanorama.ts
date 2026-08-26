@@ -116,9 +116,9 @@ export function useSgsstTreinamentoPanorama(options?: {
         linhas: brutas.map((m) => ({
           colaboradorId: m.colaborador_id,
           colaborador:
-            m.colaborador?.nome ||
             m.colaborador?.profile?.nome ||
             m.colaborador?.recurso?.nome ||
+            m.colaborador?.nome ||
             "(sem nome)",
           funcaoNome: m.colaborador?.funcao?.nome ?? null,
           obra: m.colaborador?.projeto?.nome ?? null,

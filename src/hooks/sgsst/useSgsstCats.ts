@@ -34,6 +34,8 @@ export interface SgsstCat {
   colaborador?: {
     id: string;
     cpf: string | null;
+    /** Nome cadastrado direto no colaborador, usado quando ele não tem profile nem recurso vinculado. */
+    nome?: string | null;
     profile?: { id: string; nome: string } | null;
     recurso?: { id: string; nome: string } | null;
     funcao?: { id: string; nome: string } | null;
@@ -91,7 +93,7 @@ export function useSgsstCats(params?: SgsstCatsParams) {
           `
           *,
           colaborador:sgsst_colaborador_dados(
-            id, cpf,
+            id, cpf, nome,
             profile:profiles(id, nome),
             recurso:recursos(id, nome),
             funcao:sgsst_funcoes(id, nome)

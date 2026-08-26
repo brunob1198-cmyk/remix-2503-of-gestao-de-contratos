@@ -138,6 +138,8 @@ export interface SgsstTreinamentoParticipante {
   colaborador?: {
     id: string;
     cpf: string;
+    /** Nome cadastrado direto no colaborador, usado quando ele não tem profile nem recurso vinculado. */
+    nome?: string | null;
     profile?: { id: string; nome: string } | null;
     recurso?: { id: string; nome: string } | null;
     funcao?: { id: string; nome: string } | null;
@@ -472,7 +474,7 @@ export function useSgsstTreinamentosParticipantes(turmaId?: string) {
         .select(`
           *,
           colaborador:sgsst_colaborador_dados(
-            id, cpf,
+            id, cpf, nome,
             profile:profiles(id, nome),
             recurso:recursos(id, nome),
             funcao:sgsst_funcoes(id, nome)
@@ -669,7 +671,7 @@ export function useSgsstTodosParticipantes(params?: {
         .select(`
           *,
           colaborador:sgsst_colaborador_dados(
-            id, cpf,
+            id, cpf, nome,
             profile:profiles(id, nome),
             recurso:recursos(id, nome),
             funcao:sgsst_funcoes(id, nome)

@@ -65,7 +65,7 @@ export function AsoDetailDialog({
     }
   };
 
-  const colabNome = aso.colaborador?.profile?.nome || aso.colaborador?.recurso?.nome || "Sem Nome";
+  const colabNome = aso.colaborador?.profile?.nome || aso.colaborador?.recurso?.nome || aso.colaborador?.nome || "Sem Nome";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

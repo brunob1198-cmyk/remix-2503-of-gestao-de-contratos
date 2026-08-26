@@ -165,7 +165,7 @@ export default function SgsstTreinamentosListPage() {
   const [emitindoId, setEmitindoId] = useState<string | null>(null);
 
   const nomeDoParticipante = (p: SgsstTreinamentoParticipante) =>
-    p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || "Sem Nome";
+    p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || p.colaborador?.nome || "Sem Nome";
 
   const dadosDoCertificado = (
     p: SgsstTreinamentoParticipante,
@@ -277,7 +277,7 @@ export default function SgsstTreinamentosListPage() {
   // Filter Vencimentos
   const filteredVencimentos = todosParticipantes.filter((p) => {
     const term = searchTermVenc.toLowerCase();
-    const colabNome = p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || "";
+    const colabNome = p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || p.colaborador?.nome || "";
     const trNome = p.turma?.treinamento?.nome || "";
     const matchesSearch =
       colabNome.toLowerCase().includes(term) ||
@@ -837,7 +837,7 @@ export default function SgsstTreinamentosListPage() {
                     <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum registro de vencimento encontrado.</TableCell></TableRow>
                   ) : (
                     filteredVencimentos.map((p) => {
-                      const colabNome = p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || "Sem Nome";
+                      const colabNome = p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || p.colaborador?.nome || "Sem Nome";
                       return (
                         <TableRow key={p.id}>
                           <TableCell>
@@ -921,7 +921,7 @@ export default function SgsstTreinamentosListPage() {
                     <TableRow><TableCell colSpan={4} className="text-center py-6 text-xs text-muted-foreground">Nenhum aluno inscrito nesta turma.</TableCell></TableRow>
                   ) : (
                     turmaParticipantes.map((p) => {
-                      const colabNome = p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || "Sem Nome";
+                      const colabNome = p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || p.colaborador?.nome || "Sem Nome";
                       return (
                         <TableRow key={p.id}>
                           <TableCell className="text-xs font-semibold">{colabNome}</TableCell>

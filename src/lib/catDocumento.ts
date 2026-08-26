@@ -45,6 +45,7 @@ function nomeTrabalhador(cat: SgsstCat): string {
   return (
     cat.colaborador?.profile?.nome ||
     cat.colaborador?.recurso?.nome ||
+    cat.colaborador?.nome ||
     "Trabalhador não identificado"
   );
 }
