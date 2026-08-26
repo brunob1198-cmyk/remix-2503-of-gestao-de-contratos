@@ -54,7 +54,102 @@ describe("quebra de página", () => {
     // Sem isto o selo cai numa folha e a imagem em outra.
     expect(estilosFotosDocumento).toContain("page-break-inside: avoid");
   });
+
+  it("nenhum texto do documento pode ser fatiado pela quebra", () => {
+    // O PDF e rasterizado num canvas unico e depois cortado em folhas. Sem esta
+    // regra o corte cai no meio da ALTURA de uma linha e a frase sai partida na
+    // horizontal — metade no pe de uma pagina, metade no topo da seguinte.
+    // Aconteceu com "Matriculas em turmas do modulo de Treinamentos:" no dossie.
+    for (const alvo of [
+      ".doc p",
+      ".doc-aviso",
+      ".doc-ident",
+      "h2.doc-sec",
+      "h3.doc-grupo",
+      ".doc-bloco > .tit",
+      "table.doc-tabela thead",
+    ]) {
+      expect(estilosDocumentoSgsst, alvo).toContain(alvo);
+    }
+
+    const regra = estilosDocumentoSgsst.slice(
+      estilosDocumentoSgsst.indexOf(".doc p, .doc-aviso"),
+      estilosDocumentoSgsst.indexOf("}", estilosDocumentoSgsst.indexOf(".doc p, .doc-aviso"))
+    );
+    expect(regra).toContain("page-break-inside: avoid");
+  });
+
+  it("nao usa page-break-after: avoid, que a biblioteca ignora", () => {
+    // O html2pdf 0.14 le `pageBreakInside`, mas NAO suporta `avoid` em
+    // `page-break-after` — ha um TODO explicito na fonte dele. Uma regra dessas
+    // aqui daria a impressao de estar resolvendo e nao faria nada, e a proxima
+    // pessoa perderia tempo procurando o defeito em outro lugar.
+    expect(estilosDocumentoSgsst).not.toContain("page-break-after: avoid");
+    expect(estilosDocumentoSgsst).not.toContain("break-after: avoid");
+  });
+
+  it("o bloco inteiro NAO e marcado como indivisivel", () => {
+    // Um `.doc-bloco` com tabela longa passa de uma pagina. Marcado como
+    // indivisivel, ele seria empurrado para a folha seguinte e estouraria dela
+    // igual, deixando uma pagina quase vazia antes. Quem nao pode ser cortado e
+    // a LINHA de texto, nao o bloco.
+    const regra = estilosDocumentoSgsst.slice(
+      estilosDocumentoSgsst.indexOf(".doc-bloco {"),
+      estilosDocumentoSgsst.indexOf("}", estilosDocumentoSgsst.indexOf(".doc-bloco {"))
+    );
+    expect(regra).not.toContain("page-break-inside");
+  });
 });
+
+describe("bloco de assinatura", () => {
+  it("a coluna com <hr> nao ganha tambem a borda da coluna", () => {
+    // Eram DUAS reguas — a borda da coluna e o <hr> — e o nome ficava prensado
+    // entre as duas. No raster do PDF a borda de cima caia rente as maiusculas e
+    // parecia riscar o nome.
+    expect(estilosDocumentoSgsst).toContain(
+      ".doc-assin > div.doc-assin-centro { border-top: 0;"
+    );
+  });
+
+  it("o seletor de centralizacao casa com a classe no filho, e nao no pai", () => {
+    // O seletor antigo era `.doc-assin.doc-assin-centro > div`, que exige as duas
+    // classes no MESMO elemento — e a classe esta no filho. Nunca casou.
+    // Procura o seletor como REGRA — seguido de `{` —, e não como texto solto: o
+    // comentário da folha cita o seletor antigo para explicar o defeito, e um
+    // `toContain` cru seria enganado pelo próprio comentário.
+    expect(estilosDocumentoSgsst).not.toMatch(
+      /\.doc-assin\.doc-assin-centro > div\s*\{/
+    );
+    expect(estilosDocumentoSgsst).toMatch(/\.doc-assin > div\.doc-assin-centro\s*\{/);
+  });
+
+  it("a legenda embaixo da regua tem regra propria de centralizacao", () => {
+    // `.doc p` fixa `text-align: justify`, e regra direta vence alinhamento
+    // herdado: sem esta linha a legenda continuaria a esquerda mesmo com a coluna
+    // centralizada.
+    expect(estilosDocumentoSgsst).toContain(".doc-assin > div.doc-assin-centro p { text-align: center");
+  });
+
+  it("ha espaco para assinar e folga entre o nome e a regua", () => {
+    const regra = estilosDocumentoSgsst.slice(
+      estilosDocumentoSgsst.indexOf(".doc-assin .doc-centro-txt"),
+      estilosDocumentoSgsst.indexOf("}", estilosDocumentoSgsst.indexOf(".doc-assin .doc-centro-txt"))
+    );
+    const alturaMinima = regra.match(/min-height:\s*(\d+)px/);
+    const folga = regra.match(/padding-bottom:\s*(\d+)px/);
+    expect(alturaMinima, "min-height do espaço de assinatura").not.toBeNull();
+    expect(folga, "padding-bottom entre o nome e a régua").not.toBeNull();
+    expect(Number(alturaMinima![1])).toBeGreaterThanOrEqual(24);
+    expect(Number(folga![1])).toBeGreaterThanOrEqual(4);
+  });
+
+  it("a regua tem borda explicita, e nao o relevo padrao do navegador", () => {
+    // <hr> sem estilo sai com `border: 1px inset` — 2px em relevo cinza, que nao
+    // combina com nenhuma outra linha do documento.
+    expect(estilosDocumentoSgsst).toContain(".doc-assin hr { border: 0; border-top: 1px solid");
+  });
+});
+
 
 describe("contraste do documento impresso", () => {
   it("o cabeçalho de tabela é fundo claro com tinta escura", () => {

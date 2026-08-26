@@ -66,6 +66,21 @@ export const estilosDocumentoSgsst = `
       padding-bottom: 4px; margin: 16px 0 8px; font-weight: 700; }
     h3.doc-grupo { font-size: 11px; color: ${CORES_DOC.texto}; margin: 12px 0 5px; font-weight: 600; }
 
+    /* NADA de texto pode ser fatiado pela quebra de página.
+
+       O PDF é rasterizado num canvas único e depois cortado em folhas. Sem
+       "page-break-inside: avoid" o corte cai no meio da altura de uma linha e a
+       frase sai partida ao meio na horizontal — metade no pé de uma página,
+       metade no topo da seguinte, ilegível nas duas.
+
+       Só "page-break-inside" resolve: o html2pdf 0.14 lê "pageBreakInside", mas
+       IGNORA "avoid" em "page-break-after" — há um TODO explícito na fonte da
+       biblioteca ("Add support for 'avoid' on breakBefore/After"). Por isso não
+       existe aqui nenhuma regra de "break-after": ela daria a impressão de estar
+       resolvendo e não faria nada. */
+    .doc p, .doc-aviso, .doc-ident, h2.doc-sec, h3.doc-grupo,
+    .doc-bloco > .tit, .doc-grid tr, table.doc-tabela thead { page-break-inside: avoid; }
+
     .doc p { font-size: 10.5px; color: ${CORES_DOC.texto}; margin: 0 0 6px; text-align: justify; }
     .doc-vazio { color: ${CORES_DOC.textoFraco} !important; font-style: italic; font-size: 10px !important; }
     .doc-falta { color: ${CORES_DOC.atencao}; font-style: italic; }
@@ -158,9 +173,44 @@ export const estilosDocumentoSgsst = `
     .doc-melhor { color: ${CORES_DOC.ok}; font-weight: 600; }
     .doc-neutro { color: ${CORES_DOC.textoMuitoFraco}; }
 
+    /* Bloco de assinatura.
+
+       Dois desenhos convivem aqui, e a diferença é qual elemento faz a régua:
+
+       - ASO, PCMSO e relatório analítico usam a BORDA da coluna como régua, com
+         nome e papel abaixo dela. É a forma convencional.
+       - Os outros documentos trazem a própria régua num <hr>, com o nome acima.
+
+       O segundo grupo ganhava as DUAS linhas — a borda da coluna e o <hr> — e o
+       nome ficava prensado entre elas. No PDF, que é rasterizado, a borda de cima
+       caía rente às maiúsculas e parecia riscar o nome. */
     .doc-assin { margin-top: 26px; display: flex; gap: 34px; page-break-inside: avoid; }
     .doc-assin > div { flex: 1; border-top: 1px solid ${CORES_DOC.texto}; padding-top: 5px; }
-    .doc-assin.doc-assin-centro > div { text-align: center; }
+
+    /* Coluna que traz o próprio <hr>: a borda da coluna sai de cena.
+
+       O seletor antigo era ".doc-assin.doc-assin-centro > div", que exigia as duas
+       classes no MESMO elemento — e a classe está no filho. Ele nunca casou, e por
+       isso a legenda embaixo da régua nunca ficou centralizada, apesar do nome da
+       classe. */
+    .doc-assin > div.doc-assin-centro { border-top: 0; padding-top: 0; text-align: center; }
+
+    /* A legenda embaixo da régua precisa da regra explícita: ".doc p" fixa
+       "text-align: justify", e regra direta vence alinhamento herdado. Era o
+       segundo motivo de a coluna "centro" nunca sair centralizada. */
+    .doc-assin > div.doc-assin-centro p { text-align: center; }
+
+    /* Espaço para a caneta caber, e folga entre o nome impresso e a régua.
+
+       Sem a folga o nome encosta na linha — no raster do PDF as maiúsculas e a
+       régua viram um borrão só, que é o que parecia riscar o nome. */
+    .doc-assin .doc-centro-txt { min-height: 30px; display: flex;
+      align-items: flex-end; justify-content: center; padding-bottom: 6px; }
+
+    /* A régua. Sem isto vale o padrão do navegador — 2px em relevo, que não
+       combina com nenhuma outra linha do documento. */
+    .doc-assin hr { border: 0; border-top: 1px solid ${CORES_DOC.texto}; margin: 0 0 4px; }
+
     .doc-assin .nome { font-size: 10.5px; font-weight: 600; color: ${CORES_DOC.tinta}; }
     .doc-assin .papel { font-size: 8.5px; color: ${CORES_DOC.textoFraco}; }
 
