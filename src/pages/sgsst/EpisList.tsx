@@ -305,7 +305,7 @@ export default function SgsstEpisListPage() {
   // Filter Entregas
   const filteredEntregas = entregas.filter((ent) => {
     const term = searchTermEntrega.toLowerCase();
-    const colabNome = ent.colaborador?.profile?.nome || ent.colaborador?.recurso?.nome || "";
+    const colabNome = ent.colaborador?.profile?.nome || ent.colaborador?.recurso?.nome || ent.colaborador?.nome || "";
     const epiNome = ent.epi?.nome || "";
     return (
       colabNome.toLowerCase().includes(term) ||
@@ -655,7 +655,7 @@ export default function SgsstEpisListPage() {
                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma entrega registrada.</TableCell></TableRow>
                   ) : (
                     filteredEntregas.map((ent) => {
-                      const colabNome = ent.colaborador?.profile?.nome || ent.colaborador?.recurso?.nome || "Sem Nome";
+                      const colabNome = ent.colaborador?.profile?.nome || ent.colaborador?.recurso?.nome || ent.colaborador?.nome || "Sem Nome";
                       return (
                         <TableRow key={ent.id}>
                           <TableCell>
@@ -781,7 +781,7 @@ export default function SgsstEpisListPage() {
                     <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma devolução registrada.</TableCell></TableRow>
                   ) : (
                     devolucoes.map((dev) => {
-                      const colabNome = dev.entrega?.colaborador?.profile?.nome || dev.entrega?.colaborador?.recurso?.nome || "Sem Nome";
+                      const colabNome = dev.entrega?.colaborador?.profile?.nome || dev.entrega?.colaborador?.recurso?.nome || dev.entrega?.colaborador?.nome || "Sem Nome";
                       return (
                         <TableRow key={dev.id}>
                           <TableCell className="font-semibold text-xs">{colabNome}</TableCell>
@@ -934,6 +934,7 @@ export default function SgsstEpisListPage() {
                               <span>
                                 {m.entrega?.colaborador?.profile?.nome ||
                                   m.entrega?.colaborador?.recurso?.nome ||
+                                  m.entrega?.colaborador?.nome ||
                                   "trabalhador"}
                               </span>
                             ) : (
@@ -1092,10 +1093,9 @@ export default function SgsstEpisListPage() {
               <SelectContent>
                 <SelectItem value="todos">-- Selecione o Colaborador --</SelectItem>
                 {colaboradores.map((c) => {
-                  const nome = c.profile?.nome || c.recurso?.nome || "Sem Nome";
                   return (
                     <SelectItem key={c.id} value={c.id}>
-                      {nome} (CPF: {c.cpf})
+                      {c.displayNome} (CPF: {c.cpf})
                     </SelectItem>
                   );
                 })}

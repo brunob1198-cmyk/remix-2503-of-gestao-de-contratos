@@ -85,7 +85,7 @@ export function DevolucaoEpiFormDialog({
               </SelectTrigger>
               <SelectContent>
                 {entregas.map((e) => {
-                  const colabNome = e.colaborador?.profile?.nome || e.colaborador?.recurso?.nome || "Sem Nome";
+                  const colabNome = e.colaborador?.profile?.nome || e.colaborador?.recurso?.nome || e.colaborador?.nome || "Sem Nome";
                   return (
                     <SelectItem key={e.id} value={e.id}>
                       [{colabNome}] {e.epi?.nome} ({e.quantidade} un - {e.data_entrega})

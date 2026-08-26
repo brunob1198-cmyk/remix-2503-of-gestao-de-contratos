@@ -77,7 +77,7 @@ interface ConfigRelatorio {
 }
 
 const nomeDoColaborador = (c: Record<string, any> | null | undefined): string =>
-  c?.profile?.nome || c?.recurso?.nome || "Sem Nome";
+  c?.profile?.nome || c?.recurso?.nome || c?.nome || "Sem Nome";
 
 const textoDaObra = (p: Record<string, any> | null | undefined): string =>
   p ? `[${p.codigo}] ${p.nome}` : "Geral";
@@ -194,7 +194,7 @@ const RELATORIOS: Record<TipoRelatorioSgsst, ConfigRelatorio> = {
     rotulo: "Saúde Ocupacional (PCMSO/ASO)",
     tabela: "sgsst_asos",
     select:
-      "*, colaborador:sgsst_colaborador_dados(cpf, profile:profiles(nome), recurso:recursos(nome), funcao:sgsst_funcoes(nome))",
+      "*, colaborador:sgsst_colaborador_dados(nome, cpf, profile:profiles(nome), recurso:recursos(nome), funcao:sgsst_funcoes(nome))",
     colunaData: "data_emissao",
     filtraPorObra: false,
     aviso:
@@ -215,7 +215,7 @@ const RELATORIOS: Record<TipoRelatorioSgsst, ConfigRelatorio> = {
     rotulo: "Treinamentos e Capacitações",
     tabela: "sgsst_treinamentos_participantes",
     select:
-      "*, colaborador:sgsst_colaborador_dados(cpf, profile:profiles(nome), recurso:recursos(nome)), turma:sgsst_treinamentos_turmas(codigo_turma, treinamento:sgsst_treinamentos(nome, carga_horaria))",
+      "*, colaborador:sgsst_colaborador_dados(nome, cpf, profile:profiles(nome), recurso:recursos(nome)), turma:sgsst_treinamentos_turmas(codigo_turma, treinamento:sgsst_treinamentos(nome, carga_horaria))",
     colunaData: "data_conclusao",
     filtraPorObra: false,
     aviso:
@@ -237,7 +237,7 @@ const RELATORIOS: Record<TipoRelatorioSgsst, ConfigRelatorio> = {
     rotulo: "EPI & Ficha de Entrega",
     tabela: "sgsst_epi_entregas",
     select:
-      "*, colaborador:sgsst_colaborador_dados(cpf, profile:profiles(nome), recurso:recursos(nome)), epi:sgsst_epis(nome, ca, unidade_medida)",
+      "*, colaborador:sgsst_colaborador_dados(nome, cpf, profile:profiles(nome), recurso:recursos(nome)), epi:sgsst_epis(nome, ca, unidade_medida)",
     colunaData: "data_entrega",
     filtraPorObra: false,
     aviso:
