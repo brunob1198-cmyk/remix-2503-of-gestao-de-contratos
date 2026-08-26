@@ -36,3 +36,11 @@ export function lerInteiroPositivo(texto: string): number | null {
   if (!texto) return null;
   return Number(texto.replace(",", "."));
 }
+
+/**
+ * Periodicidade de troca legível. Vazio vira "sem troca", e não "0 m": o
+ * documento tem de dizer que não há troca programada, não um prazo de zero.
+ */
+export function textoDaTroca(meses: number | null | undefined): string {
+  return meses ? `${meses} m` : "sem troca";
+}

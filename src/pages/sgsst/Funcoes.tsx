@@ -3,6 +3,7 @@ import { useSgsstFuncoes, SgsstFuncao, SgsstFuncaoInput } from "@/hooks/sgsst/us
 import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
 import { useSgsstFuncaoVinculosResumo } from "@/hooks/sgsst/useSgsstFuncaoVinculos";
 import { FuncaoVinculosDialog } from "@/components/sgsst/FuncaoVinculosDialog";
+import { FuncaoResumoDialog, type AbaVinculo } from "@/components/sgsst/FuncaoResumoDialog";
 import { FuncaoPendenciasPanel } from "@/components/sgsst/FuncaoPendenciasPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -25,6 +26,7 @@ import {
   XCircle,
   IdCard,
   Link2,
+  Eye,
   AlertTriangle,
   GraduationCap,
   HardHat,
@@ -67,6 +69,9 @@ export default function SgsstFuncoesPage() {
   const [editingFuncao, setEditingFuncao] = useState<SgsstFuncao | null>(null);
   const [isVinculosOpen, setIsVinculosOpen] = useState(false);
   const [funcaoVinculos, setFuncaoVinculos] = useState<SgsstFuncao | null>(null);
+  const [abaVinculos, setAbaVinculos] = useState<AbaVinculo>("riscos");
+  const [isResumoOpen, setIsResumoOpen] = useState(false);
+  const [funcaoResumo, setFuncaoResumo] = useState<SgsstFuncao | null>(null);
 
   const totalPages = Math.ceil(total / pageSize) || 1;
 
@@ -84,9 +89,28 @@ export default function SgsstFuncoesPage() {
     setIsDialogOpen(true);
   };
 
-  const handleVinculos = (funcao: SgsstFuncao) => {
+  const handleVinculos = (funcao: SgsstFuncao, aba: AbaVinculo = "riscos") => {
+    setAbaVinculos(aba);
     setFuncaoVinculos(funcao);
     setIsVinculosOpen(true);
+  };
+
+  const handleResumo = (funcao: SgsstFuncao) => {
+    setFuncaoResumo(funcao);
+    setIsResumoOpen(true);
+  };
+
+  // Sai do resumo antes de abrir o outro diálogo: dois modais empilhados deixam
+  // o de baixo inerte atrás do overlay, e o usuário fica sem saber por que os
+  // cliques não respondem.
+  const handleResumoEditar = (funcao: SgsstFuncao) => {
+    setIsResumoOpen(false);
+    handleEdit(funcao);
+  };
+
+  const handleResumoGerenciar = (funcao: SgsstFuncao, aba: AbaVinculo) => {
+    setIsResumoOpen(false);
+    handleVinculos(funcao, aba);
   };
 
   const handleSave = async (data: SgsstFuncaoInput) => {
@@ -333,6 +357,15 @@ export default function SgsstFuncoesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => handleResumo(f)}
+                          title="Ver tudo sobre esta função"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleVinculos(f)}
                           title="Riscos, treinamentos e EPIs desta função"
                         >
@@ -413,6 +446,16 @@ export default function SgsstFuncoesPage() {
         onOpenChange={setIsVinculosOpen}
         funcao={funcaoVinculos}
         allowEdit={allowEdit}
+        abaInicial={abaVinculos}
+      />
+
+      <FuncaoResumoDialog
+        open={isResumoOpen}
+        onOpenChange={setIsResumoOpen}
+        funcao={funcaoResumo}
+        allowEdit={allowEdit}
+        onEditarDados={handleResumoEditar}
+        onGerenciarVinculos={handleResumoGerenciar}
       />
     </div>
   );
