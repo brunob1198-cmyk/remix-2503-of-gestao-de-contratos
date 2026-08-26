@@ -941,8 +941,16 @@ export const CHECKLIST_STATS_LIMITE_LINHAS = 5000;
 
 export interface ChecklistPlanoAcaoStatsRow {
   id: string;
-  status: ChecklistPlanoAcao["status"];
-  prioridade: ChecklistPlanoAcao["prioridade"];
+  /**
+   * Vem da coluna como está, e por isso é `string` e não a união de
+   * `ChecklistPlanoAcao`: a coluna é texto livre no banco e nada garante que o
+   * valor esteja entre os cinco esperados. Declarar a união aqui afirmaria mais
+   * do que o dado sustenta — um status gravado fora do conjunto passaria a ser
+   * tratado como um dos válidos. O gráfico já rotula o que conhece e mostra o
+   * resto cru, em cinza, em vez de descartar.
+   */
+  status: string;
+  prioridade: string;
   quando_prazo: string | null;
   created_at: string | null;
   projeto_nome: string;
@@ -959,6 +967,21 @@ export interface ChecklistPlanoAcaoStatsRow {
  * mostrar só a página atual em vez do total — um bug sutil, porque o número bate
  * "por acaso" enquanto a lista cabe numa página só.
  */
+/** Forma da linha que o select acima devolve. */
+interface LinhaPlanoAcaoBruta {
+  id: string;
+  status: string | null;
+  prioridade: string | null;
+  quando_prazo: string | null;
+  created_at: string;
+  quem_responsavel?: { nome: string | null } | null;
+  aplicacao?: {
+    projeto_id: string | null;
+    projeto?: { nome: string | null } | null;
+    modelo?: { nome: string | null } | null;
+  } | null;
+}
+
 export function useChecklistPlanosAcaoStats() {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
@@ -967,8 +990,11 @@ export function useChecklistPlanosAcaoStats() {
     queryKey: ["checklist_planos_acao_stats", empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
+      // `as never` em vez de `as any`: o types.ts gerado não conhece estas
+      // tabelas, mas a FORMA da linha é conhecida — declará-la dá autocompletar
+      // e erro de compilação quando o select mudar, coisa que `any` não dá.
       const { data, error } = await (supabase
-        .from("checklist_planos_acao" as any)
+        .from("checklist_planos_acao" as never)
         .select(`
           id, status, prioridade, quando_prazo, created_at,
           quem_responsavel:profiles!checklist_planos_acao_quem_responsavel_id_fkey(nome),
@@ -979,11 +1005,14 @@ export function useChecklistPlanosAcaoStats() {
           )
         `)
         .order("created_at", { ascending: false })
-        .limit(CHECKLIST_STATS_LIMITE_LINHAS) as any);
+        .limit(CHECKLIST_STATS_LIMITE_LINHAS) as never as Promise<{
+        data: LinhaPlanoAcaoBruta[] | null;
+        error: { message?: string; code?: string } | null;
+      }>);
 
       if (error) throw error;
 
-      const rows = (data as any[]) || [];
+      const rows = data ?? [];
       const linhas: ChecklistPlanoAcaoStatsRow[] = rows.map((p) => ({
         id: p.id,
         status: p.status,
@@ -1026,6 +1055,18 @@ export interface ChecklistReincidenciaLinha {
  * respostas não-conformes é uma fração pequena do total de respostas, e a consulta
  * já chega filtrada por is_nao_conforme = true.
  */
+/** Forma da linha que o select de respostas não conformes devolve. */
+interface LinhaRespostaNaoConformeBruta {
+  item_id: string;
+  created_at: string;
+  item?: { titulo: string | null } | null;
+  aplicacao?: {
+    projeto_id: string | null;
+    data_aplicacao: string | null;
+    projeto?: { nome: string | null } | null;
+  } | null;
+}
+
 export function useChecklistReincidencias(params?: { minOcorrencias?: number }) {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
@@ -1036,7 +1077,7 @@ export function useChecklistReincidencias(params?: { minOcorrencias?: number }) 
     enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await (supabase
-        .from("checklist_respostas" as any)
+        .from("checklist_respostas" as never)
         .select(`
           item_id, created_at,
           item:checklist_itens(titulo),
@@ -1044,11 +1085,14 @@ export function useChecklistReincidencias(params?: { minOcorrencias?: number }) 
         `)
         .eq("is_nao_conforme", true)
         .order("created_at", { ascending: false })
-        .limit(CHECKLIST_STATS_LIMITE_LINHAS) as any);
+        .limit(CHECKLIST_STATS_LIMITE_LINHAS) as never as Promise<{
+        data: LinhaRespostaNaoConformeBruta[] | null;
+        error: { message?: string; code?: string } | null;
+      }>);
 
       if (error) throw error;
 
-      const rows = (data as any[]) || [];
+      const rows = data ?? [];
       const mapa = new Map<string, ChecklistReincidenciaLinha>();
 
       for (const r of rows) {
