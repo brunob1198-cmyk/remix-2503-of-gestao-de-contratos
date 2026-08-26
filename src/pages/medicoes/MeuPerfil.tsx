@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SmartImage } from "@/components/ui/SmartImage";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Camera, Save, Lock } from "lucide-react";
@@ -150,7 +151,19 @@ export default function MeuPerfilPage() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <Avatar className="h-20 w-20">
-                {avatarUrl && <AvatarImage src={avatarUrl} context="profiles" className="object-cover" />}
+                {/* SmartImage, e não AvatarImage: o bucket `profiles` é privado e
+                    a URL precisa ser assinada a partir do contexto. O AvatarImage
+                    do shadcn não conhece `context` — receber a prop e ignorá-la
+                    fazia a foto simplesmente não carregar. Mesmo uso de
+                    GerenciarUsuarios. */}
+                {avatarUrl && (
+                  <SmartImage
+                    src={avatarUrl}
+                    context="profiles"
+                    alt="Sua foto de perfil"
+                    className="h-full w-full object-cover"
+                  />
+                )}
                 <AvatarFallback className="text-xl">{initials}</AvatarFallback>
               </Avatar>
               <label

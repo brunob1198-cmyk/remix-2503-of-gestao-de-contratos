@@ -18,6 +18,13 @@ import { toast } from "sonner";
 
 export type TipoExposicao = "HABITUAL" | "OCASIONAL" | "EVENTUAL";
 
+/** Do mais frequente ao mais raro — a ordem em que aparecem em qualquer select. */
+export const TIPOS_EXPOSICAO: readonly TipoExposicao[] = [
+  "HABITUAL",
+  "OCASIONAL",
+  "EVENTUAL",
+];
+
 export const TIPO_EXPOSICAO_LABEL: Record<TipoExposicao, string> = {
   HABITUAL: "Habitual",
   OCASIONAL: "Ocasional",
@@ -304,7 +311,13 @@ export function useSgsstFuncaoVinculos(funcaoId: string | null) {
       if (error) throw error;
       return tabela;
     },
-    onSuccess: (tabela) => invalidar(tabela),
+    onSuccess: (tabela) => {
+      invalidar(tabela);
+      // Confirma a gravação. Sem isto, corrigir um campo de texto na linha não
+      // dá sinal nenhum: o valor fica na tela igual ao que foi digitado, salvo
+      // ou não.
+      toast.success("Vínculo atualizado.");
+    },
     onError: (err: unknown) => toast.error(mensagemErro(err, "atualizar o vínculo")),
   });
 

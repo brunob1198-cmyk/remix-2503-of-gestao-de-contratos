@@ -30,9 +30,12 @@ import {
   useSgsstFuncaoVinculos,
   TIPO_EXPOSICAO_AJUDA,
   TIPO_EXPOSICAO_LABEL,
+  TIPOS_EXPOSICAO,
   type TipoExposicao,
 } from "@/hooks/sgsst/useSgsstFuncaoVinculos";
 import { formatarLimite, parseLimite } from "@/utils/sgsstRiscoLimite";
+import { CelulaEditavel } from "@/components/sgsst/CelulaEditavel";
+import { validarInteiroPositivo, lerInteiroPositivo } from "@/utils/validacaoInteiro";
 
 /**
  * Painel de vínculos da função: o que quem exerce esta função enfrenta e precisa.
@@ -289,9 +292,11 @@ export function FuncaoVinculosDialog({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="HABITUAL">Habitual</SelectItem>
-                        <SelectItem value="OCASIONAL">Ocasional</SelectItem>
-                        <SelectItem value="EVENTUAL">Eventual</SelectItem>
+                        {TIPOS_EXPOSICAO.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {TIPO_EXPOSICAO_LABEL[t]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -372,9 +377,58 @@ export function FuncaoVinculosDialog({
                         {formatarLimite(r.risco?.limite_tolerancia, r.risco?.unidade_medida) ?? "—"}
                       </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
-                        {TIPO_EXPOSICAO_LABEL[r.tipo_exposicao]}
-                        {r.tempo_exposicao && (
-                          <span className="block text-muted-foreground">{r.tempo_exposicao}</span>
+                        {allowEdit ? (
+                          // Editável na linha: o tipo e o tempo de exposição são
+                          // dados DO VÍNCULO, não do risco no catálogo. Corrigi-los
+                          // desvinculando e vinculando de novo perderia quem
+                          // cadastrou e quando.
+                          <div className="min-w-[8.5rem] space-y-1">
+                            <Select
+                              value={r.tipo_exposicao}
+                              onValueChange={(valor) =>
+                                atualizar.mutate({
+                                  tabela: "sgsst_funcao_riscos",
+                                  id: r.id,
+                                  campos: { tipo_exposicao: valor },
+                                })
+                              }
+                            >
+                              <SelectTrigger
+                                className="h-7 text-xs"
+                                aria-label="Tipo de exposição"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {TIPOS_EXPOSICAO.map((t) => (
+                                  <SelectItem key={t} value={t}>
+                                    {TIPO_EXPOSICAO_LABEL[t]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <CelulaEditavel
+                              valor={r.tempo_exposicao ?? ""}
+                              placeholder="8h/dia"
+                              ariaLabel="Tempo de exposição"
+                              onSalvar={(texto) =>
+                                atualizar.mutate({
+                                  tabela: "sgsst_funcao_riscos",
+                                  id: r.id,
+                                  campos: { tempo_exposicao: texto || null },
+                                })
+                              }
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            {TIPO_EXPOSICAO_LABEL[r.tipo_exposicao]}
+                            {r.tempo_exposicao && (
+                              <span className="block text-muted-foreground">
+                                {r.tempo_exposicao}
+                              </span>
+                            )}
+                          </>
                         )}
                       </TableCell>
                       {allowEdit && (
@@ -659,11 +713,54 @@ export function FuncaoVinculosDialog({
                         )}
                       </TableCell>
                       <TableCell className="text-xs font-mono">{e.epi?.ca ?? "—"}</TableCell>
-                      <TableCell className="text-xs tabular-nums">{e.quantidade_padrao}</TableCell>
+                      <TableCell className="text-xs tabular-nums">
+                        {allowEdit ? (
+                          <CelulaEditavel
+                            valor={String(e.quantidade_padrao)}
+                            inputMode="numeric"
+                            ariaLabel="Quantidade padrão"
+                            className="w-14"
+                            validar={validarInteiroPositivo(true, "a quantidade")}
+                            onSalvar={(texto) =>
+                              atualizar.mutate({
+                                tabela: "sgsst_funcao_epis",
+                                id: e.id,
+                                campos: { quantidade_padrao: lerInteiroPositivo(texto) },
+                              })
+                            }
+                          />
+                        ) : (
+                          e.quantidade_padrao
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs tabular-nums whitespace-nowrap">
-                        {e.periodicidade_troca_meses
-                          ? `${e.periodicidade_troca_meses} m`
-                          : "sem troca"}
+                        {allowEdit ? (
+                          <CelulaEditavel
+                            valor={
+                              e.periodicidade_troca_meses
+                                ? String(e.periodicidade_troca_meses)
+                                : ""
+                            }
+                            inputMode="numeric"
+                            placeholder="sem troca"
+                            ariaLabel="Troca em meses"
+                            className="w-20"
+                            validar={validarInteiroPositivo(false, "a troca")}
+                            onSalvar={(texto) =>
+                              atualizar.mutate({
+                                tabela: "sgsst_funcao_epis",
+                                id: e.id,
+                                // Vazio grava null: "sem troca programada" é uma
+                                // decisão, e não o mesmo que zero mês.
+                                campos: { periodicidade_troca_meses: lerInteiroPositivo(texto) },
+                              })
+                            }
+                          />
+                        ) : e.periodicidade_troca_meses ? (
+                          `${e.periodicidade_troca_meses} m`
+                        ) : (
+                          "sem troca"
+                        )}
                       </TableCell>
                       <TableCell>
                         {allowEdit ? (
