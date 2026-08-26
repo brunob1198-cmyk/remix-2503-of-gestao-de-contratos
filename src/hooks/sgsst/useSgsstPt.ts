@@ -120,6 +120,7 @@ export interface SgsstPtParticipante {
   colaborador_dados?: {
     id: string;
     matricula?: string | null;
+    nome?: string | null;
     profile?: { nome: string | null } | null;
     recurso?: { nome: string } | null;
   } | null;
@@ -639,6 +640,7 @@ export function useSgsstPtParticipantes(ptId?: string) {
           colaborador_dados:sgsst_colaborador_dados(
             id,
             matricula,
+            nome,
             profile:profiles(nome),
             recurso:recursos(nome)
           ),

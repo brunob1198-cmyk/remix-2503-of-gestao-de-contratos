@@ -51,6 +51,7 @@ interface ColabLinha {
   cpf: string | null;
   data_nascimento: string | null;
   funcao_id: string | null;
+  nome: string | null;
   profile: { nome: string } | null;
   recurso: { nome: string } | null;
   funcao: { id: string; nome: string } | null;
@@ -89,7 +90,7 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
         supabase
           .from("sgsst_colaborador_dados" as never)
           .select(
-            "id, cpf, data_nascimento, funcao_id, profile:profiles(nome), recurso:recursos(nome), funcao:sgsst_funcoes(id, nome), projeto:projetos(nome)"
+            "id, cpf, data_nascimento, funcao_id, nome, profile:profiles(nome), recurso:recursos(nome), funcao:sgsst_funcoes(id, nome), projeto:projetos(nome)"
           )
           .eq("status", "ativo") as never as Promise<{
           data: ColabLinha[] | null;
@@ -143,7 +144,7 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
 
       for (const c of colaboradores) {
         const idade = idadeEm(c.data_nascimento, hoje);
-        const nome = c.profile?.nome || c.recurso?.nome || "Trabalhador sem nome";
+        const nome = c.profile?.nome || c.recurso?.nome || c.nome || "Trabalhador sem nome";
 
         for (const p of previstos) {
           // Exame previsto para uma função específica só vale para quem a exerce.

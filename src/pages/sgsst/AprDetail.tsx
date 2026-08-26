@@ -703,7 +703,7 @@ export default function SgsstAprDetailPage() {
                     </TableRow>
                   ) : (
                     participantes.map((p) => {
-                      const nomeColab = p.colaborador_dados?.profile?.nome || p.colaborador_dados?.recurso?.nome || "Sem Nome";
+                      const nomeColab = p.colaborador_dados?.profile?.nome || p.colaborador_dados?.recurso?.nome || p.colaborador_dados?.nome || "Sem Nome";
                       return (
                         <TableRow key={p.id}>
                           <TableCell className="font-medium">{nomeColab}</TableCell>
