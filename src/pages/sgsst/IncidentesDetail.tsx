@@ -366,7 +366,7 @@ export default function SgsstIncidentesDetailPage() {
                     <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma pessoa ou envolvido cadastrado neste incidente.</TableCell></TableRow>
                   ) : (
                     envolvidos.map((e) => {
-                      const nomeColab = e.colaborador_dados?.profile?.nome || e.colaborador_dados?.recurso?.nome || "Sem Nome";
+                      const nomeColab = e.colaborador_dados?.profile?.nome || e.colaborador_dados?.recurso?.nome || e.colaborador_dados?.nome || "Sem Nome";
                       return (
                         <TableRow key={e.id}>
                           <TableCell className="font-medium">{nomeColab}</TableCell>

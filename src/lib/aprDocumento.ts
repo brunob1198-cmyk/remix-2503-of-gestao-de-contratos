@@ -93,7 +93,10 @@ function faltando(rotulo: string): string {
 
 function nomeDoParticipante(p: SgsstAprParticipante): string {
   return (
-    p.colaborador_dados?.profile?.nome || p.colaborador_dados?.recurso?.nome || "(sem nome)"
+    p.colaborador_dados?.profile?.nome ||
+    p.colaborador_dados?.recurso?.nome ||
+    p.colaborador_dados?.nome ||
+    "(sem nome)"
   );
 }
 
