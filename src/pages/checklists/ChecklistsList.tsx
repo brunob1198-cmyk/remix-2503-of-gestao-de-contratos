@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { usePermissions } from "@/hooks/usePermissions";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,6 +15,9 @@ import {
   useChecklistModelos,
   useChecklistAplicacoes,
   useChecklistPlanosAcao,
+  useChecklistPlanosAcaoStats,
+  useChecklistReincidencias,
+  CHECKLIST_STATS_LIMITE_LINHAS,
   ChecklistModelo,
   ChecklistAplicacao,
   ChecklistPlanoAcao,
@@ -51,10 +57,46 @@ import {
   QrCode,
   HardDrive,
   DownloadCloud,
+  RefreshCcw,
+  MapPin,
+  User,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
+
+const STATUS_PLANO_COR: Record<string, string> = {
+  Aberto: "#f59e0b",
+  Em_Andamento: "#3b82f6",
+  Concluido: "#10b981",
+  Atrasado: "#ef4444",
+  Cancelado: "#94a3b8",
+};
+
+const STATUS_PLANO_LABEL: Record<string, string> = {
+  Aberto: "Aberto",
+  Em_Andamento: "Em Andamento",
+  Concluido: "Concluído",
+  Atrasado: "Atrasado",
+  Cancelado: "Cancelado",
+};
+
+/** Agrupa e ordena por contagem desc, mantendo só o top N + "Outros". */
+function rankingTopN(itens: string[], topN = 6): { name: string; total: number }[] {
+  const contagem = new Map<string, number>();
+  for (const item of itens) {
+    contagem.set(item, (contagem.get(item) || 0) + 1);
+  }
+  const ordenado = Array.from(contagem.entries())
+    .map(([name, total]) => ({ name, total }))
+    .sort((a, b) => b.total - a.total);
+
+  if (ordenado.length <= topN) return ordenado;
+
+  const top = ordenado.slice(0, topN);
+  const outros = ordenado.slice(topN).reduce((acc, cur) => acc + cur.total, 0);
+  return [...top, { name: "Outros", total: outros }];
+}
 
 export default function ChecklistsListPage() {
   const { canEdit } = usePermissions();
@@ -82,10 +124,35 @@ export default function ChecklistsListPage() {
     isLoading: loadingPlanos,
   } = useChecklistPlanosAcao({ page: pagePlano, pageSize: pageSizePlano });
 
+  // Estatísticas agregadas (não paginadas) para os gráficos da aba Relatórios e
+  // para o relatório de Reincidências — ver o comentário no hook sobre por que
+  // isso não pode reaproveitar a lista paginada acima.
+  const { linhas: planosStats, truncado: planosStatsTruncado } = useChecklistPlanosAcaoStats();
+  const [minOcorrenciasReincidencia, setMinOcorrenciasReincidencia] = useState(2);
+  const {
+    linhas: reincidencias,
+    totalItensComOcorrencia,
+    truncado: reincidenciasTruncado,
+    isLoading: loadingReincidencias,
+  } = useChecklistReincidencias({ minOcorrencias: minOcorrenciasReincidencia });
+
   const totalPagesApl = Math.ceil(totalAplicacoes / pageSizeApl) || 1;
   const totalPagesPlano = Math.ceil(totalPlanos / pageSizePlano) || 1;
 
-  const [activeTab, setActiveTab] = useState("modelos");
+  // Painel lateral de navegação do módulo: estado persiste entre visitas (como em
+  // Cadastros) e aceita ?tab= vindo de outra tela (ex.: um link "ver planos de
+  // ação atrasados" que já abre na aba certa).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = usePersistedState<string>("checklists:activeTab", "modelos");
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+      searchParams.delete("tab");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, activeTab, setActiveTab, setSearchParams]);
 
   // Filter States
   const [searchModelo, setSearchModelo] = useState("");
@@ -171,6 +238,34 @@ export default function ChecklistsListPage() {
             0
           ) / aplicacoesConcluidas.length
         );
+
+  // Breakdown visual dos Planos de Ação: status (rosca) + ranking por obra,
+  // checklist e responsável. Calculado sobre `planosStats` (não paginado) — a
+  // tabela paginada da aba "Planos" mostraria só a página atual.
+  const planosPorStatus = useMemo(() => {
+    const contagem = new Map<string, number>();
+    for (const p of planosStats) {
+      contagem.set(p.status, (contagem.get(p.status) || 0) + 1);
+    }
+    return Array.from(contagem.entries()).map(([status, total]) => ({
+      name: STATUS_PLANO_LABEL[status] || status,
+      value: total,
+      fill: STATUS_PLANO_COR[status] || "#94a3b8",
+    }));
+  }, [planosStats]);
+
+  const planosPorObra = useMemo(
+    () => rankingTopN(planosStats.map((p) => p.projeto_nome)),
+    [planosStats]
+  );
+  const planosPorChecklist = useMemo(
+    () => rankingTopN(planosStats.map((p) => p.modelo_nome)),
+    [planosStats]
+  );
+  const planosPorResponsavel = useMemo(
+    () => rankingTopN(planosStats.map((p) => p.responsavel_nome)),
+    [planosStats]
+  );
 
   const handleCreateModelo = () => {
     setEditingModelo(null);
@@ -275,25 +370,38 @@ export default function ChecklistsListPage() {
         </Card>
       )}
 
-      {/* Navigation Tabs: [ Modelos ] [ Aplicações ] [ Agendamentos ] [ Planos de Ação ] [ Relatórios ] */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-5 w-full bg-slate-100 p-1 rounded-xl">
-          <TabsTrigger value="modelos" className="gap-1.5 text-xs font-semibold">
+      {/* Painel lateral secundário: navegação vertical do módulo em telas largas
+          (colapsa para barra horizontal rolável em telas estreitas), com a área
+          de conteúdo ao lado — mesmo modelo do Radix Tabs de sempre, só que
+          orientado na vertical. */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        orientation="vertical"
+        className="flex flex-col lg:flex-row gap-4 items-start w-full"
+      >
+        <TabsList className="flex flex-row lg:flex-col h-auto w-full lg:w-56 shrink-0 gap-1 justify-start overflow-x-auto lg:overflow-visible bg-slate-100 p-1.5 rounded-xl lg:sticky lg:top-4">
+          <TabsTrigger value="modelos" className="w-full justify-start gap-1.5 text-xs font-semibold shrink-0">
             <FolderCheck className="h-3.5 w-3.5" /> Modelos ({modelos.length})
           </TabsTrigger>
-          <TabsTrigger value="aplicacoes" className="gap-1.5 text-xs font-semibold">
+          <TabsTrigger value="aplicacoes" className="w-full justify-start gap-1.5 text-xs font-semibold shrink-0">
             <ClipboardCheck className="h-3.5 w-3.5" /> Aplicações ({aplicacoes.length})
           </TabsTrigger>
-          <TabsTrigger value="agendamentos" className="gap-1.5 text-xs font-semibold">
+          <TabsTrigger value="agendamentos" className="w-full justify-start gap-1.5 text-xs font-semibold shrink-0">
             <Calendar className="h-3.5 w-3.5 text-blue-600" /> Agendamentos
           </TabsTrigger>
-          <TabsTrigger value="planos" className="gap-1.5 text-xs font-semibold">
+          <TabsTrigger value="planos" className="w-full justify-start gap-1.5 text-xs font-semibold shrink-0">
             <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Planos de Ação 5W2H ({planosAcao.length})
           </TabsTrigger>
-          <TabsTrigger value="relatorios" className="gap-1.5 text-xs font-semibold">
+          <TabsTrigger value="reincidencias" className="w-full justify-start gap-1.5 text-xs font-semibold shrink-0">
+            <RefreshCcw className="h-3.5 w-3.5 text-purple-600" /> Reincidências ({totalItensComOcorrencia})
+          </TabsTrigger>
+          <TabsTrigger value="relatorios" className="w-full justify-start gap-1.5 text-xs font-semibold shrink-0">
             <Activity className="h-3.5 w-3.5 text-emerald-600" /> Relatórios & Dashboard
           </TabsTrigger>
         </TabsList>
+
+        <div className="flex-1 min-w-0 w-full">
 
         {/* TAB 1: MODELOS */}
         <TabsContent value="modelos" className="space-y-4 pt-3">
@@ -566,10 +674,18 @@ export default function ChecklistsListPage() {
 
           <Card>
             <CardContent className="p-0">
+              {/* Rolagem horizontal própria: com Por Quê/Como/Onde inline (como no
+                  detalhamento do Checklist Fácil), a tabela fica mais larga que a
+                  viewport em telas médias — e é a tabela que deve rolar, não a
+                  página inteira. */}
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs font-bold">Código / Ação (What)</TableHead>
+                    <TableHead className="text-xs font-bold">Código / O que (What)</TableHead>
+                    <TableHead className="text-xs font-bold min-w-[160px]">Por quê (Why)</TableHead>
+                    <TableHead className="text-xs font-bold min-w-[160px]">Como (How)</TableHead>
+                    <TableHead className="text-xs font-bold min-w-[120px]">Onde (Where)</TableHead>
                     <TableHead className="text-xs font-bold">Prazo (When)</TableHead>
                     <TableHead className="text-xs font-bold">Responsável (Who)</TableHead>
                     <TableHead className="text-xs font-bold">Prioridade</TableHead>
@@ -580,18 +696,27 @@ export default function ChecklistsListPage() {
                 </TableHeader>
                 <TableBody>
                   {loadingPlanos ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-6 text-xs text-muted-foreground">Carregando planos de ação 5W2H...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center py-6 text-xs text-muted-foreground">Carregando planos de ação 5W2H...</TableCell></TableRow>
                   ) : filteredPlanos.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-6 text-xs text-muted-foreground">Nenhum plano de ação registrado.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={10} className="text-center py-6 text-xs text-muted-foreground">Nenhum plano de ação registrado.</TableCell></TableRow>
                   ) : (
                     filteredPlanos.map((p) => (
                       <TableRow key={p.id}>
                         <TableCell>
-                          <div className="font-bold text-xs text-foreground">{p.o_que_fazer}</div>
+                          <div className="font-bold text-xs text-foreground max-w-[220px]">{p.o_que_fazer}</div>
                           <div className="text-[11px] font-mono text-muted-foreground">{p.codigo || "PA"}</div>
                         </TableCell>
-                        <TableCell className="text-xs font-bold text-red-600">{p.quando_prazo || "—"}</TableCell>
-                        <TableCell className="text-xs">{p.quem_responsavel?.nome || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={p.por_que || undefined}>
+                          {p.por_que || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={p.como_fazer || undefined}>
+                          {p.como_fazer || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate" title={p.onde || undefined}>
+                          {p.onde || "—"}
+                        </TableCell>
+                        <TableCell className="text-xs font-bold text-red-600 whitespace-nowrap">{p.quando_prazo || "—"}</TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">{p.quem_responsavel?.nome || "—"}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="font-mono text-xs">{p.prioridade}</Badge>
                         </TableCell>
@@ -606,7 +731,7 @@ export default function ChecklistsListPage() {
                         </TableCell>
                         <TableCell className="text-xs">
                           {p.evidencia_conclusao_r2_url ? (
-                            <a href={resolveFileUrl(p.evidencia_conclusao_r2_url)} target="_blank" rel="noreferrer" className="text-primary underline flex items-center gap-1">
+                            <a href={resolveFileUrl(p.evidencia_conclusao_r2_url)} target="_blank" rel="noreferrer" className="text-primary underline flex items-center gap-1 whitespace-nowrap">
                               <FileCheck className="h-3.5 w-3.5" /> Evidência R2
                             </a>
                           ) : (
@@ -614,7 +739,7 @@ export default function ChecklistsListPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button size="sm" variant="ghost" onClick={() => handleOpenPlano(p)} className="text-xs gap-1 text-primary">
+                          <Button size="sm" variant="ghost" onClick={() => handleOpenPlano(p)} className="text-xs gap-1 text-primary whitespace-nowrap">
                             <Edit2 className="h-3.5 w-3.5" /> Tratar / Evidência
                           </Button>
                         </TableCell>
@@ -623,6 +748,7 @@ export default function ChecklistsListPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
               <TablePagination
                 currentPage={pagePlano + 1}
                 totalPages={totalPagesPlano}
@@ -714,7 +840,211 @@ export default function ChecklistsListPage() {
               </CardContent>
             </Card>
           </div>
+
+          {planosStatsTruncado && (
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              O total de planos de ação passou do teto de segurança da consulta ({CHECKLIST_STATS_LIMITE_LINHAS}{" "}
+              registros). Os gráficos abaixo cobrem os mais recentes, não o histórico completo.
+            </p>
+          )}
+
+          <div>
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-4 w-4 text-amber-600" /> Breakdown de Planos de Ação
+            </h3>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm font-semibold">Status dos Planos</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[240px] pt-2">
+                  {planosStats.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Sem planos de ação registrados.</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={planosPorStatus}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={3}
+                          label={({ name, value }) => `${name}: ${value}`}
+                        >
+                          {planosPorStatus.map((entry, index) => (
+                            <Cell key={index} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-primary" /> Ranking por Obra/Projeto
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-[240px] pt-2">
+                  {planosPorObra.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Sem dados suficientes.</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={planosPorObra} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Bar dataKey="total" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                    <FolderCheck className="h-3.5 w-3.5 text-primary" /> Ranking por Checklist
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-[240px] pt-2">
+                  {planosPorChecklist.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Sem dados suficientes.</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={planosPorChecklist} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Bar dataKey="total" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-primary" /> Ranking por Responsável
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="h-[240px] pt-2">
+                  {planosPorResponsavel.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Sem dados suficientes.</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={planosPorResponsavel} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                        <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Bar dataKey="total" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
+
+        {/* TAB 6: REINCIDÊNCIAS */}
+        <TabsContent value="reincidencias" className="space-y-4 pt-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <RefreshCcw className="h-4 w-4 text-purple-600" /> Itens Reincidentes
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
+                O mesmo item reprovado mais de uma vez na mesma obra, ao longo do tempo. Isolado, cada
+                checklist reprovado é um evento; reincidente, é padrão — o que costuma anteceder acidente
+                ou multa, não o evento isolado.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Mostrar a partir de</Label>
+              <Select value={String(minOcorrenciasReincidencia)} onValueChange={(v) => setMinOcorrenciasReincidencia(Number(v))}>
+                <SelectTrigger className="text-xs w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2">2+ ocorrências</SelectItem>
+                  <SelectItem value="3">3+ ocorrências</SelectItem>
+                  <SelectItem value="5">5+ ocorrências</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {reincidenciasTruncado && (
+            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              O histórico de respostas não conformes passou do teto de segurança da consulta. As
+              reincidências abaixo cobrem as ocorrências mais recentes, não o histórico completo.
+            </p>
+          )}
+
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs font-bold">Item do Checklist</TableHead>
+                    <TableHead className="text-xs font-bold">Obra/Projeto</TableHead>
+                    <TableHead className="text-xs font-bold text-center">Ocorrências</TableHead>
+                    <TableHead className="text-xs font-bold">Primeira Ocorrência</TableHead>
+                    <TableHead className="text-xs font-bold">Última Ocorrência</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loadingReincidencias ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-6 text-xs text-muted-foreground">Calculando reincidências...</TableCell></TableRow>
+                  ) : reincidencias.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6 text-xs text-muted-foreground">
+                        Nenhum item reincidente com {minOcorrenciasReincidencia}+ ocorrências. Isso é bom sinal — ou ainda não
+                        há histórico suficiente para revelar um padrão.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    reincidencias.map((r) => (
+                      <TableRow key={r.chave}>
+                        <TableCell className="text-xs font-bold text-foreground max-w-[280px]">{r.item_titulo}</TableCell>
+                        <TableCell className="text-xs">{r.projeto_nome}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge
+                            variant="outline"
+                            className={`font-bold text-xs ${
+                              r.ocorrencias >= 5
+                                ? "bg-red-100 text-red-800 border-red-300"
+                                : r.ocorrencias >= 3
+                                ? "bg-amber-100 text-amber-800 border-amber-300"
+                                : "bg-slate-100 text-slate-700 border-slate-300"
+                            }`}
+                          >
+                            {r.ocorrencias}x
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {r.primeira_ocorrencia ? format(parseISO(r.primeira_ocorrencia), "dd/MM/yyyy") : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {r.ultima_ocorrencia ? format(parseISO(r.ultima_ocorrencia), "dd/MM/yyyy") : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        </div>
       </Tabs>
 
       {/* Builder Dialog */}
