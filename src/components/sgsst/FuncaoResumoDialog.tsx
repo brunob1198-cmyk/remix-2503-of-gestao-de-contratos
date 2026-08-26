@@ -17,6 +17,7 @@ import {
   IdCard,
   Pencil,
   Settings2,
+  Users,
   XCircle,
 } from "lucide-react";
 import type { SgsstFuncao } from "@/hooks/sgsst/useSgsstFuncoes";
@@ -34,6 +35,8 @@ import {
 } from "@/components/sgsst/camposDoVinculoFuncao";
 import { formatarLimite } from "@/utils/sgsstRiscoLimite";
 import { textoDaTroca } from "@/utils/validacaoInteiro";
+import { useSgsstFuncaoMatriz } from "@/hooks/sgsst/useSgsstFuncaoMatriz";
+import { estadoDaContagem } from "@/utils/sgsstMatrizFuncao";
 
 /**
  * Resumo da função: tudo o que foi cadastrado nela, numa tela só.
@@ -99,6 +102,30 @@ function Vazio({ children }: { children: React.ReactNode }) {
   return <p className="px-4 py-5 text-center text-xs text-muted-foreground">{children}</p>;
 }
 
+/** Número grande com rótulo, para o bloco de quem exerce a função. */
+function Numero({
+  valor,
+  rotulo,
+  destaque,
+}: {
+  valor: number;
+  rotulo: string;
+  destaque?: "ok" | "alerta";
+}) {
+  const cor =
+    destaque === "ok"
+      ? "text-emerald-600"
+      : destaque === "alerta" && valor > 0
+        ? "text-amber-600"
+        : "text-foreground";
+  return (
+    <div>
+      <p className={`text-xl font-bold tabular-nums ${cor}`}>{valor}</p>
+      <p className="text-[11px] leading-tight text-muted-foreground">{rotulo}</p>
+    </div>
+  );
+}
+
 export function FuncaoResumoDialog({
   open,
   onOpenChange,
@@ -115,6 +142,18 @@ export function FuncaoResumoDialog({
 
   const atualizarVinculo: AtualizarVinculo = (tabela: TabelaVinculo, id, campos) =>
     atualizar.mutate({ tabela, id, campos });
+
+  // Recorte da matriz para esta função. Compartilha a chave de cache com a aba
+  // "Pendências por função", então abrir o resumo depois dela não recalcula.
+  const matriz = useSgsstFuncaoMatriz({ enabled: open });
+  // A ordem dos casos é a regra, e vive numa função pura testada: "sem
+  // colaborador" avaliado antes de "calculando" faria a tela afirmar que
+  // ninguém exerce a função enquanto a consulta ainda corre.
+  const contagem = estadoDaContagem({
+    isLoading: matriz.isLoading,
+    temErro: !!matriz.error,
+    resumo: funcao ? matriz.porFuncao[funcao.id] : undefined,
+  });
 
   if (!funcao) return null;
 
@@ -212,6 +251,62 @@ export function FuncaoResumoDialog({
                   <span className="font-normal text-muted-foreground">—</span>
                 )}
               </Linha>
+            </CardContent>
+          </Card>
+
+          {/* ---------- Quem exerce a função ---------- */}
+          <Card>
+            <TituloDoBloco icone={Users}>Quem exerce esta função</TituloDoBloco>
+            <CardContent className="p-4">
+              {/* Os três estados são distintos de propósito. "Calculando" e "não
+                  foi possível calcular" não podem virar zero: um zero afirma que
+                  ninguém exerce a função, e isso é uma conclusão, não a ausência
+                  de uma. */}
+              {contagem.tipo === "CALCULANDO" ? (
+                <p className="text-xs text-muted-foreground">Calculando…</p>
+              ) : contagem.tipo === "ERRO" ? (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    Não foi possível calcular a conformidade de quem exerce esta função.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => matriz.refetch()}
+                  >
+                    Tentar de novo
+                  </Button>
+                </div>
+              ) : contagem.tipo === "SEM_COLABORADOR" ? (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum colaborador ativo está nesta função. As exigências abaixo ainda valem —
+                  passam a ser cobradas de quem for alocado nela.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-4">
+                    <Numero valor={contagem.resumo.colaboradores} rotulo="colaboradores" />
+                    <Numero valor={contagem.resumo.emDia} rotulo="em dia" destaque="ok" />
+                    <Numero
+                      valor={contagem.resumo.comPendencia}
+                      rotulo="com pendência"
+                      destaque="alerta"
+                    />
+                  </div>
+                  {contagem.resumo.comPendencia > 0 && (
+                    <p className="pt-3 text-xs text-muted-foreground">
+                      {contagem.resumo.pendenciasTreinamento} de treinamento e {contagem.resumo.pendenciasEpi} de
+                      EPI. Só o que está marcado como obrigatório conta aqui.
+                    </p>
+                  )}
+                  {matriz.truncado && (
+                    <p className="pt-2 text-xs text-amber-700">
+                      Alguma lista bateu o teto de linhas: a contagem pode estar incompleta.
+                    </p>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
 

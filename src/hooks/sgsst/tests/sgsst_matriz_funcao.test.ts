@@ -4,8 +4,10 @@ import {
   situacaoEpi,
   situacaoTreinamento,
   ordenarPendencias,
+  estadoDaContagem,
   SITUACAO_ITEM_LABEL,
   type ColaboradorMatriz,
+  type ResumoDaFuncao,
   type EntregaEpi,
   type ParticipacaoTreinamento,
 } from "@/utils/sgsstMatrizFuncao";
@@ -361,5 +363,195 @@ describe("rotulos", () => {
     for (const s of situacoes) {
       expect(SITUACAO_ITEM_LABEL[s]).toBeTruthy();
     }
+  });
+});
+
+/**
+ * Recorte por função.
+ *
+ * O `funcaoId` na pendência e o mapa `porFuncao` existem para uma tela de função
+ * responder "quem exerce isto está regular?" sem agrupar pelo NOME. Agrupar por
+ * nome parece funcionar e erra em silêncio — é o que os dois últimos testes
+ * daqui travam.
+ */
+describe("recorte por função", () => {
+  const HOJE_R = new Date("2026-08-26T00:00:00");
+
+  const exigencias = {
+    treinamentosPorFuncao: {
+      fA: [{ treinamentoId: "t1", nome: "NR-35", obrigatorio: true }],
+      fB: [{ treinamentoId: "t1", nome: "NR-35", obrigatorio: true }],
+    },
+    episPorFuncao: {
+      fA: [{ epiId: "e1", nome: "Cinto", obrigatorio: true, periodicidadeTrocaMeses: null }],
+      fB: [],
+    },
+    hoje: HOJE_R,
+  };
+
+  const naFuncaoA = (id: string, nome: string): ColaboradorMatriz => ({
+    id,
+    nome,
+    funcaoId: "fA",
+    funcaoNome: "Montador",
+  });
+
+  it("conta os colaboradores de cada função separadamente", () => {
+    const r = calcularMatriz({
+      ...exigencias,
+      colaboradores: [
+        naFuncaoA("c1", "Ana"),
+        naFuncaoA("c2", "Bruno"),
+        { id: "c3", nome: "Carla", funcaoId: "fB", funcaoNome: "Eletricista" },
+      ],
+      participacoes: [],
+      entregas: [],
+    });
+
+    expect(r.porFuncao.fA.colaboradores).toBe(2);
+    expect(r.porFuncao.fB.colaboradores).toBe(1);
+  });
+
+  it("separa em dia de com pendência dentro da mesma função", () => {
+    const r = calcularMatriz({
+      ...exigencias,
+      colaboradores: [naFuncaoA("c1", "Ana"), naFuncaoA("c2", "Bruno")],
+      // Ana tem os dois itens; Bruno não tem nada.
+      participacoes: [
+        { colaboradorId: "c1", treinamentoId: "t1", resultado: "APROVADO", validade: null },
+      ],
+      entregas: [{ colaboradorId: "c1", epiId: "e1", dataEntrega: "2026-01-10" }],
+    });
+
+    expect(r.porFuncao.fA.emDia).toBe(1);
+    expect(r.porFuncao.fA.comPendencia).toBe(1);
+    expect(r.porFuncao.fA.pendenciasTreinamento).toBe(1);
+    expect(r.porFuncao.fA.pendenciasEpi).toBe(1);
+  });
+
+  it("função sem ninguém não aparece no mapa — ausência que a tela lê como zero", () => {
+    const r = calcularMatriz({
+      ...exigencias,
+      colaboradores: [naFuncaoA("c1", "Ana")],
+      participacoes: [],
+      entregas: [],
+    });
+
+    expect(r.porFuncao.fA).toBeDefined();
+    expect(r.porFuncao.fB).toBeUndefined();
+  });
+
+  it("carrega o funcaoId em toda pendência de quem tem função", () => {
+    const r = calcularMatriz({
+      ...exigencias,
+      colaboradores: [naFuncaoA("c1", "Ana")],
+      participacoes: [],
+      entregas: [],
+    });
+
+    const comFuncao = r.pendencias.filter((p) => p.situacao !== "SEM_FUNCAO");
+    expect(comFuncao.length).toBeGreaterThan(0);
+    for (const p of comFuncao) expect(p.funcaoId).toBe("fA");
+  });
+
+  it("pendência de colaborador sem função tem funcaoId nulo, e não um id inventado", () => {
+    const r = calcularMatriz({
+      ...exigencias,
+      colaboradores: [{ id: "c9", nome: "Sem cargo", funcaoId: null, funcaoNome: null }],
+      participacoes: [],
+      entregas: [],
+    });
+
+    const item = r.pendencias.find((p) => p.situacao === "SEM_FUNCAO");
+    expect(item?.funcaoId).toBeNull();
+    // E não entra no recorte de nenhuma função: não se sabe qual seria.
+    expect(Object.keys(r.porFuncao)).toHaveLength(0);
+  });
+
+  it("não confunde duas funções de nomes parecidos", () => {
+    // O motivo de existir o funcaoId. Agrupar por nome juntaria as duas, ou o
+    // `includes` de uma pegaria a outra.
+    const r = calcularMatriz({
+      treinamentosPorFuncao: {
+        fA: [{ treinamentoId: "t1", nome: "NR-35", obrigatorio: true }],
+        fB: [{ treinamentoId: "t1", nome: "NR-35", obrigatorio: true }],
+      },
+      episPorFuncao: { fA: [], fB: [] },
+      hoje: HOJE_R,
+      colaboradores: [
+        { id: "c1", nome: "Ana", funcaoId: "fA", funcaoNome: "Montador" },
+        { id: "c2", nome: "Bruno", funcaoId: "fB", funcaoNome: "Montador de Estruturas" },
+        { id: "c3", nome: "Carla", funcaoId: "fB", funcaoNome: "Montador de Estruturas" },
+      ],
+      participacoes: [],
+      entregas: [],
+    });
+
+    expect(r.porFuncao.fA.colaboradores).toBe(1);
+    expect(r.porFuncao.fB.colaboradores).toBe(2);
+  });
+
+  it("renomear a função não muda o recorte, porque ele não usa o nome", () => {
+    const comum = { ...exigencias, participacoes: [], entregas: [] };
+
+    const antes = calcularMatriz({
+      ...comum,
+      colaboradores: [{ id: "c1", nome: "Ana", funcaoId: "fA", funcaoNome: "Montador" }],
+    });
+    const depois = calcularMatriz({
+      ...comum,
+      colaboradores: [{ id: "c1", nome: "Ana", funcaoId: "fA", funcaoNome: "Montador Sênior" }],
+    });
+
+    expect(depois.porFuncao.fA).toEqual(antes.porFuncao.fA);
+  });
+});
+
+describe("estadoDaContagem", () => {
+  const cheio: ResumoDaFuncao = {
+    colaboradores: 3,
+    emDia: 2,
+    comPendencia: 1,
+    pendenciasTreinamento: 1,
+    pendenciasEpi: 0,
+  };
+
+  it("carregando vence tudo: nao se afirma nada durante a consulta", () => {
+    // O caso que importa. Sem esta precedencia a tela diria "nenhum colaborador
+    // nesta funcao" enquanto a matriz ainda esta sendo calculada.
+    expect(estadoDaContagem({ isLoading: true, temErro: false, resumo: undefined }).tipo).toBe(
+      "CALCULANDO"
+    );
+    expect(estadoDaContagem({ isLoading: true, temErro: true, resumo: cheio }).tipo).toBe(
+      "CALCULANDO"
+    );
+  });
+
+  it("erro vence zero: falhar em contar nao e contar zero", () => {
+    expect(estadoDaContagem({ isLoading: false, temErro: true, resumo: undefined }).tipo).toBe(
+      "ERRO"
+    );
+  });
+
+  it("sem o recorte no mapa, e sem colaborador — mas so com a consulta pronta", () => {
+    expect(estadoDaContagem({ isLoading: false, temErro: false, resumo: undefined }).tipo).toBe(
+      "SEM_COLABORADOR"
+    );
+  });
+
+  it("com recorte, devolve a contagem", () => {
+    const e = estadoDaContagem({ isLoading: false, temErro: false, resumo: cheio });
+    expect(e.tipo).toBe("CONTAGEM");
+    if (e.tipo === "CONTAGEM") expect(e.resumo.colaboradores).toBe(3);
+  });
+
+  it("zero colaborador declarado no mapa nao vira SEM_COLABORADOR", () => {
+    // Diferente de ausente: o recorte existe e diz zero. Nao deveria acontecer
+    // hoje (o mapa so ganha entrada quando ha alguem), mas se passar a
+    // acontecer, a tela mostra o numero em vez de trocar de estado.
+    const zerado = { ...cheio, colaboradores: 0, emDia: 0, comPendencia: 0 };
+    expect(estadoDaContagem({ isLoading: false, temErro: false, resumo: zerado }).tipo).toBe(
+      "CONTAGEM"
+    );
   });
 });
