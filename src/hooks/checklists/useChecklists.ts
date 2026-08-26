@@ -935,3 +935,158 @@ export function useChecklistPlanosAcao(params?: { page?: number; pageSize?: numb
     convertToNaoConformidade,
   };
 }
+
+/** Teto de segurança das consultas agregadas de Planos de Ação e Reincidências. */
+export const CHECKLIST_STATS_LIMITE_LINHAS = 5000;
+
+export interface ChecklistPlanoAcaoStatsRow {
+  id: string;
+  status: ChecklistPlanoAcao["status"];
+  prioridade: ChecklistPlanoAcao["prioridade"];
+  quando_prazo: string | null;
+  created_at: string | null;
+  projeto_nome: string;
+  modelo_nome: string;
+  responsavel_nome: string;
+}
+
+/**
+ * Estatísticas agregadas de Planos de Ação 5W2H para o dashboard executivo.
+ *
+ * useChecklistPlanosAcao pagina porque existe para navegação linha a linha; aqui é
+ * outra consulta, dedicada só a alimentar os gráficos de status e ranking por
+ * obra/checklist/responsável. Reaproveitar a lista paginada faria o gráfico
+ * mostrar só a página atual em vez do total — um bug sutil, porque o número bate
+ * "por acaso" enquanto a lista cabe numa página só.
+ */
+export function useChecklistPlanosAcaoStats() {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["checklist_planos_acao_stats", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("checklist_planos_acao" as any)
+        .select(`
+          id, status, prioridade, quando_prazo, created_at,
+          quem_responsavel:profiles!checklist_planos_acao_quem_responsavel_id_fkey(nome),
+          aplicacao:checklist_aplicacoes(
+            projeto_id,
+            projeto:projetos(nome),
+            modelo:checklist_modelos(nome)
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(CHECKLIST_STATS_LIMITE_LINHAS) as any);
+
+      if (error) throw error;
+
+      const rows = (data as any[]) || [];
+      const linhas: ChecklistPlanoAcaoStatsRow[] = rows.map((p) => ({
+        id: p.id,
+        status: p.status,
+        prioridade: p.prioridade,
+        quando_prazo: p.quando_prazo,
+        created_at: p.created_at,
+        projeto_nome: p.aplicacao?.projeto?.nome || "Sem obra vinculada",
+        modelo_nome: p.aplicacao?.modelo?.nome || "Checklist removido",
+        responsavel_nome: p.quem_responsavel?.nome || "Não atribuído",
+      }));
+
+      return { linhas, truncado: rows.length >= CHECKLIST_STATS_LIMITE_LINHAS };
+    },
+  });
+
+  return {
+    linhas: data?.linhas ?? [],
+    truncado: data?.truncado ?? false,
+    isLoading,
+    error,
+  };
+}
+
+export interface ChecklistReincidenciaLinha {
+  chave: string;
+  item_id: string;
+  item_titulo: string;
+  projeto_id: string | null;
+  projeto_nome: string;
+  ocorrencias: number;
+  primeira_ocorrencia: string;
+  ultima_ocorrencia: string;
+}
+
+/**
+ * Reincidências: o mesmo item de checklist reprovado mais de uma vez na mesma
+ * obra. Um checklist reprovado isolado é um evento; agrupado por item + obra ao
+ * longo do tempo, ele vira padrão — e é o padrão que antecipa acidente ou multa,
+ * não o evento isolado. A agregação é feita no cliente porque o volume de
+ * respostas não-conformes é uma fração pequena do total de respostas, e a consulta
+ * já chega filtrada por is_nao_conforme = true.
+ */
+export function useChecklistReincidencias(params?: { minOcorrencias?: number }) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+  const minOcorrencias = params?.minOcorrencias ?? 2;
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["checklist_reincidencias", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("checklist_respostas" as any)
+        .select(`
+          item_id, created_at,
+          item:checklist_itens(titulo),
+          aplicacao:checklist_aplicacoes(projeto_id, data_aplicacao, projeto:projetos(nome))
+        `)
+        .eq("is_nao_conforme", true)
+        .order("created_at", { ascending: false })
+        .limit(CHECKLIST_STATS_LIMITE_LINHAS) as any);
+
+      if (error) throw error;
+
+      const rows = (data as any[]) || [];
+      const mapa = new Map<string, ChecklistReincidenciaLinha>();
+
+      for (const r of rows) {
+        const projetoId: string | null = r.aplicacao?.projeto_id ?? null;
+        const chave = `${r.item_id}::${projetoId ?? "sem_obra"}`;
+        const dataOcorrencia: string = r.aplicacao?.data_aplicacao || r.created_at;
+        const existente = mapa.get(chave);
+
+        if (existente) {
+          existente.ocorrencias += 1;
+          if (dataOcorrencia < existente.primeira_ocorrencia) existente.primeira_ocorrencia = dataOcorrencia;
+          if (dataOcorrencia > existente.ultima_ocorrencia) existente.ultima_ocorrencia = dataOcorrencia;
+        } else {
+          mapa.set(chave, {
+            chave,
+            item_id: r.item_id,
+            item_titulo: r.item?.titulo || "Item removido",
+            projeto_id: projetoId,
+            projeto_nome: r.aplicacao?.projeto?.nome || "Sem obra vinculada",
+            ocorrencias: 1,
+            primeira_ocorrencia: dataOcorrencia,
+            ultima_ocorrencia: dataOcorrencia,
+          });
+        }
+      }
+
+      const todas = Array.from(mapa.values()).sort((a, b) => b.ocorrencias - a.ocorrencias);
+      return { todas, truncado: rows.length >= CHECKLIST_STATS_LIMITE_LINHAS };
+    },
+  });
+
+  const todas = data?.todas ?? [];
+
+  return {
+    linhas: todas.filter((l) => l.ocorrencias >= minOcorrencias),
+    totalItensComOcorrencia: todas.length,
+    truncado: data?.truncado ?? false,
+    isLoading,
+    error,
+  };
+}
