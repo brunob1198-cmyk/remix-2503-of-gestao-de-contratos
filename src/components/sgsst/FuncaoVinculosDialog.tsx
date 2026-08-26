@@ -34,8 +34,15 @@ import {
   type TipoExposicao,
 } from "@/hooks/sgsst/useSgsstFuncaoVinculos";
 import { formatarLimite, parseLimite } from "@/utils/sgsstRiscoLimite";
-import { CelulaEditavel } from "@/components/sgsst/CelulaEditavel";
-import { validarInteiroPositivo, lerInteiroPositivo } from "@/utils/validacaoInteiro";
+import { textoDaTroca } from "@/utils/validacaoInteiro";
+import {
+  ExposicaoDoRisco,
+  ExposicaoDoRiscoTexto,
+  ObrigatoriedadeDoVinculo,
+  QuantidadeDoEpi,
+  TrocaDoEpi,
+  type AtualizarVinculo,
+} from "@/components/sgsst/camposDoVinculoFuncao";
 
 /**
  * Painel de vínculos da função: o que quem exerce esta função enfrenta e precisa.
@@ -50,6 +57,8 @@ interface FuncaoVinculosDialogProps {
   onOpenChange: (open: boolean) => void;
   funcao: SgsstFuncao | null;
   allowEdit?: boolean;
+  /** Aba a abrir. O resumo da função usa para levar direto ao bloco pedido. */
+  abaInicial?: "riscos" | "treinamentos" | "epis";
 }
 
 /**
@@ -65,10 +74,16 @@ export function FuncaoVinculosDialog({
   onOpenChange,
   funcao,
   allowEdit = false,
+  abaInicial = "riscos",
 }: FuncaoVinculosDialogProps) {
   const funcaoId = funcao?.id ?? null;
   const { riscos, treinamentos, epis, adicionar, atualizar, remover } =
     useSgsstFuncaoVinculos(open ? funcaoId : null);
+
+  // Os campos compartilhados recebem um callback, e não a mutation: assim eles
+  // servem a esta tela e ao resumo da função sem conhecer o TanStack Query.
+  const atualizarVinculo: AtualizarVinculo = (tabela, id, campos) =>
+    atualizar.mutate({ tabela, id, campos });
 
   // Catálogos de apoio para os selects. Só carregam com o painel aberto.
   const { riscos: catalogoRiscos } = useSgsstRiscos(open ? undefined : { pageSize: 1 });
@@ -229,7 +244,7 @@ export function FuncaoVinculosDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="riscos" className="w-full">
+        <Tabs key={abaInicial} defaultValue={abaInicial} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="riscos" className="gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5" />
@@ -378,57 +393,9 @@ export function FuncaoVinculosDialog({
                       </TableCell>
                       <TableCell className="text-xs whitespace-nowrap">
                         {allowEdit ? (
-                          // Editável na linha: o tipo e o tempo de exposição são
-                          // dados DO VÍNCULO, não do risco no catálogo. Corrigi-los
-                          // desvinculando e vinculando de novo perderia quem
-                          // cadastrou e quando.
-                          <div className="min-w-[8.5rem] space-y-1">
-                            <Select
-                              value={r.tipo_exposicao}
-                              onValueChange={(valor) =>
-                                atualizar.mutate({
-                                  tabela: "sgsst_funcao_riscos",
-                                  id: r.id,
-                                  campos: { tipo_exposicao: valor },
-                                })
-                              }
-                            >
-                              <SelectTrigger
-                                className="h-7 text-xs"
-                                aria-label="Tipo de exposição"
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {TIPOS_EXPOSICAO.map((t) => (
-                                  <SelectItem key={t} value={t}>
-                                    {TIPO_EXPOSICAO_LABEL[t]}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <CelulaEditavel
-                              valor={r.tempo_exposicao ?? ""}
-                              placeholder="8h/dia"
-                              ariaLabel="Tempo de exposição"
-                              onSalvar={(texto) =>
-                                atualizar.mutate({
-                                  tabela: "sgsst_funcao_riscos",
-                                  id: r.id,
-                                  campos: { tempo_exposicao: texto || null },
-                                })
-                              }
-                            />
-                          </div>
+                          <ExposicaoDoRisco vinculo={r} onAtualizar={atualizarVinculo} />
                         ) : (
-                          <>
-                            {TIPO_EXPOSICAO_LABEL[r.tipo_exposicao]}
-                            {r.tempo_exposicao && (
-                              <span className="block text-muted-foreground">
-                                {r.tempo_exposicao}
-                              </span>
-                            )}
-                          </>
+                          <ExposicaoDoRiscoTexto vinculo={r} />
                         )}
                       </TableCell>
                       {allowEdit && (
@@ -543,22 +510,12 @@ export function FuncaoVinculosDialog({
                       </TableCell>
                       <TableCell>
                         {allowEdit ? (
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={t.obrigatorio}
-                              aria-label="Alternar obrigatoriedade"
-                              onCheckedChange={(valor) =>
-                                atualizar.mutate({
-                                  tabela: "sgsst_funcao_treinamentos",
-                                  id: t.id,
-                                  campos: { obrigatorio: valor },
-                                })
-                              }
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              {t.obrigatorio ? "Obrigatório" : "Recomendado"}
-                            </span>
-                          </div>
+                          <ObrigatoriedadeDoVinculo
+                            tabela="sgsst_funcao_treinamentos"
+                            id={t.id}
+                            obrigatorio={t.obrigatorio}
+                            onAtualizar={atualizarVinculo}
+                          />
                         ) : (
                           <Badge
                             variant="outline"
@@ -715,71 +672,26 @@ export function FuncaoVinculosDialog({
                       <TableCell className="text-xs font-mono">{e.epi?.ca ?? "—"}</TableCell>
                       <TableCell className="text-xs tabular-nums">
                         {allowEdit ? (
-                          <CelulaEditavel
-                            valor={String(e.quantidade_padrao)}
-                            inputMode="numeric"
-                            ariaLabel="Quantidade padrão"
-                            className="w-14"
-                            validar={validarInteiroPositivo(true, "a quantidade")}
-                            onSalvar={(texto) =>
-                              atualizar.mutate({
-                                tabela: "sgsst_funcao_epis",
-                                id: e.id,
-                                campos: { quantidade_padrao: lerInteiroPositivo(texto) },
-                              })
-                            }
-                          />
+                          <QuantidadeDoEpi vinculo={e} onAtualizar={atualizarVinculo} />
                         ) : (
                           e.quantidade_padrao
                         )}
                       </TableCell>
                       <TableCell className="text-xs tabular-nums whitespace-nowrap">
                         {allowEdit ? (
-                          <CelulaEditavel
-                            valor={
-                              e.periodicidade_troca_meses
-                                ? String(e.periodicidade_troca_meses)
-                                : ""
-                            }
-                            inputMode="numeric"
-                            placeholder="sem troca"
-                            ariaLabel="Troca em meses"
-                            className="w-20"
-                            validar={validarInteiroPositivo(false, "a troca")}
-                            onSalvar={(texto) =>
-                              atualizar.mutate({
-                                tabela: "sgsst_funcao_epis",
-                                id: e.id,
-                                // Vazio grava null: "sem troca programada" é uma
-                                // decisão, e não o mesmo que zero mês.
-                                campos: { periodicidade_troca_meses: lerInteiroPositivo(texto) },
-                              })
-                            }
-                          />
-                        ) : e.periodicidade_troca_meses ? (
-                          `${e.periodicidade_troca_meses} m`
+                          <TrocaDoEpi vinculo={e} onAtualizar={atualizarVinculo} />
                         ) : (
-                          "sem troca"
+                          textoDaTroca(e.periodicidade_troca_meses)
                         )}
                       </TableCell>
                       <TableCell>
                         {allowEdit ? (
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={e.obrigatorio}
-                              aria-label="Alternar obrigatoriedade"
-                              onCheckedChange={(valor) =>
-                                atualizar.mutate({
-                                  tabela: "sgsst_funcao_epis",
-                                  id: e.id,
-                                  campos: { obrigatorio: valor },
-                                })
-                              }
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              {e.obrigatorio ? "Obrigatório" : "Recomendado"}
-                            </span>
-                          </div>
+                          <ObrigatoriedadeDoVinculo
+                            tabela="sgsst_funcao_epis"
+                            id={e.id}
+                            obrigatorio={e.obrigatorio}
+                            onAtualizar={atualizarVinculo}
+                          />
                         ) : (
                           <Badge
                             variant="outline"
