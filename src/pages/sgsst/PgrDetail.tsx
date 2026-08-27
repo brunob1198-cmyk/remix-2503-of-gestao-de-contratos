@@ -46,6 +46,7 @@ export default function SgsstPgrDetailPage() {
   const { inventario, isLoading: loadingInventario, createInventarioItem, updateInventarioItem, removeInventarioItem } = useSgsstPgrInventario(pgrId);
 
   const [selectedInventarioId, setSelectedInventarioId] = useState<string | null>(null);
+  const [abaAtiva, setAbaAtiva] = useState("inventario");
   const { medidas, isLoading: loadingMedidas, createMedida, updateMedida, removeMedida } = useSgsstPgrMedidasControle(selectedInventarioId || undefined);
 
   // Dialog States
@@ -154,6 +155,10 @@ export default function SgsstPgrDetailPage() {
   // Medidas actions
   const handleOpenMedidas = (item: SgsstPgrInventario) => {
     setSelectedInventarioId(item.id);
+    // Levar para a aba junto. Sem isto o botao apenas marcava o risco
+    // selecionado, a tela continuava no inventario, e nada parecia acontecer —
+    // era preciso descobrir sozinho que a aba ao lado tinha mudado de conteudo.
+    setAbaAtiva("medidas");
   };
 
   const handleCreateMedida = () => {
@@ -306,7 +311,7 @@ export default function SgsstPgrDetailPage() {
       />
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="inventario" className="w-full">
+      <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
         <TabsList className="grid w-full sm:w-auto grid-cols-3">
           <TabsTrigger value="inventario" className="gap-2">
             <ShieldAlert className="h-4 w-4" /> Inventário de Riscos ({inventario.length})

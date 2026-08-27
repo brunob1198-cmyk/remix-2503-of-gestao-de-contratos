@@ -80,14 +80,80 @@ export function limitePendente(risco: {
 }
 
 /**
- * NOTA sobre comparar medição com limite:
+ * Onde a medição caiu em relação ao limite.
  *
- * Não há função de comparação aqui de propósito. Para a maioria dos agentes o
- * risco está em ficar ACIMA do limite, mas para oxigênio em espaço confinado
- * (QUI-05) o perigo é o contrário — a NR-33 33.5.15.2 admite entrada com O₂
- * entre 19,5% e 23%, então tanto a falta quanto o excesso reprovam. Uma função
- * genérica `medicao > limite` daria "conforme" justamente no caso que mata.
+ * Uma versão anterior deste arquivo se recusava a comparar, com o argumento de
+ * que para oxigênio em espaço confinado a NR-33 33.5.15.2 admite entrada só
+ * entre 19,5% e 23% — então tanto a falta quanto o excesso reprovam, e um
+ * `medicao > limite` genérico daria "conforme" justamente no caso que mata.
  *
- * A comparação entra na fase 3, junto com os dados de monitoramento do
- * inventário do PGR, onde a direção do limite pode ser declarada por agente.
+ * O argumento continua válido, mas ele é sobre CONFORMIDADE, não sobre posição.
+ * O campo do inventário do PGR guarda `ABAIXO_LIMITE | ACIMA_LIMITE`, que é
+ * posição — e posição é aritmética. Estas funções devolvem só isso, e de
+ * propósito não devolvem nada parecido com "conforme": quem lê 91 contra um
+ * limite de 84 precisa saber que está acima; se estar acima é bom ou ruim
+ * depende do agente, e essa parte segue declarada por quem preenche.
  */
+export type PosicaoLimite = "ABAIXO" | "IGUAL" | "ACIMA" | "INDETERMINADA";
+
+export interface ComparacaoComLimite {
+  posicao: PosicaoLimite;
+  /** Quanto por cento acima ou abaixo. Nulo quando o limite é zero ou falta dado. */
+  percentual: number | null;
+}
+
+export function compararComLimite(
+  medida: number | null | undefined,
+  limite: number | null | undefined
+): ComparacaoComLimite {
+  const semDado =
+    medida === null ||
+    medida === undefined ||
+    limite === null ||
+    limite === undefined ||
+    !Number.isFinite(medida) ||
+    !Number.isFinite(limite);
+  if (semDado) return { posicao: "INDETERMINADA", percentual: null };
+
+  // Igual ao limite não é acima: a NR-15 trata o limite de tolerância como o
+  // máximo admissível, então o valor exato ainda está dentro dele.
+  const posicao: PosicaoLimite = medida > limite ? "ACIMA" : medida < limite ? "ABAIXO" : "IGUAL";
+
+  // Limite zero não admite percentual — seria divisão por zero.
+  const percentual = limite === 0 ? null : ((medida - limite) / limite) * 100;
+
+  return { posicao, percentual };
+}
+
+/** Frase curta para a tela. Sempre factual, nunca um veredito. */
+export function textoDaComparacao(c: ComparacaoComLimite): string | null {
+  if (c.posicao === "INDETERMINADA") return null;
+  if (c.posicao === "IGUAL") return "exatamente no limite de tolerância";
+
+  const lado = c.posicao === "ACIMA" ? "acima" : "abaixo";
+  if (c.percentual === null) return `${lado} do limite`;
+
+  const abs = Math.abs(c.percentual);
+  // Uma casa decimal basta. Duas dariam falsa precisão sobre medição de campo.
+  const numero = abs >= 10 ? String(Math.round(abs)) : abs.toFixed(1).replace(".", ",");
+  return `${numero}% ${lado} do limite`;
+}
+
+/**
+ * O resultado declarado contradiz a aritmética?
+ *
+ * Não impede gravar: pode haver motivo — limite cadastrado errado, unidade
+ * diferente, medição refeita. Mas contradição passando calada é pior que
+ * contradição à vista.
+ */
+export function contradizComparacao(
+  declarado: "ABAIXO_LIMITE" | "ACIMA_LIMITE" | "NAO_APLICAVEL" | null | undefined,
+  c: ComparacaoComLimite
+): boolean {
+  if (!declarado || declarado === "NAO_APLICAVEL") return false;
+  if (c.posicao === "INDETERMINADA" || c.posicao === "IGUAL") return false;
+  return (
+    (declarado === "ACIMA_LIMITE" && c.posicao === "ABAIXO") ||
+    (declarado === "ABAIXO_LIMITE" && c.posicao === "ACIMA")
+  );
+}
