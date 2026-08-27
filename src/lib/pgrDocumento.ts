@@ -108,10 +108,41 @@ function gruposTexto(item: SgsstPgrInventario, funcoes: InventarioFuncao[]): str
   return partes.join(" · ") + quantidade;
 }
 
+/**
+ * Coluna "medidas existentes" da linha do inventario.
+ *
+ * Sai das medidas do gerenciador que ja estao IMPLANTADAS, porque e isso que a
+ * alinea "h" da NR-01 pergunta: o que ja existe de controle. Medida pendente e
+ * promessa e aparece no plano de acao, mais abaixo no documento, nao aqui.
+ *
+ * O texto legado entra como reserva: itens cadastrados antes de o gerenciador
+ * existir so tem ele, e deixa-los sair como "nenhuma registrada" seria o
+ * documento sub-reportar controle que existe.
+ */
+function medidasExistentesTexto(
+  item: SgsstPgrInventario,
+  medidas: SgsstPgrMedidaControle[]
+): string {
+  const implantadas = medidas.filter((m) => m.status === "implementado");
+
+  if (implantadas.length > 0) {
+    return implantadas
+      .map((m) => `<strong>${esc(m.tipo)}:</strong> ${esc(m.descricao)}`)
+      .join("<br>");
+  }
+
+  if (item.medidas_existentes) {
+    return esc(item.medidas_existentes);
+  }
+
+  return '<span class="doc-falta">nenhuma registrada</span>';
+}
+
 function linhaInventario(
   item: SgsstPgrInventario,
   indice: number,
-  funcoes: InventarioFuncao[]
+  funcoes: InventarioFuncao[],
+  medidas: SgsstPgrMedidaControle[]
 ): string {
   const exposicao = item.tipo_exposicao
     ? TIPO_EXPOSICAO_LABEL[item.tipo_exposicao] +
@@ -139,9 +170,7 @@ function linhaInventario(
         item.nivel_risco ?? item.probabilidade * item.severidade
       }</td>
       <td class="${classeClassificacao(item.classificacao)}">${esc(item.classificacao) || "—"}</td>
-      <td>${
-        esc(item.medidas_existentes) || '<span class="doc-falta">nenhuma registrada</span>'
-      }</td>
+      <td>${medidasExistentesTexto(item, medidas)}</td>
     </tr>
   `;
 }
@@ -341,7 +370,14 @@ export function montarHtmlPgr(dados: PgrDocumentoDados): string {
               </thead>
               <tbody>
                 ${ordenado
-                  .map((item, i) => linhaInventario(item, i + 1, funcoesPorItem[item.id] ?? []))
+                  .map((item, i) =>
+                    linhaInventario(
+                      item,
+                      i + 1,
+                      funcoesPorItem[item.id] ?? [],
+                      medidasPorItem[item.id] ?? []
+                    )
+                  )
                   .join("")}
               </tbody>
              </table>`

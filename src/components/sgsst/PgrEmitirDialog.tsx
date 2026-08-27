@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   useSgsstPgrInventario,
   useSgsstPgrInventarioFuncoes,
+  useSgsstPgrMedidasDoPgr,
   type SgsstPgr,
   type SgsstPgrMedidaControle,
 } from "@/hooks/sgsst/useSgsstPgr";
@@ -43,34 +44,14 @@ export function PgrEmitirDialog({ open, onOpenChange, pgr }: PgrEmitirDialogProp
   const { inventario } = useSgsstPgrInventario(open ? pgr.id : undefined);
   const { funcoesDoItem } = useSgsstPgrInventarioFuncoes(open ? pgr.id : undefined);
 
-  // As medidas de todos os itens de uma vez. O hook por item serve à tela, que
-  // mostra um item por vez; o documento precisa do plano de ação inteiro.
-  const { data: medidas = [], isLoading: carregandoMedidas } = useQuery({
-    queryKey: ["sgsst_pgr_medidas_controle", "todas", pgr.id],
-    enabled: open && inventario.length > 0,
-    queryFn: async () => {
-      const ids = inventario.map((i) => i.id);
-      const { data, error } = await (supabase
-        .from("sgsst_pgr_medidas_controle" as never)
-        .select(
-          "*, responsavel:profiles!sgsst_pgr_medidas_controle_responsavel_id_fkey(id, nome), verificador:profiles!sgsst_pgr_medidas_controle_verificador_id_fkey(id, nome)"
-        )
-        .in("inventario_id", ids) as never as Promise<{
-        data: SgsstPgrMedidaControle[] | null;
-        error: { message?: string } | null;
-      }>);
-
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  // O quadro inteiro de medidas do PGR, agora por hook compartilhado: a mesma
+  // consulta alimenta o documento e a checagem de completude da tela.
+  const { medidasPorItem, isLoading: carregandoMedidas } = useSgsstPgrMedidasDoPgr(
+    inventario.map((i) => i.id),
+    { enabled: open }
+  );
 
   const dados: PgrDocumentoDados = useMemo(() => {
-    const medidasPorItem: Record<string, SgsstPgrMedidaControle[]> = {};
-    for (const m of medidas) {
-      (medidasPorItem[m.inventario_id] ??= []).push(m);
-    }
-
     const funcoesPorItem: Record<string, ReturnType<typeof funcoesDoItem>> = {};
     for (const item of inventario) {
       funcoesPorItem[item.id] = funcoesDoItem(item.id);
@@ -83,7 +64,7 @@ export function PgrEmitirDialog({ open, onOpenChange, pgr }: PgrEmitirDialogProp
       funcoesPorItem,
       geradoPor: profile?.nome ?? null,
     };
-  }, [pgr, inventario, medidas, funcoesDoItem, profile?.nome]);
+  }, [pgr, inventario, medidasPorItem, funcoesDoItem, profile?.nome]);
 
   const pendencias = useMemo(() => pendenciasPgr(dados), [dados]);
 

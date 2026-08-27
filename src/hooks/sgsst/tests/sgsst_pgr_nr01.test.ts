@@ -214,6 +214,47 @@ describe("alineasPendentes", () => {
       .toContain("h");
   });
 
+  it("uma medida implantada no gerenciador satisfaz a alinea h", () => {
+    // As medidas passaram a ser cadastradas no gerenciador, com tipo na
+    // hierarquia da NR-01, responsavel, prazo e afericao. A alinea pede que as
+    // medidas existentes estejam REGISTRADAS, nao que sejam texto corrido — e
+    // cobrar o texto depois do gerenciador faria todo item novo constar
+    // incompleto para sempre.
+    const faltas = alineasPendentes({
+      ...ITEM_COMPLETO,
+      medidas_existentes: "",
+      medidasImplantadas: 1,
+    });
+    expect(faltas.map((f) => f.alinea)).not.toContain("h");
+  });
+
+  it("o texto legado continua satisfazendo, para os itens antigos", () => {
+    const faltas = alineasPendentes({
+      ...ITEM_COMPLETO,
+      medidas_existentes: "Isolamento dos fios soltos",
+      medidasImplantadas: 0,
+    });
+    expect(faltas.map((f) => f.alinea)).not.toContain("h");
+  });
+
+  it("medida ainda NAO implantada nao satisfaz: plano nao e controle existente", () => {
+    // Contagem zero com texto vazio e o caso a acusar. Uma medida pendente e
+    // promessa; a alinea h pergunta o que JA existe.
+    const faltas = alineasPendentes({
+      ...ITEM_COMPLETO,
+      medidas_existentes: "",
+      medidasImplantadas: 0,
+    });
+    expect(faltas.map((f) => f.alinea)).toContain("h");
+  });
+
+  it("sem a contagem informada, cai no texto legado — nao rejeita por omissao", () => {
+    // Chamador que ainda nao passa `medidasImplantadas` nao deve ver a alinea
+    // aparecer do nada num item que tinha texto.
+    const faltas = alineasPendentes({ ...ITEM_COMPLETO, medidas_existentes: "Enclausuramento" });
+    expect(faltas.map((f) => f.alinea)).not.toContain("h");
+  });
+
   it("nao cobra medicao de avaliacao qualitativa", () => {
     // Exigir dosimetro para risco de queda seria cobranca indevida, e ensinaria
     // o usuario a ignorar o aviso.

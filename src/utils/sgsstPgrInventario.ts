@@ -41,7 +41,18 @@ export interface ItemInventarioConformidade {
   totalFuncoes?: number;
   probabilidade?: number | null;
   severidade?: number | null;
+  /**
+   * Texto legado. As medidas passaram a ser cadastradas no gerenciador, com tipo,
+   * responsável, prazo e aferição; este campo continua satisfazendo a alínea para
+   * os itens antigos que só têm texto.
+   */
   medidas_existentes?: string | null;
+  /**
+   * Quantas medidas do gerenciador já estão implantadas neste item. É a forma
+   * atual de atender a alínea "h": ela pede que as medidas EXISTENTES estejam
+   * registradas, e não que estejam registradas como texto corrido.
+   */
+  medidasImplantadas?: number;
   tecnica_avaliacao?: TecnicaAvaliacao | null;
   intensidade_medida?: number | null;
   data_medicao?: string | null;
@@ -129,12 +140,22 @@ export function alineasPendentes(item: ItemInventarioConformidade): AlineaPenden
     });
   }
 
-  if (vazio(item.medidas_existentes)) {
+  // Alínea "h" — medidas de prevenção existentes.
+  //
+  // Aceita as duas formas: uma medida já implantada no gerenciador, ou o texto
+  // legado dos itens cadastrados antes de o gerenciador existir. A alínea pede
+  // que as medidas existentes estejam registradas, não que sejam texto corrido —
+  // e a medida do gerenciador registra mais: tipo de controle na hierarquia da
+  // NR-01, responsável, prazo e aferição de eficácia.
+  const semMedidaImplantada = (item.medidasImplantadas ?? 0) === 0;
+  if (semMedidaImplantada && vazio(item.medidas_existentes)) {
     faltas.push({
       alinea: "h",
       titulo: "Medidas de prevenção existentes",
       detalhe:
-        "Descreva o que já existe de controle. Se não há nenhuma, registre explicitamente que não há.",
+        "Cadastre no gerenciador de medidas o que já existe de controle, com o tipo na " +
+        "hierarquia da NR-01. Se não há nenhuma medida ainda, o plano de ação é o que " +
+        "responde por isso.",
     });
   }
 

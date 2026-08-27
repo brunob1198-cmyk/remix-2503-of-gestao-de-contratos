@@ -40,6 +40,12 @@ interface PgrInventarioFormDialogProps {
   riscosCatalogo: SgsstRisco[];
   /** Funções já vinculadas ao item, quando editando. */
   funcoesVinculadas?: string[];
+  /**
+   * Quantas medidas do gerenciador já estão implantadas neste item. Entra na
+   * checagem da alínea "h": ela é satisfeita por medida implantada, e não por
+   * texto corrido.
+   */
+  medidasImplantadas?: number;
   onSave: (data: SgsstPgrInventarioInput & { funcaoIds?: string[] }) => Promise<void>;
   isLoading?: boolean;
 }
@@ -51,6 +57,7 @@ export function PgrInventarioFormDialog({
   inventarioItem,
   riscosCatalogo,
   funcoesVinculadas,
+  medidasImplantadas = 0,
   onSave,
   isLoading = false,
 }: PgrInventarioFormDialogProps) {
@@ -273,6 +280,7 @@ export function PgrInventarioFormDialog({
     probabilidade,
     severidade,
     medidas_existentes: medidasExistentes,
+    medidasImplantadas,
     tecnica_avaliacao: tecnicaAvaliacao || null,
     intensidade_medida: intensidadeParseada ?? null,
     data_medicao: dataMedicao || null,
@@ -812,26 +820,47 @@ export function PgrInventarioFormDialog({
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="existentes">Medidas de Controle Existentes</Label>
-            <Textarea
-              id="existentes"
-              placeholder="Descreva as proteções e EPIs já implementados..."
-              rows={2}
-              value={medidasExistentes}
-              onChange={(e) => setMedidasExistentes(e.target.value)}
-            />
-          </div>
+          {/* As medidas de controle saem daqui e passam a ser cadastradas no
+              gerenciador, pelo botão de chave inglesa na linha do risco. Lá cada
+              medida tem tipo na hierarquia da NR-01, responsável, prazo e
+              aferição de eficácia — texto corrido não tem onde guardar nada
+              disso, e manter os dois lugares fazia o mesmo controle ser digitado
+              duas vezes sem nada garantindo que concordassem. */}
+          <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div className="space-y-1 text-xs">
+              <p className="font-semibold">Medidas de controle</p>
+              <p className="text-muted-foreground">
+                Cadastradas no gerenciador de medidas, pelo botão{" "}
+                <strong>Medidas</strong> na linha do risco. O que já está implantado responde
+                pela alínea &quot;h&quot; do inventário; o que está pendente forma o plano de
+                ação da NR-01 1.5.5.2.
+              </p>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="necessarias">Medidas de Controle Necessárias / Plano de Ação</Label>
-            <Textarea
-              id="necessarias"
-              placeholder="Descreva as adequações e ações corretivas a serem implementadas..."
-              rows={2}
-              value={medidasNecessarias}
-              onChange={(e) => setMedidasNecessarias(e.target.value)}
-            />
+              {/* Texto de item antigo não é escondido: ele ainda sai no PDF, e
+                  sumir da tela sem explicação faria parecer que foi perdido. */}
+              {(medidasExistentes.trim() || medidasNecessarias.trim()) && (
+                <div className="mt-2 space-y-1 border-t pt-2">
+                  <p className="font-semibold text-amber-800">
+                    Este risco tem medidas registradas como texto, de antes do gerenciador:
+                  </p>
+                  {medidasExistentes.trim() && (
+                    <p className="text-muted-foreground">
+                      <span className="font-medium">Existentes:</span> {medidasExistentes}
+                    </p>
+                  )}
+                  {medidasNecessarias.trim() && (
+                    <p className="text-muted-foreground">
+                      <span className="font-medium">Necessárias:</span> {medidasNecessarias}
+                    </p>
+                  )}
+                  <p className="text-muted-foreground">
+                    O texto continua saindo no PDF. Recadastre no gerenciador quando puder, para
+                    ganhar tipo, responsável e prazo.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">

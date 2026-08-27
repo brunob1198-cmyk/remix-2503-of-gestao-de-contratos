@@ -612,7 +612,7 @@ export function useSgsstPgrMedidasControle(inventarioId?: string) {
       return data as SgsstPgrMedidaControle;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_medidas_controle", inventarioId] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_medidas_controle"] });
       toast.success("Medida de controle cadastrada!");
     },
     onError: (err: any) => {
@@ -637,7 +637,7 @@ export function useSgsstPgrMedidasControle(inventarioId?: string) {
       return data as SgsstPgrMedidaControle;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_medidas_controle", inventarioId] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_medidas_controle"] });
       toast.success("Medida de controle atualizada!");
     },
     onError: (err: any) => {
@@ -655,7 +655,7 @@ export function useSgsstPgrMedidasControle(inventarioId?: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_medidas_controle", inventarioId] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_medidas_controle"] });
       toast.success("Medida de controle removida!");
     },
     onError: (err: any) => {
@@ -863,4 +863,61 @@ export interface SugestaoFuncaoExposta {
   tipo_exposicao?: TipoExposicao | null;
   tempo_exposicao?: string | null;
   funcao?: { id: string; nome: string; cbo?: string | null } | null;
+}
+
+/**
+ * Todas as medidas de um PGR, agrupadas por item de inventário.
+ *
+ * O hook por item (`useSgsstPgrMedidasControle`) serve à tela, que mostra um
+ * risco por vez. Este serve a quem precisa do quadro inteiro: o documento, e a
+ * checagem de completude da NR-01, que precisa saber se cada item já tem alguma
+ * medida IMPLANTADA para responder pela alínea "h".
+ */
+export function useSgsstPgrMedidasDoPgr(
+  inventarioIds: readonly string[],
+  options?: { enabled?: boolean }
+) {
+  // Ordenado para a chave de cache não mudar só porque a ordem da lista mudou.
+  const chaveIds = [...inventarioIds].sort().join(",");
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["sgsst_pgr_medidas_controle", "do_pgr", chaveIds],
+    enabled: (options?.enabled ?? true) && inventarioIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_pgr_medidas_controle" as never)
+        .select(
+          "*, responsavel:profiles!sgsst_pgr_medidas_controle_responsavel_id_fkey(id, nome), verificador:profiles!sgsst_pgr_medidas_controle_verificador_id_fkey(id, nome)"
+        )
+        .in("inventario_id", inventarioIds as string[]) as never as Promise<{
+        data: SgsstPgrMedidaControle[] | null;
+        error: { message?: string } | null;
+      }>);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const medidas = data ?? [];
+
+  const medidasPorItem: Record<string, SgsstPgrMedidaControle[]> = {};
+  for (const m of medidas) {
+    (medidasPorItem[m.inventario_id] ??= []).push(m);
+  }
+
+  return {
+    medidas,
+    medidasPorItem,
+    /**
+     * Quantas medidas do item já estão implantadas. É o que a alínea "h" pede:
+     * medida pendente é promessa e responde pelo plano de ação, não pelo
+     * controle existente.
+     */
+    implantadasDoItem: (inventarioId: string): number =>
+      (medidasPorItem[inventarioId] ?? []).filter((m) => m.status === "implementado").length,
+    isLoading,
+    error,
+    refetch,
+  };
 }

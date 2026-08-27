@@ -6,6 +6,7 @@ import {
   useSgsstPgrDetail,
   useSgsstPgrInventario,
   useSgsstPgrMedidasControle,
+  useSgsstPgrMedidasDoPgr,
   useSgsstPgrHistorico,
   useSgsstPgrInventarioFuncoes,
   OPERACAO_HISTORICO_LABEL,
@@ -48,6 +49,11 @@ export default function SgsstPgrDetailPage() {
   const [selectedInventarioId, setSelectedInventarioId] = useState<string | null>(null);
   const [abaAtiva, setAbaAtiva] = useState("inventario");
   const { medidas, isLoading: loadingMedidas, createMedida, updateMedida, removeMedida } = useSgsstPgrMedidasControle(selectedInventarioId || undefined);
+
+  // Quadro de medidas do PGR inteiro, so para a contagem de implantadas por item:
+  // a alinea "h" da NR-01 e satisfeita por medida implantada, e nao pelo texto
+  // que saiu do formulario.
+  const { implantadasDoItem } = useSgsstPgrMedidasDoPgr(inventario.map((i) => i.id));
 
   // Dialog States
   const [isEditPgrOpen, setIsEditPgrOpen] = useState(false);
@@ -392,6 +398,7 @@ export default function SgsstPgrDetailPage() {
                                 const faltas = alineasPendentes({
                                   ...item,
                                   totalFuncoes: funcoesDoItem(item.id).length,
+                                  medidasImplantadas: implantadasDoItem(item.id),
                                 });
                                 if (faltas.length === 0) return null;
                                 return (
@@ -792,6 +799,9 @@ export default function SgsstPgrDetailPage() {
           editingInventarioItem
             ? funcoesDoItem(editingInventarioItem.id).map((f) => f.funcao_id)
             : []
+        }
+        medidasImplantadas={
+          editingInventarioItem ? implantadasDoItem(editingInventarioItem.id) : 0
         }
         onSave={handleSaveInventario}
         isLoading={createInventarioItem.isPending || updateInventarioItem.isPending}
