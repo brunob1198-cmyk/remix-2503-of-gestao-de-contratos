@@ -987,7 +987,7 @@ export function useChecklistPlanosAcaoStats() {
   const empresaId = profile?.empresa_id;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["checklist_planos_acao_stats", empresaId],
+    queryKey: ["checklist_planos_acao", "stats", empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
       // `as never` em vez de `as any`: o types.ts gerado não conhece estas
@@ -1073,7 +1073,7 @@ export function useChecklistReincidencias(params?: { minOcorrencias?: number }) 
   const minOcorrencias = params?.minOcorrencias ?? 2;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["checklist_reincidencias", empresaId],
+    queryKey: ["checklist_aplicacoes", "reincidencias", empresaId],
     enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await (supabase
