@@ -24,7 +24,13 @@ import {
   type TecnicaAvaliacao,
   type TipoExposicao,
 } from "@/utils/sgsstPgrInventario";
-import { parseLimite } from "@/utils/sgsstRiscoLimite";
+import {
+  formatarLimite,
+  parseLimite,
+  compararComLimite,
+  textoDaComparacao,
+  contradizComparacao,
+} from "@/utils/sgsstRiscoLimite";
 
 interface PgrInventarioFormDialogProps {
   open: boolean;
@@ -235,6 +241,20 @@ export function PgrInventarioFormDialog({
 
   const intensidadeParseada = parseLimite(intensidadeMedida);
   const limiteParseado = parseLimite(limiteAplicado);
+
+  // Posicao da medicao em relacao ao limite, e a sugestao de conclusao que
+  // decorre dela. A sugestao nao e aplicada sozinha: quem preenche decide.
+  const comparacao = compararComLimite(
+    intensidadeParseada === undefined ? null : intensidadeParseada,
+    limiteParseado === undefined ? null : limiteParseado
+  );
+  const resultadoSugerido: ResultadoAvaliacao | null =
+    comparacao.posicao === "ACIMA"
+      ? "ACIMA_LIMITE"
+      : comparacao.posicao === "ABAIXO" || comparacao.posicao === "IGUAL"
+        ? "ABAIXO_LIMITE"
+        : null;
+  const contradiz = contradizComparacao(resultadoAvaliacao || null, comparacao);
   const numerosInvalidos = intensidadeParseada === undefined || limiteParseado === undefined;
 
   // Mesma checagem que o PDF usa, para a tela avisar antes de salvar em vez de o
@@ -708,6 +728,50 @@ export function PgrInventarioFormDialog({
                 </Select>
               </div>
             </div>
+
+            {/* Posição da medição em relação ao limite. É aritmética, então o
+                sistema calcula e mostra; o que ele NÃO faz é dizer se estar acima
+                é conforme ou não — isso depende do agente e segue declarado. */}
+            {comparacao.posicao !== "INDETERMINADA" && (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border bg-background px-3 py-2">
+                <span className="text-xs text-muted-foreground">
+                  {formatarLimite(intensidadeParseada ?? null, unidadeMedida) ?? "—"} contra limite
+                  de {formatarLimite(limiteParseado ?? null, unidadeMedida) ?? "—"}:
+                </span>
+                <span
+                  className={`text-xs font-semibold ${
+                    comparacao.posicao === "ACIMA" ? "text-destructive" : "text-emerald-700"
+                  }`}
+                >
+                  {textoDaComparacao(comparacao)}
+                </span>
+                {resultadoSugerido && resultadoAvaliacao !== resultadoSugerido && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto h-7 gap-1.5 text-xs"
+                    onClick={() => setResultadoAvaliacao(resultadoSugerido)}
+                  >
+                    <Wand2 className="h-3.5 w-3.5" />
+                    Usar em Conclusão
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Contradição não impede gravar — pode haver limite cadastrado
+                errado ou unidade diferente. Mas passar calada é pior. */}
+            {contradiz && (
+              <p className="flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  A conclusão declarada não acompanha os números: {intensidadeMedida} contra um
+                  limite de {limiteAplicado}. Confira a medição, a unidade ou o limite antes de
+                  gravar.
+                </span>
+              </p>
+            )}
 
             <p className="text-xs text-muted-foreground flex items-start gap-1.5">
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
