@@ -398,6 +398,9 @@ export function useSgsstTreinamentosTurmas(params?: SgsstTurmasParams) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_turmas"] });
+      // Abrir turma grava uma linha no histórico; sem isto a aba de histórico da
+      // turma continuaria mostrando o estado de antes da abertura.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos", "historico"] });
       toast.success("Turma de treinamento criada!");
     },
     onError: (err: any) => {
@@ -532,6 +535,8 @@ export function useSgsstTreinamentosParticipantes(turmaId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_participantes"] });
+      // A matrícula também grava no histórico da turma.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos", "historico"] });
       toast.success("Participante matriculado com sucesso!");
     },
     onError: (err: any) => {
@@ -718,7 +723,7 @@ export function useSgsstTreinamentosHistorico(treinamentoId?: string, turmaId?: 
   const empresaId = profile?.empresa_id;
 
   const { data: historico = [], isLoading } = useQuery({
-    queryKey: ["sgsst_treinamentos_historico", treinamentoId, turmaId],
+    queryKey: ["sgsst_treinamentos", "historico", treinamentoId, turmaId],
     enabled: !!empresaId && (!!treinamentoId || !!turmaId),
     queryFn: async () => {
       let query = supabase

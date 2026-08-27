@@ -148,7 +148,7 @@ export function useSgsstPtDetail(ptId?: string) {
   const empresaId = profile?.empresa_id;
 
   return useQuery({
-    queryKey: ["sgsst_pt_detail", ptId],
+    queryKey: ["sgsst_pt", "detail", ptId],
     enabled: !!empresaId && !!ptId,
     queryFn: async () => {
       const { data, error } = await (supabase
@@ -547,6 +547,18 @@ export function useSgsstPtRiscos(ptId?: string) {
   };
 }
 
+/**
+ * Medidas de controle de um risco da PT.
+ *
+ * As invalidações abaixo são de propósito SEM escopo de risco. A folha da PT lê as
+ * medidas de todos os riscos de uma vez, por `["sgsst_pt_medidas", "da_pt", ...]`,
+ * e `invalidateQueries({ queryKey: ["sgsst_pt_medidas", ptRiscoId] })` não alcança
+ * essa chave: são dois elementos, e o segundo nunca vale "da_pt". Escopada, a
+ * invalidação deixaria a folha sair com as medidas de antes da edição.
+ *
+ * O custo de não escopar é refazer as medidas de outros riscos que estejam em
+ * cache — e só as que estiverem ATIVAS na tela refazem na hora. Barato.
+ */
 // Hook for PT Medidas
 export function useSgsstPtMedidas(ptRiscoId?: string) {
   const { profile } = useAuth();
@@ -588,7 +600,7 @@ export function useSgsstPtMedidas(ptRiscoId?: string) {
       return data as SgsstPtMedida;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sgsst_pt_medidas", ptRiscoId] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pt_medidas"] });
       toast.success("Medida adicionada!");
     },
     onError: (err: any) => {
@@ -606,7 +618,7 @@ export function useSgsstPtMedidas(ptRiscoId?: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sgsst_pt_medidas", ptRiscoId] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pt_medidas"] });
       toast.success("Medida removida!");
     },
     onError: (err: any) => {

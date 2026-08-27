@@ -98,7 +98,7 @@ export function useSgsstPcmsoDetail(pcmsoId?: string) {
   const empresaId = profile?.empresa_id;
 
   return useQuery({
-    queryKey: ["sgsst_pcmso_detail", pcmsoId],
+    queryKey: ["sgsst_pcmso", "detail", pcmsoId],
     enabled: !!empresaId && !!pcmsoId,
     queryFn: async () => {
       const { data, error } = await (supabase

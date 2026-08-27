@@ -53,7 +53,7 @@ export default function AnaliseObraPage() {
         queryClient.invalidateQueries({ queryKey: ["projeto_impostos"] }),
         queryClient.invalidateQueries({ queryKey: ["mapeamento_categorias_erp_all"] }),
         queryClient.invalidateQueries({ queryKey: ["item_lpu_bdi_mensal_multi"] }),
-        queryClient.invalidateQueries({ queryKey: ["projetos_analise"] }),
+        queryClient.invalidateQueries({ queryKey: ["projetos", "analise"] }),
         queryClient.invalidateQueries({ queryKey: ["projeto_config_status"] }),
       ]);
       // Force refetch of active queries to bypass any stale snapshot
@@ -73,7 +73,7 @@ export default function AnaliseObraPage() {
   const syncErp = useSyncErp(empresaId);
 
   const { data: projetos = [] } = useQuery({
-    queryKey: ["projetos_analise"],
+    queryKey: ["projetos", "analise"],
     queryFn: async () => {
       const { data } = await supabase.from("projetos").select("id, codigo, nome").order("nome");
       return data || [];

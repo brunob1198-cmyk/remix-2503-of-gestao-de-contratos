@@ -21,42 +21,25 @@ import path from "node:path";
  * sub-chave de verdade (`["base", "sufixo", ...]`), OU ter invalidação própria.
  * Nome colado sem invalidação nenhuma é consulta que nunca se atualiza.
  *
- * As 32 chaves coladas que TÊM invalidação própria funcionam e não aparecem aqui.
- * As que faltam estão na lista `DIVIDA_CONHECIDA` — é uma catraca, no mesmo
- * espírito do `lint-ratchet`: chave nova nesse formato quebra o teste na hora, e
- * consertar uma das antigas exige tirá-la da lista, o que fica visível no diff.
+ * As chaves coladas que TÊM invalidação própria funcionam e não aparecem aqui.
+ * `DIVIDA_CONHECIDA` é a catraca, no mesmo espírito do `lint-ratchet`, e hoje está
+ * vazia: as quinze pendentes viraram sub-chave, cada uma sob a base que de fato
+ * muda o dado. Chave nova nesse formato quebra o teste na hora.
  */
 
 const RAIZ = path.join(process.cwd(), "src", "hooks");
 
 /**
- * Consultas que hoje não são invalidadas por ninguém. Ficam obsoletas na tela até
- * o refetch por foco de janela ou nova montagem — o mesmo sintoma que o cartão de
- * colaboradores tinha.
+ * Consultas coladas que ninguém invalida. Vazia: as quinze que estavam aqui foram
+ * convertidas em sub-chave, em lotes por módulo — `_detail` sob a lista da
+ * entidade, `_historico` sob a base cujas mutations escrevem no histórico, e as
+ * leituras em bloco da emissão sob a base do dado que elas leem.
  *
- * Não foram corrigidas junto porque trocar a chave de uma consulta muda a
- * identidade do cache dela, e mexer em quinze de uma vez no meio de uma campanha
- * de testes trocaria um defeito conhecido por vários desconhecidos. Cada uma
- * pede a base certa: `_detail` costuma pertencer à lista da entidade, `_historico`
- * também, mas quem confirma é quem mexe no módulo.
+ * A lista fica no lugar como catraca, e como o caminho previsto para uma dívida
+ * assumida de propósito: adiar um caso exige nomeá-lo aqui, e o nome aparece no
+ * diff em vez de virar comentário que ninguém lê.
  */
-const DIVIDA_CONHECIDA = [
-  "cotacoes_mestre_detalhe",
-  "projetos_analise",
-  "sgsst_apr_arvore",
-  "sgsst_apr_detail",
-  "sgsst_documentos_historico",
-  "sgsst_hht_sugerido",
-  "sgsst_incidentes_detail",
-  "sgsst_inspecoes_detail",
-  "sgsst_nao_conformidades_detail",
-  "sgsst_pcmso_detail",
-  "sgsst_pgr_detail",
-  "sgsst_pgr_historico",
-  "sgsst_pt_detail",
-  "sgsst_pt_medidas_da_pt",
-  "sgsst_treinamentos_historico",
-].sort();
+const DIVIDA_CONHECIDA: string[] = [];
 
 function arquivosDeHook(dir: string): string[] {
   return readdirSync(dir).flatMap((nome) => {

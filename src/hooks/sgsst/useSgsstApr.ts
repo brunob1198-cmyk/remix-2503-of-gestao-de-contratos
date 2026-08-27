@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -120,7 +120,7 @@ export function useSgsstAprDetail(aprId?: string) {
   const empresaId = profile?.empresa_id;
 
   return useQuery({
-    queryKey: ["sgsst_apr_detail", aprId],
+    queryKey: ["sgsst_apr", "detail", aprId],
     enabled: !!empresaId && !!aprId,
     queryFn: async () => {
       const { data, error } = await (supabase
@@ -319,6 +319,19 @@ export function useSgsstApr(params?: { page?: number; pageSize?: number; search?
   };
 }
 
+/**
+ * A árvore de emissão — `["sgsst_apr", "arvore", aprId]` — lê etapas, riscos e
+ * medidas de uma vez, e cada mutação de filho invalida só a própria lista.
+ *
+ * Sem esta invalidação, adicionar um risco e emitir na sequência produziria um
+ * documento com a árvore de antes da edição: o risco novo simplesmente não
+ * apareceria, sem aviso. Omissão silenciosa é o pior defeito num documento de
+ * segurança — ele afirma completude que não tem.
+ */
+function invalidarArvoreApr(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: ["sgsst_apr", "arvore"] });
+}
+
 // Hook for APR Etapas
 export function useSgsstAprEtapas(aprId?: string) {
   const { profile } = useAuth();
@@ -361,6 +374,7 @@ export function useSgsstAprEtapas(aprId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_apr_etapas", aprId] });
+      invalidarArvoreApr(queryClient);
       toast.success("Etapa adicionada à APR!");
     },
     onError: (err: any) => {
@@ -385,6 +399,7 @@ export function useSgsstAprEtapas(aprId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_apr_etapas", aprId] });
+      invalidarArvoreApr(queryClient);
       toast.success("Etapa atualizada!");
     },
     onError: (err: any) => {
@@ -403,6 +418,7 @@ export function useSgsstAprEtapas(aprId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_apr_etapas", aprId] });
+      invalidarArvoreApr(queryClient);
       toast.success("Etapa removida!");
     },
     onError: (err: any) => {
@@ -462,6 +478,7 @@ export function useSgsstAprRiscos(etapaId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_apr_riscos", etapaId] });
+      invalidarArvoreApr(queryClient);
       toast.success("Risco incluído na etapa!");
     },
     onError: (err: any) => {
@@ -486,6 +503,7 @@ export function useSgsstAprRiscos(etapaId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_apr_riscos", etapaId] });
+      invalidarArvoreApr(queryClient);
       toast.success("Risco atualizado!");
     },
     onError: (err: any) => {
@@ -504,6 +522,7 @@ export function useSgsstAprRiscos(etapaId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_apr_riscos", etapaId] });
+      invalidarArvoreApr(queryClient);
       toast.success("Risco removido!");
     },
     onError: (err: any) => {
@@ -563,6 +582,7 @@ export function useSgsstAprMedidas(aprRiscoId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_apr_medidas", aprRiscoId] });
+      invalidarArvoreApr(queryClient);
       toast.success("Medida de controle adicionada!");
     },
     onError: (err: any) => {
@@ -587,6 +607,7 @@ export function useSgsstAprMedidas(aprRiscoId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_apr_medidas", aprRiscoId] });
+      invalidarArvoreApr(queryClient);
       toast.success("Medida de controle atualizada!");
     },
     onError: (err: any) => {
@@ -605,6 +626,7 @@ export function useSgsstAprMedidas(aprRiscoId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_apr_medidas", aprRiscoId] });
+      invalidarArvoreApr(queryClient);
       toast.success("Medida de controle removida!");
     },
     onError: (err: any) => {

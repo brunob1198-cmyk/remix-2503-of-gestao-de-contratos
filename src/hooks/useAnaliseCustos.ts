@@ -628,7 +628,7 @@ export function useAnaliseCustosMulti(projetoIds: string[], periodoInicio?: Date
   });
 
   const { data: projetosData = [] } = useQuery({
-    queryKey: ["projetos_analise", projetoIds],
+    queryKey: ["projetos", "analise", projetoIds],
     queryFn: async () => {
       const { data } = await supabase
         .from("projetos")

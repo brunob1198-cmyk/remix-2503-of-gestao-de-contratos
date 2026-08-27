@@ -816,7 +816,7 @@ export function useSupplyChainFunnelCounts() {
 
 export function useCotacoesMestreDetalhe() {
   return useQuery({
-    queryKey: ["cotacoes_mestre_detalhe"],
+    queryKey: ["cotacoes", "mestre_detalhe"],
     staleTime: 30 * 1000,
     gcTime: 60 * 1000,
     refetchOnWindowFocus: false,

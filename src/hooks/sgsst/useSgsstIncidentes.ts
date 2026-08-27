@@ -157,7 +157,7 @@ export function useSgsstIncidentesDetail(incidenteId?: string) {
   const empresaId = profile?.empresa_id;
 
   return useQuery({
-    queryKey: ["sgsst_incidentes_detail", incidenteId],
+    queryKey: ["sgsst_incidentes", "detail", incidenteId],
     enabled: !!empresaId && !!incidenteId,
     queryFn: async () => {
       const { data, error } = await (supabase

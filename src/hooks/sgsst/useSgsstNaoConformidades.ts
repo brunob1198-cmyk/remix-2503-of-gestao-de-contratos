@@ -94,7 +94,7 @@ export function useSgsstNaoConformidadesDetail(ncId?: string) {
   const empresaId = profile?.empresa_id;
 
   return useQuery({
-    queryKey: ["sgsst_nao_conformidades_detail", ncId],
+    queryKey: ["sgsst_nao_conformidades", "detail", ncId],
     enabled: !!empresaId && !!ncId,
     queryFn: async () => {
       const { data, error } = await (supabase
