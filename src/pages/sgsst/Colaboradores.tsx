@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { dataBrDoc } from "@/lib/sgsstDocumentoEstilos";
 import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
 import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
 import { Plus, Search, Edit2, Trash2, UserCheck, CheckCircle2, AlertTriangle, XCircle, GraduationCap, Eye, FileCheck } from "lucide-react";
@@ -20,9 +21,16 @@ import { SgsstSegurancaHeaderNav } from "@/components/sgsst/SgsstSegurancaHeader
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 
+/**
+ * Colunas da tabela, para o `colSpan` do estado vazio nao ficar defasado.
+ * Ações só aparece com permissão de edição.
+ */
+const COLUNAS_BASE = 9;
+
 export default function SgsstColaboradoresPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("sgsst-colaboradores");
+  const COLUNAS_DA_TABELA = allowEdit ? COLUNAS_BASE + 1 : COLUNAS_BASE;
 
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
@@ -187,7 +195,9 @@ export default function SgsstColaboradoresPage() {
               <TableRow>
                 <TableHead>Trabalhador</TableHead>
                 <TableHead>Função SGSST</TableHead>
-                <TableHead>CPF / Matrícula</TableHead>
+                <TableHead>CPF</TableHead>
+                <TableHead>Matrícula</TableHead>
+                <TableHead>Data de Admissão</TableHead>
                 <TableHead>Vínculo</TableHead>
                 <TableHead>EPI Sizes</TableHead>
                 <TableHead>NRs / Treinamentos</TableHead>
@@ -198,7 +208,7 @@ export default function SgsstColaboradoresPage() {
             <TableBody>
               {tableState ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={8} className="p-0">
+                  <TableCell colSpan={COLUNAS_DA_TABELA} className="p-0">
                     {tableState}
                   </TableCell>
                 </TableRow>
@@ -229,9 +239,22 @@ export default function SgsstColaboradoresPage() {
                       <TableCell className="font-semibold text-xs text-primary">
                         {c.funcao?.nome || "—"}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        <div>{c.cpf || "—"}</div>
-                        {c.matricula && <div className="text-[11px] font-mono text-muted-foreground">Mat: {c.matricula}</div>}
+                      <TableCell className="text-xs font-mono tabular-nums whitespace-nowrap">
+                        {c.cpf || "—"}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono whitespace-nowrap">
+                        {c.matricula || "—"}
+                      </TableCell>
+                      <TableCell className="text-xs tabular-nums whitespace-nowrap">
+                        {dataBrDoc(c.data_admissao)}
+                        {/* Para quem saiu, a admissão sozinha conta metade da
+                            história. A data de saída entra aqui embaixo em vez de
+                            virar uma décima primeira coluna. */}
+                        {c.data_demissao && (
+                          <div className="text-[11px] text-muted-foreground">
+                            saída {dataBrDoc(c.data_demissao)}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs font-mono">
