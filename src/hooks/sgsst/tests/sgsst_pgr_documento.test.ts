@@ -397,3 +397,102 @@ describe("pendenciasPgr", () => {
     expect(p.join(" ")).toContain("incompletos pela NR-01");
   });
 });
+
+/**
+ * Seção 6 — acidentes e doenças do período (NR-01 1.5.5.5).
+ *
+ * Fecha o ciclo do documento: o inventário diz o que PODE acontecer e esta seção
+ * diz o que aconteceu. O que ela nao pode fazer e concluir que falta risco no
+ * inventario a partir de vinculo ausente.
+ */
+describe("secao de acidentes no PGR", () => {
+  const acidente = {
+    id: "oc-1",
+    titulo: "Queda de plataforma no vao 4",
+    tipo: "Acidente com Afastamento",
+    data_ocorrencia: "2026-05-12",
+    dias_perdidos: 12,
+    dias_debitados: 0,
+    cat_emitida: true,
+    local_ocorrencia: "Vao 4, nivel 2",
+    pgr_id: "pgr-1",
+  };
+
+  it("sem ocorrencia diz que nao houve registro, sem afirmar ausencia de evento", () => {
+    const html = montarHtmlPgr(dados({ incidentes: [] }));
+    expect(html).toContain("Nenhuma ocorrência registrada");
+    // A frase precisa preservar a distincao: nao ha registro != nao houve evento.
+    expect(html).toContain("não é, por si, ausência de evento");
+  });
+
+  it("lista a ocorrencia com data, dias perdidos e CAT", () => {
+    const html = montarHtmlPgr(dados({ incidentes: [acidente] }));
+    expect(html).toContain("Queda de plataforma no vao 4");
+    expect(html).toContain("12/05/2026");
+    expect(html).toContain("Vao 4, nivel 2");
+  });
+
+  it("marca a ocorrencia ligada a ESTE PGR como risco previsto", () => {
+    // E o achado mais valioso: o risco estava mapeado, a medida existia, e o
+    // evento aconteceu de todo jeito.
+    const html = montarHtmlPgr(dados({ incidentes: [acidente] }));
+    expect(html).toContain("risco previsto neste PGR");
+    expect(html).toContain("medida de controle");
+  });
+
+  it("marca como 'sem vinculo' o que nao aponta para este PGR, sem acusar o inventario", () => {
+    const html = montarHtmlPgr(
+      dados({ incidentes: [{ ...acidente, id: "oc-2", pgr_id: null }] })
+    );
+    expect(html).toContain("sem vínculo");
+    expect(html).not.toContain("risco ausente do inventário");
+    expect(html).not.toContain("falta no inventário");
+  });
+
+  it("acusa acidente com afastamento sem CAT", () => {
+    const html = montarHtmlPgr(
+      dados({ incidentes: [{ ...acidente, cat_emitida: false }] })
+    );
+    expect(html).toContain("não emitida");
+    expect(html).toContain("comunicação ao INSS");
+  });
+
+  it("sem HHT as taxas saem marcadas, e nao como zero", () => {
+    // Zero afirmaria "nenhum acidente por milhao de horas" — o oposto do que
+    // aconteceu neste documento.
+    const html = montarHtmlPgr(dados({ incidentes: [acidente] }));
+    expect(html).toContain("sem HHT no período");
+    expect(html).toContain("em branco em vez de zero");
+  });
+
+  it("com HHT mostra as taxas E declara os meses que formam a base", () => {
+    const html = montarHtmlPgr(
+      dados({
+        incidentes: [acidente],
+        hht: { horas: 200000, meses: ["01/2026", "02/2026"] },
+      })
+    );
+    expect(html).toContain("01/2026, 02/2026");
+    // Normaliza o espaco: o HTML quebra a frase entre linhas, e um `toContain`
+    // cru falharia por causa da indentacao, nao do conteudo.
+    const semQuebras = html.replace(/\s+/g, " ");
+    expect(semQuebras).toContain("somado por mês cheio");
+    // Taxa sem base declarada e numero que ninguem pode conferir.
+    expect(html).toContain("Base (HHT)");
+  });
+
+  it("a secao tem numero 6 e cita a alinea, e Observacoes vira 7", () => {
+    const html = montarHtmlPgr(dados({ incidentes: [] }));
+    expect(html).toContain("6. Acidentes e doenças no período");
+    expect(html).toContain("1.5.5.5");
+    expect(html).toContain("7. Observações");
+  });
+
+  it("sem o dado carregado, diz isso em vez de dizer que nao houve acidente", () => {
+    // `undefined` e "nao carregou"; `[]` e "nao houve". Confundir os dois faria o
+    // documento afirmar ausencia por falha de consulta.
+    const html = montarHtmlPgr(dados({ incidentes: undefined }));
+    expect(html).toContain("não carregadas");
+    expect(html).not.toContain("Nenhuma ocorrência registrada");
+  });
+});

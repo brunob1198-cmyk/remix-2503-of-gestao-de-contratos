@@ -18,6 +18,13 @@ import {
   type SgsstPgr,
   type SgsstPgrMedidaControle,
 } from "@/hooks/sgsst/useSgsstPgr";
+import {
+  periodoDoPgr,
+  hhtDoPeriodo,
+  type IncidenteDoPgr,
+  type RegistroHht,
+} from "@/utils/sgsstPgrAcidentes";
+import { hojeIso } from "@/utils/dataLocal";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { gerarPdfPgr, pendenciasPgr, type PgrDocumentoDados } from "@/lib/pgrDocumento";
@@ -51,6 +58,53 @@ export function PgrEmitirDialog({ open, onOpenChange, pgr }: PgrEmitirDialogProp
     { enabled: open }
   );
 
+  // NR-01 1.5.5.5: a analise de acidentes alimenta o gerenciamento de riscos. O
+  // periodo vai do inicio do programa a data de apuracao, que e a emissao.
+  const periodo = periodoDoPgr(pgr.data_inicio, hojeIso());
+
+  const { data: incidentes = [], isLoading: carregandoIncidentes } = useQuery({
+    queryKey: ["sgsst_incidentes", "do_pgr", pgr.projeto_id, periodo.de, periodo.ate],
+    enabled: open && !!pgr.projeto_id,
+    queryFn: async () => {
+      // Do PROJETO, e nao so os ligados a este PGR: ocorrencia que ninguem
+      // vinculou e justamente a que interessa conferir.
+      const { data, error } = await (supabase
+        .from("sgsst_incidentes" as never)
+        .select(
+          "id, titulo, tipo, gravidade, data_ocorrencia, dias_perdidos, dias_debitados, cat_emitida, local_ocorrencia, pgr_id, projeto_id"
+        )
+        .eq("projeto_id", pgr.projeto_id)
+        .gte("data_ocorrencia", periodo.de)
+        .lte("data_ocorrencia", periodo.ate)
+        .order("data_ocorrencia", { ascending: false }) as never as Promise<{
+        data: IncidenteDoPgr[] | null;
+        error: { message?: string } | null;
+      }>);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: registrosHht = [] } = useQuery({
+    queryKey: ["sgsst_hht", "do_pgr", pgr.projeto_id, periodo.de, periodo.ate],
+    enabled: open && !!pgr.projeto_id,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("sgsst_hht" as never)
+        .select("projeto_id, ano, mes, horas")
+        .eq("projeto_id", pgr.projeto_id) as never as Promise<{
+        data: RegistroHht[] | null;
+        error: { message?: string } | null;
+      }>);
+
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const hht = hhtDoPeriodo(registrosHht, periodo, pgr.projeto_id);
+
   const dados: PgrDocumentoDados = useMemo(() => {
     const funcoesPorItem: Record<string, ReturnType<typeof funcoesDoItem>> = {};
     for (const item of inventario) {
@@ -62,9 +116,11 @@ export function PgrEmitirDialog({ open, onOpenChange, pgr }: PgrEmitirDialogProp
       inventario,
       medidasPorItem,
       funcoesPorItem,
+      incidentes,
+      hht,
       geradoPor: profile?.nome ?? null,
     };
-  }, [pgr, inventario, medidasPorItem, funcoesDoItem, profile?.nome]);
+  }, [pgr, inventario, medidasPorItem, funcoesDoItem, incidentes, hht, profile?.nome]);
 
   const pendencias = useMemo(() => pendenciasPgr(dados), [dados]);
 
