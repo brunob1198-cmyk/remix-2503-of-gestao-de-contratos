@@ -273,7 +273,7 @@ export function useSgsstColaboradoresResumo() {
   const empresaId = profile?.empresa_id;
 
   const { data: colaboradores = [], isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_colaboradores_resumo", empresaId],
+    queryKey: ["sgsst_colaboradores", "resumo", empresaId],
     enabled: !!empresaId,
     staleTime: 1000 * 60 * 10,
     queryFn: async (): Promise<SgsstColaboradorResumoItem[]> => {
