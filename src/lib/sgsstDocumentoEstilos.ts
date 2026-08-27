@@ -79,7 +79,25 @@ export const estilosDocumentoSgsst = `
        existe aqui nenhuma regra de "break-after": ela daria a impressão de estar
        resolvendo e não faria nada. */
     .doc p, .doc-aviso, .doc-ident, h2.doc-sec, h3.doc-grupo,
-    .doc-bloco > .tit, .doc-grid tr, table.doc-tabela thead { page-break-inside: avoid; }
+    .doc-bloco, .doc-bloco > .tit, .doc-grid tr,
+    table.doc-tabela thead { page-break-inside: avoid; }
+
+    /* Por que .doc-bloco INTEIRO entra na lista.
+
+       A primeira versao protegeu so o titulo e o paragrafo, e deixou o bloco de
+       fora por medo de que um bloco com tabela longa fosse empurrado e estourasse
+       a folha seguinte. O medo era infundado: a biblioteca so empurra elemento
+       "de no maximo uma pagina" (nPages <= 1 na fonte dela), e ignora o que for
+       mais alto. Bloco longo continua atravessando paginas como antes.
+
+       E proteger so o titulo nao bastava. Medindo a emissao real, o titulo do
+       bloco de Treinamentos caia em 918,3px com a pagina terminando em 949,3px:
+       sobrava nos ultimos 7px da folha, e era ali que ele era cortado. Empurrado
+       o bloco inteiro, o titulo vai junto e nao encosta na borda.
+
+       O preco e uma folha que pode terminar com espaco em branco. Num documento
+       de conformidade e o cambio certo: espaco em branco se explica, cabecalho
+       partido ao meio nao. */
 
     .doc p { font-size: 10.5px; color: ${CORES_DOC.texto}; margin: 0 0 6px; text-align: justify; }
     .doc-vazio { color: ${CORES_DOC.textoFraco} !important; font-style: italic; font-size: 10px !important; }

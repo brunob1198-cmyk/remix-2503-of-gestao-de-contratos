@@ -88,16 +88,21 @@ describe("quebra de página", () => {
     expect(estilosDocumentoSgsst).not.toContain("break-after: avoid");
   });
 
-  it("o bloco inteiro NAO e marcado como indivisivel", () => {
-    // Um `.doc-bloco` com tabela longa passa de uma pagina. Marcado como
-    // indivisivel, ele seria empurrado para a folha seguinte e estouraria dela
-    // igual, deixando uma pagina quase vazia antes. Quem nao pode ser cortado e
-    // a LINHA de texto, nao o bloco.
-    const regra = estilosDocumentoSgsst.slice(
-      estilosDocumentoSgsst.indexOf(".doc-bloco {"),
-      estilosDocumentoSgsst.indexOf("}", estilosDocumentoSgsst.indexOf(".doc-bloco {"))
+  it("o bloco inteiro tambem e indivisivel", () => {
+    // A primeira versao deixou o bloco de fora, por medo de que um bloco com
+    // tabela longa fosse empurrado e estourasse a folha seguinte. O medo era
+    // infundado: o html2pdf so empurra elemento de no maximo uma pagina
+    // (`nPages <= 1` na fonte dele) e ignora o que for mais alto.
+    //
+    // E proteger so o titulo nao bastou. Na emissao real o titulo do bloco de
+    // Treinamentos caia em 918,3px com a pagina terminando em 949,3px — sobrava
+    // nos ultimos 7px da folha, e era ali que era cortado.
+    const lista = estilosDocumentoSgsst.slice(
+      estilosDocumentoSgsst.indexOf(".doc p, .doc-aviso"),
+      estilosDocumentoSgsst.indexOf("}", estilosDocumentoSgsst.indexOf(".doc p, .doc-aviso"))
     );
-    expect(regra).not.toContain("page-break-inside");
+    expect(lista).toContain(".doc-bloco,");
+    expect(lista).toContain("page-break-inside: avoid");
   });
 });
 
