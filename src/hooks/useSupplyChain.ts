@@ -11,6 +11,7 @@ import {
   grafiasCotacao,
   grafiasPedido,
 } from "@/lib/fluxoCompras";
+import { mensagemDeErroSupabase } from "@/utils/mensagemErroSupabase";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -175,7 +176,7 @@ export function useFornecedores(options?: {
       queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
       toast({ title: "Fornecedor cadastrado!" });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const update = useMutation({
@@ -187,7 +188,7 @@ export function useFornecedores(options?: {
       queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
       toast({ title: "Fornecedor atualizado!" });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const remove = useMutation({
@@ -212,7 +213,7 @@ export function useFornecedores(options?: {
         toast({ title: "Fornecedor excluído!" });
       }
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   /**
@@ -239,7 +240,7 @@ export function useFornecedores(options?: {
           : undefined,
       });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const bulkCreate = useMutation({
@@ -270,7 +271,7 @@ export function useFornecedores(options?: {
       queryClient.invalidateQueries({ queryKey: ["fornecedores"] });
       toast({ title: `${vars.length} fornecedores importados com sucesso!` });
     },
-    onError: (e: Error) => toast({ title: "Erro na importação", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro na importação", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const bulkRemove = useMutation({
@@ -341,7 +342,7 @@ export function useFornecedores(options?: {
         description: data.softDeleted > 0 ? "Fornecedores com histórico de cotações/pedidos foram marcados como Inativo." : undefined,
       });
     },
-    onError: (e: Error) => toast({ title: "Erro ao excluir", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro ao excluir", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   return { fornecedores, isLoading, searchFornecedores, create, update, remove, alternarPreferido, bulkCreate, bulkRemove };
@@ -390,7 +391,7 @@ export function useScItens(options?: { search?: string; limit?: number }) {
       queryClient.invalidateQueries({ queryKey: ["sc_itens"] });
       toast({ title: "Item cadastrado!" });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const update = useMutation({
@@ -402,7 +403,7 @@ export function useScItens(options?: { search?: string; limit?: number }) {
       queryClient.invalidateQueries({ queryKey: ["sc_itens"] });
       toast({ title: "Item atualizado!" });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const remove = useMutation({
@@ -414,7 +415,7 @@ export function useScItens(options?: { search?: string; limit?: number }) {
       queryClient.invalidateQueries({ queryKey: ["sc_itens"] });
       toast({ title: "Item excluído!" });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const bulkCreate = useMutation({
@@ -431,7 +432,7 @@ export function useScItens(options?: { search?: string; limit?: number }) {
       queryClient.invalidateQueries({ queryKey: ["sc_itens"] });
       toast({ title: `${vars.length} itens importados com sucesso!` });
     },
-    onError: (e: Error) => toast({ title: "Erro na importação", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro na importação", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const bulkRemove = useMutation({
@@ -444,7 +445,7 @@ export function useScItens(options?: { search?: string; limit?: number }) {
       queryClient.invalidateQueries({ queryKey: ["sc_itens"] });
       toast({ title: `${count} itens excluídos com sucesso!` });
     },
-    onError: (e: Error) => toast({ title: "Erro na exclusão", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro na exclusão", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   return { itens, isLoading, searchScItens, create, update, remove, bulkCreate, bulkRemove };
@@ -517,7 +518,7 @@ export function useRequisicoes() {
       queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       toast({ title: "Requisição criada!" });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const updateStatus = useMutation({
@@ -561,7 +562,7 @@ export function useRequisicoes() {
       queryClient.invalidateQueries({ queryKey: ["sc_historico", "requisicao", variables.id] });
       toast({ title: "Status atualizado!" });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const remove = useMutation({
@@ -575,7 +576,7 @@ export function useRequisicoes() {
       queryClient.invalidateQueries({ queryKey: ["minha_fila"] });
       toast({ title: "Requisição excluída!" });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   return { requisicoes, isLoading, create, updateStatus, remove };
@@ -645,7 +646,7 @@ export function useCotacoes(requisicaoId?: string) {
       queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
       toast({ title: "Cotação registrada!" });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   const updateStatus = useMutation({
@@ -681,7 +682,7 @@ export function useCotacoes(requisicaoId?: string) {
       queryClient.invalidateQueries({ queryKey: ["cotacoes"] });
       queryClient.invalidateQueries({ queryKey: ["sc_historico", "cotacao", variables.id] });
     },
-    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
   return { cotacoes, isLoading, create, updateStatus };
