@@ -194,13 +194,18 @@ interface LinhaHoraDiario {
  *
  * Diário incompleto subestima o HHT e portanto INFLA as taxas, porque o HHT é
  * divisor. É o viés seguro para indicador de segurança — erra para pior.
+ *
+ * A chave é sub-chave de `diario_equipe`, e não de `sgsst_hht`, porque a base tem
+ * de seguir o DADO e não a tela: o número sai de `diario_equipe`, e são as mutations
+ * do diário que o mudam. Sob `sgsst_hht`, lançar horas no diário não invalidaria
+ * nada, e registrar um HHT invalidaria à toa.
  */
 export function useSgsstHhtSugerido(periodo: PeriodoIndicadores | null) {
   const { profile } = useAuth();
   const empresaId = profile?.empresa_id;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["sgsst_hht_sugerido", empresaId, periodo?.de, periodo?.ate, periodo?.projetoId],
+    queryKey: ["diario_equipe", "hht_sugerido", empresaId, periodo?.de, periodo?.ate, periodo?.projetoId],
     enabled: !!empresaId && !!periodo,
     queryFn: async () => {
       const { data, error } = await (supabase

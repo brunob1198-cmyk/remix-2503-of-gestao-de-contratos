@@ -448,7 +448,7 @@ export function useSgsstDocumentosHistorico(documentoId?: string) {
   const empresaId = profile?.empresa_id;
 
   const { data: historico = [], isLoading } = useQuery({
-    queryKey: ["sgsst_documentos_historico", documentoId],
+    queryKey: ["sgsst_documentos", "historico", documentoId],
     enabled: !!empresaId,
     queryFn: async () => {
       let query = supabase

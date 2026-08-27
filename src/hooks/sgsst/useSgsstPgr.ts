@@ -196,7 +196,7 @@ export function useSgsstPgrDetail(pgrId?: string) {
   const empresaId = profile?.empresa_id;
 
   return useQuery({
-    queryKey: ["sgsst_pgr_detail", pgrId],
+    queryKey: ["sgsst_pgr", "detail", pgrId],
     enabled: !!empresaId && !!pgrId,
     queryFn: async () => {
       const { data, error } = await (supabase
@@ -688,7 +688,7 @@ export function useSgsstPgrHistorico(pgrId?: string) {
   const empresaId = profile?.empresa_id;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_pgr_historico", pgrId],
+    queryKey: ["sgsst_pgr", "historico", pgrId],
     enabled: !!pgrId && !!empresaId,
     queryFn: async () => {
       const { data, error } = await (supabase

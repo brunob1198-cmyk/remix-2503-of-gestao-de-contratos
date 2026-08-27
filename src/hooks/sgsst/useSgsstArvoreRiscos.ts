@@ -74,7 +74,7 @@ export function useSgsstAprArvore(aprId?: string, options?: { enabled?: boolean 
   const empresaId = profile?.empresa_id;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_apr_arvore", aprId],
+    queryKey: ["sgsst_apr", "arvore", aprId],
     enabled: !!aprId && !!empresaId && options?.enabled !== false,
     queryFn: async (): Promise<ArvoreApr> => {
       const etapas = await buscarPor<SgsstAprEtapa>(
@@ -143,7 +143,7 @@ export function useSgsstPtMedidasDaPt(
   const chave = [...riscoIds].sort().join(",");
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["sgsst_pt_medidas_da_pt", chave],
+    queryKey: ["sgsst_pt_medidas", "da_pt", chave],
     enabled: !!empresaId && riscoIds.length > 0 && options?.enabled !== false,
     queryFn: async (): Promise<SgsstPtMedida[]> =>
       buscarPor<SgsstPtMedida>(

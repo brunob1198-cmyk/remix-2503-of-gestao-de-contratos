@@ -97,7 +97,7 @@ export function useSgsstInspecoesDetail(inspecaoId?: string) {
   const empresaId = profile?.empresa_id;
 
   return useQuery({
-    queryKey: ["sgsst_inspecoes_detail", inspecaoId],
+    queryKey: ["sgsst_inspecoes", "detail", inspecaoId],
     enabled: !!empresaId && !!inspecaoId,
     queryFn: async () => {
       const { data, error } = await (supabase
