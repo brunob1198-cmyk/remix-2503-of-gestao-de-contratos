@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { hojeIso } from "@/utils/dataLocal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   SgsstPgrMedidaControle,
@@ -110,7 +111,20 @@ export function PgrMedidasFormDialog({
       responsavel_id: responsavelId === "none" ? null : responsavelId,
       prazo: prazo || null,
       status,
-      data_implementacao: status === "implementado" ? (dataImplementacao || new Date().toISOString().split("T")[0]) : (dataImplementacao || null),
+      // Grava o que está no campo, e nada além dele.
+      //
+      // Antes: quando o status era "implementado" e a data estava em branco, a
+      // gravação punha `new Date().toISOString()` — hoje, em UTC. Dois problemas
+      // num só: o sistema afirmava uma data que ninguém informou (a medida pode
+      // ter sido implantada semanas antes), e a conversão para UTC entregava o
+      // DIA SEGUINTE entre as 21h e a meia-noite em fuso negativo.
+      //
+      // Agora a sugestão de hoje aparece no campo ao marcar implementado, à
+      // vista e corrigível, e sai da data local. Se quem preenche limpar o
+      // campo, grava nulo: "implantada, data não informada" é honesto, e é o que
+      // a alínea "h" precisa — ela conta a medida, não a data.
+      data_implementacao:
+        status === "implementado" ? dataImplementacao || null : null,
       observacao: observacao.trim() || null,
       forma_acompanhamento: formaAcompanhamento.trim() || null,
       verificador_id: verificadorId === "none" ? null : verificadorId,
@@ -197,7 +211,25 @@ export function PgrMedidasFormDialog({
               <Label htmlFor="status">Status</Label>
               <Select
                 value={status}
-                onValueChange={(val: "pendente" | "em_andamento" | "implementado" | "cancelado") => setStatus(val)}
+                onValueChange={(
+                  val: "pendente" | "em_andamento" | "implementado" | "cancelado"
+                ) => {
+                  setStatus(val);
+
+                  // Ao marcar implementado, sugere hoje NO CAMPO, à vista, em vez
+                  // de preencher calado na gravação: a data vai para o PGR, e
+                  // quem implantou na semana passada precisa poder corrigir.
+                  if (val === "implementado" && !dataImplementacao) {
+                    setDataImplementacao(hojeIso());
+                  }
+
+                  // Saindo de implementado, a data sai com ele. Sem isto o
+                  // registro ficava com status "em andamento" E data de
+                  // implementação — e o campo desabilitado não deixava limpar.
+                  if (val !== "implementado" && dataImplementacao) {
+                    setDataImplementacao("");
+                  }
+                }}
               >
                 <SelectTrigger id="status">
                   <SelectValue placeholder="Selecione..." />
@@ -220,6 +252,13 @@ export function PgrMedidasFormDialog({
                 onChange={(e) => setDataImplementacao(e.target.value)}
                 disabled={status !== "implementado"}
               />
+              {/* O campo travado sem explicação virou dúvida na primeira vez que
+                  alguém usou a tela. Diz o que o destrava. */}
+              <p className="text-[11px] leading-tight text-muted-foreground">
+                {status === "implementado"
+                  ? "Ajuste se a medida foi implantada em outra data."
+                  : 'Liberado quando o status for "Implementado".'}
+              </p>
             </div>
           </div>
 
