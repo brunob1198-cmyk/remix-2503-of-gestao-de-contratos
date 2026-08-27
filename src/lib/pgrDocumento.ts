@@ -18,6 +18,14 @@ import {
   TIPO_EXPOSICAO_LABEL,
 } from "@/utils/sgsstPgrInventario";
 import { calcularRevisao, textoPrazoRevisao } from "@/utils/sgsstPgrRevisao";
+import {
+  resumoAcidentesPgr,
+  achadosDosAcidentes,
+  type IncidenteDoPgr,
+  type HhtDoPeriodo,
+} from "@/utils/sgsstPgrAcidentes";
+import { comAfastamento, formatarTaxa } from "@/utils/sgsstIndicadores";
+import { hojeIso } from "@/utils/dataLocal";
 
 /**
  * Emissão do PGR — Programa de Gerenciamento de Riscos, NR-01.
@@ -41,6 +49,14 @@ export interface PgrDocumentoDados {
   medidasPorItem: Record<string, SgsstPgrMedidaControle[]>;
   /** Grupos expostos, indexados pelo id do item de inventário. */
   funcoesPorItem: Record<string, InventarioFuncao[]>;
+  /**
+   * Ocorrências do projeto dentro do período do PGR. A NR-01 1.5.5.5 manda a
+   * análise de acidentes alimentar o gerenciamento de riscos, e sem isto o
+   * documento dizia o que PODE acontecer sem nunca dizer o que aconteceu.
+   */
+  incidentes?: IncidenteDoPgr[];
+  /** HHT do período, base das taxas. Nulo quando não há registro. */
+  hht?: HhtDoPeriodo;
   geradoPor?: string | null;
 }
 
@@ -172,6 +188,139 @@ function linhaInventario(
       <td class="${classeClassificacao(item.classificacao)}">${esc(item.classificacao) || "—"}</td>
       <td>${medidasExistentesTexto(item, medidas)}</td>
     </tr>
+  `;
+}
+
+/**
+ * Seção de acidentes e doenças do período.
+ *
+ * Fecha o ciclo do documento: o inventário diz o que PODE acontecer, e isto diz o
+ * que aconteceu. Sem ela o PGR era uma previsão que nunca se conferia contra o
+ * resultado.
+ *
+ * O que a seção NÃO faz: concluir que falta risco no inventário. Ocorrência sem
+ * vínculo a este PGR pode ser risco não mapeado ou vínculo que ninguém registrou,
+ * e acusar a primeira leitura seria afirmar mais do que o dado sustenta.
+ */
+function secaoAcidentes(dados: PgrDocumentoDados): string {
+  const { pgr, incidentes, hht } = dados;
+
+  if (!incidentes) {
+    return `<p class="doc-vazio">Ocorrências do período não carregadas.</p>`;
+  }
+
+  const resumo = resumoAcidentesPgr({ incidentes, pgrId: pgr.id, hht: hht?.horas });
+
+  if (resumo.total === 0) {
+    return `
+      <p>
+        Nenhuma ocorrência registrada no período do programa. A ausência de registro
+        não é, por si, ausência de evento: ela vale como informação enquanto o
+        registro de incidentes estiver em uso.
+      </p>
+    `;
+  }
+
+  const taxa = (valor: number | null): string =>
+    valor === null
+      ? '<span class="doc-falta">sem HHT no período</span>'
+      : formatarTaxa(valor);
+
+  const linhas = [...incidentes]
+    .sort((a, b) => (b.data_ocorrencia ?? "").localeCompare(a.data_ocorrencia ?? ""))
+    .map((i) => {
+      const afastou = comAfastamento(i);
+      const previsto = i.pgr_id === pgr.id;
+      return `
+        <tr>
+          <td>${dataBr(i.data_ocorrencia)}</td>
+          <td>
+            <strong>${esc(i.titulo)}</strong>
+            ${i.local_ocorrencia ? `<br><small>${esc(i.local_ocorrencia)}</small>` : ""}
+          </td>
+          <td>${esc(i.tipo)}</td>
+          <td>${esc(i.gravidade) || "—"}</td>
+          <td class="doc-num">${i.dias_perdidos ?? 0}</td>
+          <td>${
+            afastou
+              ? i.cat_emitida
+                ? "sim"
+                : '<span class="doc-inapto">não emitida</span>'
+              : "não exigida"
+          }</td>
+          <td>${
+            previsto
+              ? '<span class="doc-inapto">risco previsto neste PGR</span>'
+              : '<span class="doc-falta">sem vínculo</span>'
+          }</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const achados = achadosDosAcidentes(resumo);
+
+  return `
+    <p>
+      Período apurado: ${dataBr(pgr.data_inicio)} a ${dataBr(hojeIso())}.
+    </p>
+
+    <table class="doc-tabela">
+      <thead>
+        <tr>
+          <th>Data</th><th>Ocorrência</th><th>Tipo</th><th>Gravidade</th>
+          <th>Dias perdidos</th><th>CAT</th><th>Vínculo</th>
+        </tr>
+      </thead>
+      <tbody>${linhas}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4"><strong>Totais do período</strong></td>
+          <td class="doc-num"><strong>${resumo.diasPerdidos}</strong></td>
+          <td colspan="2">
+            ${resumo.acidentes} acidente(s), ${resumo.comAfastamento} com afastamento
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="doc-bloco">
+      <div class="tit">Taxas do período — NBR 14280</div>
+      <div class="corpo">
+        <table class="doc-grid">
+          <tr>
+            <td class="rot">Taxa de frequência:</td>
+            <td>${taxa(resumo.taxaFrequencia)}</td>
+          </tr>
+          <tr>
+            <td class="rot">Taxa de gravidade:</td>
+            <td>${taxa(resumo.taxaGravidade)}</td>
+          </tr>
+          <tr>
+            <td class="rot">Base (HHT):</td>
+            <td>${
+              hht?.horas
+                ? `${hht.horas.toLocaleString("pt-BR")} horas — meses somados: ${esc(
+                    hht.meses.join(", ")
+                  )}`
+                : '<span class="doc-falta">não informado</span>'
+            }</td>
+          </tr>
+        </table>
+        <p>
+          As taxas usam a base de um milhão de horas-homem. O HHT é somado por mês
+          cheio: um período que começa no meio do mês soma o mês inteiro, e por isso
+          os meses da base ficam declarados acima.
+        </p>
+      </div>
+    </div>
+
+    ${
+      achados.length > 0
+        ? `<h3 class="doc-grupo">O que estas ocorrências dizem sobre o programa</h3>
+           ${achados.map((a) => `<p class="doc-aviso">${esc(a)}</p>`).join("")}`
+        : ""
+    }
   `;
 }
 
@@ -408,7 +557,10 @@ export function montarHtmlPgr(dados: PgrDocumentoDados): string {
              </table>`
       }
 
-      <h2 class="doc-sec">6. Observações</h2>
+      <h2 class="doc-sec">6. Acidentes e doenças no período <span class="doc-sub">NR-01 1.5.5.5</span></h2>
+      ${secaoAcidentes(dados)}
+
+      <h2 class="doc-sec">7. Observações</h2>
       ${bloco(pgr.observacoes, "Sem observações registradas.")}
 
       <div class="doc-assin">
