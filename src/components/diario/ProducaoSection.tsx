@@ -11,6 +11,31 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 const formatCurrency = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+/**
+ * Largura dos campos de quantidade.
+ *
+ * `quantidade` é `DECIMAL(15, 4)` no banco, então o campo precisa caber número
+ * com casas decimais, e não só inteiro curto. Medido no navegador com as classes
+ * reais do Input (`h-10 px-3`, 14px no desktop), contando quantos caracteres
+ * cabem antes de `scrollWidth` passar de `clientWidth`:
+ *
+ *   w-20  ->  5 caracteres      (era o campo de editar)
+ *   w-24  ->  7 caracteres      (era o campo de adicionar)
+ *   w-32  -> 11 caracteres
+ *   w-36  -> 13 caracteres      (atual)
+ *   w-40  -> 15 caracteres
+ *
+ * Lançar 78362.74 são oito caracteres: passava dos dois antigos, o fim do número
+ * saía da área visível e não havia como reler o que se digitou. As setinhas do
+ * `type="number"` entram nessa conta com apenas 3px — o problema era largura
+ * mesmo, não o controle.
+ *
+ * Acima de treze o valor volta a rolar para fora. O teto do banco são dezesseis
+ * caracteres, mas aí já é quantidade que não aparece em lançamento de diário, e
+ * alargar mais espremeria o seletor de item ao lado.
+ */
+const LARGURA_QTD = "w-36";
+
 interface ItemDisponivel {
   id: string;
   item_lpu_id: string;
@@ -67,7 +92,7 @@ function ProducaoSection({
               {itensDisponiveis.map(i => <SelectItem key={i.id} value={i.item_lpu_id || i.id}>{i.nome}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input type="number" value={prodQtd} onChange={e => setProdQtd(e.target.value)} placeholder="Qtd" className="w-24" />
+          <Input type="number" value={prodQtd} onChange={e => setProdQtd(e.target.value)} placeholder="Qtd" className={LARGURA_QTD} />
           <Button onClick={handleAdd}>Adicionar</Button>
         </div>
         <Table>
@@ -94,7 +119,9 @@ function ProducaoSection({
                       type="number"
                       value={editProducaoQtd}
                       onChange={e => setEditProducaoQtd(e.target.value)}
-                      className="w-20 ml-auto h-8"
+                      // `text-right` porque a coluna é alinhada à direita: sem
+                      // isso o número saltava de lado ao entrar em edição.
+                      className={`${LARGURA_QTD} ml-auto h-8 text-right`}
                     />
                   ) : (
                     p.quantidade
