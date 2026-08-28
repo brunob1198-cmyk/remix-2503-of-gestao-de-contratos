@@ -1,6 +1,7 @@
 import { pdfGlobalStyles } from "@/lib/pdfTemplates";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import { estilosDocumentoSgsst } from "@/lib/sgsstDocumentoEstilos";
+import { BASE_LEGAL_PCMSO, type ReferenciaLegal } from "@/utils/sgsstBaseLegal";
 import {
   FAIXA_ETARIA_LABEL,
   type SgsstPcmso,
@@ -41,6 +42,45 @@ function dataBr(iso?: string | null): string {
 }
 
 /** Texto multilinha vira parágrafos; vazio vira aviso de pendência. */
+/**
+ * Seção de base legal.
+ *
+ * Compartilhada entre PGR e PCMSO: cada documento passa a sua lista, porque as
+ * normas centrais de um são periféricas no outro.
+ *
+ * A tabela traz a pertinência de cada norma, e não só a sigla. Lista de siglas
+ * obriga quem lê a supor por que a norma está ali; a pertinência é o que permite
+ * conferir o escopo do documento.
+ */
+function secaoBaseLegal(referencias: readonly ReferenciaLegal[]): string {
+  return `
+    <p>
+      As referências abaixo são a base legal <strong>observada</strong> na elaboração
+      deste programa. A declaração de conformidade é do profissional que assina o
+      documento; esta lista informa o escopo normativo considerado.
+    </p>
+
+    <table class="doc-tabela">
+      <thead>
+        <tr><th>Norma</th><th>Do que trata</th><th>Por que se aplica a este programa</th></tr>
+      </thead>
+      <tbody>
+        ${referencias
+          .map(
+            (r) => `
+              <tr>
+                <td><strong>${esc(r.norma)}</strong></td>
+                <td>${esc(r.ementa)}</td>
+                <td>${esc(r.pertinencia)}</td>
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
 function bloco(texto: string | null | undefined, aviso: string): string {
   const t = (texto ?? "").trim();
   if (!t) {
@@ -189,16 +229,19 @@ export function montarHtmlPcmso(dados: PcmsoDocumentoDados): string {
       <h2 class="doc-sec">1. Objetivo do programa</h2>
       ${bloco(pcmso.objetivo, "Objetivo não preenchido.")}
 
-      <h2 class="doc-sec">2. Agravos à saúde relacionados aos riscos ocupacionais</h2>
+      <h2 class="doc-sec">2. Base legal <span class="doc-sub">requisitos legais e infralegais</span></h2>
+      ${secaoBaseLegal(BASE_LEGAL_PCMSO)}
+
+      <h2 class="doc-sec">3. Agravos à saúde relacionados aos riscos ocupacionais</h2>
       ${bloco(
         pcmso.agravos_saude,
         "Obrigatório pela NR-07 item 7.5. Preencha em Editar Dados antes de emitir o programa."
       )}
 
-      <h2 class="doc-sec">3. Planejamento de exames médicos e complementares</h2>
+      <h2 class="doc-sec">4. Planejamento de exames médicos e complementares</h2>
       ${quadroExames(exames)}
 
-      <h2 class="doc-sec">4. Critérios de interpretação dos achados e conduta</h2>
+      <h2 class="doc-sec">5. Critérios de interpretação dos achados e conduta</h2>
       ${bloco(
         pcmso.criterios_conduta,
         "Obrigatório pela NR-07 item 7.5. Precisa ser conhecido por todos os médicos que realizam os exames."
@@ -206,7 +249,7 @@ export function montarHtmlPcmso(dados: PcmsoDocumentoDados): string {
 
       ${
         pcmso.observacoes
-          ? `<h2 class="doc-sec">5. Observações complementares</h2>${bloco(pcmso.observacoes, "")}`
+          ? `<h2 class="doc-sec">6. Observações complementares</h2>${bloco(pcmso.observacoes, "")}`
           : ""
       }
 
