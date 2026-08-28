@@ -505,3 +505,52 @@ describe("secao de acidentes no PGR", () => {
     expect(html).not.toContain("Nenhuma ocorrência registrada");
   });
 });
+
+/**
+ * GHE na célula de grupos expostos.
+ *
+ * O grupo ACRESCENTA informação; não substitui as funções. Se substituísse, o
+ * documento perderia quem exerce o quê dentro do grupo — e é isso que a alínea
+ * "f" da NR-01 1.5.7.3.2 pede identificar.
+ */
+describe("montarHtmlPgr — GHE", () => {
+  it("sem mapa de GHE, o inventário sai como antes", () => {
+    const html = montarHtmlPgr(dados());
+    expect(html).toContain("Serralheiro");
+    expect(html).not.toContain("GHE-");
+  });
+
+  it("com GHE, mostra o grupo E as funções", () => {
+    const html = montarHtmlPgr(
+      dados({
+        inventario: [{ ...ITEM_COMPLETO, ghe_id: "g-1" }],
+        ghesPorId: new Map([["g-1", "GHE-01 — Operacional"]]),
+      })
+    );
+    expect(html).toContain("GHE-01 — Operacional");
+    expect(html).toContain("Serralheiro");
+  });
+
+  it("o grupo vem ANTES das funções, por ser a unidade mais ampla", () => {
+    const html = montarHtmlPgr(
+      dados({
+        inventario: [{ ...ITEM_COMPLETO, ghe_id: "g-1" }],
+        ghesPorId: new Map([["g-1", "GHE-01 — Operacional"]]),
+      })
+    );
+    expect(html.indexOf("GHE-01")).toBeLessThan(html.indexOf("Serralheiro"));
+  });
+
+  it("ghe_id apontando para grupo que não está no mapa não imprime lixo", () => {
+    // Acontece quando o GHE foi excluído: o ON DELETE SET NULL zera a coluna, mas
+    // um documento emitido de cache pode ainda trazer o id antigo.
+    const html = montarHtmlPgr(
+      dados({
+        inventario: [{ ...ITEM_COMPLETO, ghe_id: "g-fantasma" }],
+        ghesPorId: new Map([["g-1", "GHE-01 — Operacional"]]),
+      })
+    );
+    expect(html).not.toContain("undefined");
+    expect(html).toContain("Serralheiro");
+  });
+});

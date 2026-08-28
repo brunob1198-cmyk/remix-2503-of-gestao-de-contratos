@@ -80,7 +80,16 @@ export const estilosDocumentoSgsst = `
        resolvendo e não faria nada. */
     .doc p, .doc-aviso, .doc-ident, h2.doc-sec, h3.doc-grupo,
     .doc-bloco, .doc-bloco > .tit, .doc-grid tr,
-    table.doc-tabela thead { page-break-inside: avoid; }
+    table.doc-tabela thead,
+    /* Auditados um a um: estes tinham "page-break-inside: auto" e apareceram
+       fatiados na varredura da emissão real. O rodapé de rastreabilidade é o pior
+       deles — é a linha que diz quem emitiu e quando, e cortada ao meio não serve
+       de rastreabilidade nenhuma. As colunas de assinatura dependiam de o pai
+       ".doc-assin" ser empurrado; quando ele passa de uma página o html2pdf
+       desiste dele (guarda "nPages <= 1" na fonte da biblioteca) e os filhos
+       ficavam sem proteção própria. */
+    .doc-cab, .doc-rodape,
+    .doc-assin > div, .doc-assin .nome, .doc-assin .papel { page-break-inside: avoid; }
 
     /* Por que .doc-bloco INTEIRO entra na lista.
 

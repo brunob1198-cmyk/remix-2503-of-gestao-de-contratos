@@ -114,8 +114,9 @@ const A4_ALTURA_MM = 297;
 /**
  * Largura em pixels com que o html2canvas renderiza o conteúdo.
  *
- * Precisa casar com o `windowWidth` das opções: é dela que sai a escala
- * pixel-por-milímetro usada para alinhar a marca d'água com a quebra de página.
+ * Vale como `windowWidth` do html2canvas — largura da janela no documento
+ * clonado. NÃO é a largura de diagramação: essa o html2pdf fixa em milímetros.
+ * Ver a nota em `alturaPaginaEmPixels`.
  */
 const LARGURA_RENDER_PX = 1024;
 
@@ -128,8 +129,8 @@ const LARGURA_RENDER_PX = 1024;
  * de baixa resolução ampliada.
  *
  * Em 2× são ~280 dpi, que é resolução de impressão. Não afeta o alinhamento da
- * marca d'água: o `scale` multiplica os pixels do canvas, e o layout em CSS
- * continua com 1024 px de largura — a conta do azulejo é em pixel de CSS.
+ * marca d'água: o `scale` multiplica os pixels do canvas, e a conta do azulejo é
+ * em pixel de CSS, derivada das margens.
  */
 const ESCALA_RENDER = 2;
 
@@ -143,20 +144,41 @@ const ESCALA_RENDER = 2;
 const QUALIDADE_JPEG = 0.92;
 
 /**
- * Altura, em pixels de render, da área de conteúdo de UMA página.
+ * Pixels de CSS por milímetro.
+ *
+ * O CSS define o milímetro em 96 dpi: 1mm = 96/25,4 px. Não é uma convenção
+ * nossa nem depende de tela — é a unidade absoluta da especificação.
+ */
+const PX_POR_MM = 96 / 25.4;
+
+/** Altura útil de uma página, em milímetros. */
+function alturaUtilMm(): number {
+  return A4_ALTURA_MM - MARGEM_SUPERIOR_MM - MARGEM_INFERIOR_MM;
+}
+
+/**
+ * Altura, em pixels de layout, da área de conteúdo de UMA página.
  *
  * O html2pdf rasteriza o container inteiro num canvas só e depois fatia em
  * páginas. Uma marca d'água com `background-size: 100% <esta altura>` e
  * `repeat-y` cai, portanto, uma vez por folha.
  *
- * A conta: a largura de render mapeia a largura útil da página, o que dá a escala
- * px/mm; a altura útil convertida nessa escala é a altura do azulejo.
+ * POR QUE A CONTA É EM 96 DPI E NÃO NA "LARGURA DE RENDER"
+ *
+ * A versão anterior derivava a escala de `LARGURA_RENDER_PX / larguraUtilMm`,
+ * supondo que o conteúdo fosse diagramado a 1024px de largura. Não é: o html2pdf
+ * fixa a largura do container em milímetros (`width: 186.002mm`), o que o
+ * navegador resolve para 703px — e a diferença fazia esta função devolver 1382,8px
+ * onde a folha real tem 949px. Um azulejo 1,457× mais alto que a página faz a
+ * marca d'água deixar de casar com a quebra a partir da primeira folha.
+ *
+ * Medido no pipeline real: `pageSize.inner.px.height` do html2pdf devolve 949 para
+ * as margens atuais, e é esse número que ele usa tanto para paginar quanto para
+ * fatiar o raster. Esta função tem de reproduzi-lo, e o teste trava as duas contas
+ * juntas para que não voltem a divergir em silêncio.
  */
 export function alturaPaginaEmPixels(): number {
-  const larguraUtilMm = A4_LARGURA_MM - MARGEM_LATERAL_MM * 2;
-  const alturaUtilMm = A4_ALTURA_MM - MARGEM_SUPERIOR_MM - MARGEM_INFERIOR_MM;
-  const pxPorMm = LARGURA_RENDER_PX / larguraUtilMm;
-  return alturaUtilMm * pxPorMm;
+  return alturaUtilMm() * PX_POR_MM;
 }
 
 /** Cache por URL: o mesmo ativo é usado em toda emissão da sessão. */
@@ -387,10 +409,18 @@ export function opcoesPdfTimbrado(nomeArquivo: string) {
     image: { type: "jpeg" as const, quality: QUALIDADE_JPEG },
     html2canvas: {
       ...html2canvasBase,
-      // `windowWidth` precisa casar com LARGURA_RENDER_PX: é dela que sai a
-      // escala usada para alinhar o azulejo da marca d'água com a quebra de
-      // página. O `scale` é independente — multiplica os pixels do canvas, não o
-      // layout em CSS.
+      // `windowWidth` NÃO define a largura de diagramação: o html2pdf fixa a
+      // largura do container em milímetros (medido: `width: 186.002mm`, que o
+      // navegador resolve em 703px). Serve só como largura da janela no documento
+      // clonado do html2canvas, o que importa para unidade de viewport e media
+      // query — coisas que a folha destes documentos não usa. Fica declarado para
+      // a medição não depender do tamanho da janela real do usuário.
+      //
+      // Um comentário anterior aqui dizia que era desta largura que saía a escala
+      // do azulejo da marca d'água. Era falso, e foi o que manteve
+      // `alturaPaginaEmPixels` errada por 1,457×.
+      //
+      // O `scale` é independente — multiplica os pixels do canvas, não o layout.
       windowWidth: LARGURA_RENDER_PX,
       scale: ESCALA_RENDER,
     },
@@ -419,18 +449,168 @@ export async function emitirPdfTimbrado(params: {
   container.innerHTML =
     (params.marcaDagua === false ? "" : cssMarcaDagua()) + params.html;
 
-  // `outputPdf("arraybuffer")` em vez de `save()`: precisamos dos bytes para
-  // estampar logo e rodapé antes de entregar o arquivo.
-  const bytes: ArrayBuffer = await html2pdf()
-    .set(opcoesPdfTimbrado(params.nomeArquivo))
-    .from(container)
-    .outputPdf("arraybuffer");
+  // O container PRECISA estar no documento antes de paginar. Ver `aguardarFontes`.
+  //
+  // A largura é a mesma que o html2pdf dá ao clone dele (largura útil da página em
+  // milímetros): medir numa largura e rasterizar em outra é como as quebras saíam
+  // do lugar.
+  container.id = `doc-emissao-${contadorDeEmissao++}`;
+  container.style.cssText =
+    `position: fixed; left: -100000px; top: 0; width: ${larguraRenderMm()}mm;`;
+  document.body.appendChild(container);
 
-  const timbrado = await aplicarPapelTimbrado(bytes, {
-    identificacao: params.identificacao,
-  });
+  try {
+    await aguardarFontes(container);
 
-  baixar(timbrado, params.nomeArquivo);
+    // `outputPdf("arraybuffer")` em vez de `save()`: precisamos dos bytes para
+    // estampar logo e rodapé antes de entregar o arquivo.
+    const bytes: ArrayBuffer = await html2pdf()
+      .set(opcoesPdfTimbrado(params.nomeArquivo))
+      .from(container)
+      .outputPdf("arraybuffer");
+
+    const timbrado = await aplicarPapelTimbrado(bytes, {
+      identificacao: params.identificacao,
+    });
+
+    baixar(timbrado, params.nomeArquivo);
+  } finally {
+    // Sai do documento mesmo se a emissão falhar: um container esquecido leva a
+    // folha de estilo do documento junto, e ela vaza para a interface.
+    container.remove();
+  }
+}
+
+/** Identificador único por emissão: o seletor que fixa a fonte precisa dele. */
+let contadorDeEmissao = 0;
+
+/** Largura útil da página, em mm — a mesma que o html2pdf dá ao container. */
+function larguraRenderMm(): number {
+  return A4_LARGURA_MM - MARGEM_LATERAL_MM * 2;
+}
+
+/**
+ * Espera as fontes do documento estarem prontas ANTES de paginar.
+ *
+ * O DEFEITO QUE ISTO CORRIGE
+ *
+ * O html2pdf calcula onde cada quebra de página cai e insere espaçadores para não
+ * fatiar elemento marcado com `page-break-inside: avoid`. Essa conta é feita uma
+ * vez, na geometria do momento. Se a fonte chegar DEPOIS, tudo reflui: a altura
+ * das linhas muda, o conteúdo sobe ou desce, e os espaçadores — já fixos — passam
+ * a apontar para o lugar errado. O resultado é texto cortado ao meio na
+ * horizontal, metade no pé de uma folha e metade no topo da seguinte.
+ *
+ * E a corrida era garantida por construção: o container era montado DESANEXADO do
+ * documento, então o `@import` da fonte não começava a carregar; ele só disparava
+ * quando o html2pdf inseria o clone — no mesmo instante em que media as quebras.
+ * Com cache quente o PDF saía correto e o defeito parecia não existir.
+ *
+ * Medido: com a mesma folha, trocar a fonte depois da paginação produziu texto
+ * cortado em 18 de 18 comprimentos de documento testados.
+ *
+ * Duas partes na correção:
+ *
+ * 1. O container entra no documento (fora da tela) ANTES de qualquer medição, o
+ *    que faz o `@import` começar.
+ * 2. `document.fonts.ready` espera o que já está em uso, e `fonts.load` força as
+ *    famílias declaradas — `ready` sozinho pode resolver antes de uma família que
+ *    ainda não foi solicitada por nenhum nó pintado.
+ *
+ * O TEMPO-LIMITE
+ *
+ * Se a rede não responder, emitir com a fonte de recurso é melhor que travar a
+ * emissão: o documento sai com outra tipografia, mas sai — e sai INTEIRO, porque a
+ * paginação e o raster usam a mesma geometria. Travar sem prazo transformaria uma
+ * fonte indisponível em botão que não responde.
+ */
+const ESPERA_MAXIMA_FONTES_MS = 4000;
+
+/** Famílias e pesos que os documentos do SGSST usam. */
+const PESOS_DO_DOCUMENTO = ["400", "500", "600", "700"];
+const FAMILIA_WEBFONT = "Inter";
+
+/**
+ * Pilha de recurso, sem a webfont. É a mesma que a folha dos documentos declara
+ * depois da Inter, então fixá-la não muda nada além de tirar a Inter da jogada.
+ */
+const PILHA_DE_RECURSO = `'Segoe UI', system-ui, -apple-system, Arial, sans-serif`;
+
+function esperarQuadro(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+/**
+ * Fixa, no container, a família que será efetivamente usada.
+ *
+ * É o que fecha a corrida nos DOIS sentidos. Não basta esperar: se a Inter chegar
+ * depois de o html2pdf ter calculado as quebras, o refluxo move o texto e os
+ * espaçadores já estão fixos. Fixando a família antes de qualquer medição, a
+ * geometria medida é a geometria rasterizada — chegue a fonte quando chegar.
+ */
+function fixarFamilia(container: HTMLElement, usarWebfont: boolean): void {
+  const familia = usarWebfont
+    ? `'${FAMILIA_WEBFONT}', ${PILHA_DE_RECURSO}`
+    : PILHA_DE_RECURSO;
+
+  const estilo = document.createElement("style");
+  // `!important` porque a folha do documento declara a família em várias regras;
+  // o objetivo aqui não é estética, é impedir troca depois da medição.
+  estilo.textContent = `#${container.id}, #${container.id} * { font-family: ${familia} !important; }`;
+  container.appendChild(estilo);
+}
+
+/**
+ * Espera as fontes do documento estarem resolvidas ANTES de paginar.
+ *
+ * Por que `document.fonts.ready` sozinho NÃO resolve: medido neste projeto, a app
+ * não registra nenhuma face da Inter — ela vem do `@import` que está na folha do
+ * próprio documento. Enquanto essa folha está em voo, o conjunto de fontes está
+ * vazio, e `ready` resolve na hora (0 ms, medido). Só depois a folha chega,
+ * registra a face, o arquivo é baixado e o texto reflui — já tarde.
+ *
+ * Então o laço abaixo espera a FACE APARECER antes de esperar o ARQUIVO.
+ */
+async function aguardarFontes(container: HTMLElement): Promise<void> {
+  const fontes = (document as Document & { fonts?: FontFaceSet }).fonts;
+  if (!fontes) {
+    fixarFamilia(container, false);
+    return;
+  }
+
+  // Reflow para o navegador resolver o @import da folha recém-inserida.
+  void container.offsetHeight;
+
+  const limite = Date.now() + ESPERA_MAXIMA_FONTES_MS;
+  const consulta = `400 12px ${FAMILIA_WEBFONT}`;
+
+  // 1. A face existe? Sem ela, `load` devolve lista vazia e não há o que esperar.
+  let faces = await fontes.load(consulta).catch(() => []);
+  while (faces.length === 0 && Date.now() < limite) {
+    await esperarQuadro();
+    faces = await fontes.load(consulta).catch(() => []);
+  }
+
+  if (faces.length === 0) {
+    // Sem rede, ou o serviço de fontes fora: emitir na pilha de recurso é melhor
+    // que travar a emissão. E fixando a família, uma chegada tardia da Inter não
+    // consegue mais mexer no que já foi medido.
+    fixarFamilia(container, false);
+    await esperarQuadro();
+    return;
+  }
+
+  // 2. Os arquivos dos pesos que o documento usa.
+  await Promise.all(
+    PESOS_DO_DOCUMENTO.map((peso) =>
+      fontes.load(`${peso} 12px ${FAMILIA_WEBFONT}`).catch(() => undefined)
+    )
+  );
+  await fontes.ready;
+
+  fixarFamilia(container, true);
+  // Um quadro para o refluxo da troca terminar antes de qualquer medição.
+  await esperarQuadro();
 }
 
 /** Entrega o arquivo ao usuário via link temporário. */
