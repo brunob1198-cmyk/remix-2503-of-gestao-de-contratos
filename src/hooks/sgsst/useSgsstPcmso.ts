@@ -386,6 +386,41 @@ export function useSgsstPcmsoExames(pcmsoId?: string) {
     },
   });
 
+  /**
+   * Corrige um exame previsto ja cadastrado.
+   *
+   * Antes so havia adicionar e remover: preencher errado obrigava a excluir e
+   * lancar de novo, o que perde quem cadastrou e quando. O exame previsto e
+   * configuracao do programa e muda com frequencia — periodicidade, funcao
+   * aplicavel e faixa etaria sao exatamente os campos que se ajustam depois de
+   * ver o quadro montado.
+   */
+  const updateExame = useMutation({
+    mutationFn: async ({
+      id,
+      ...campos
+    }: Partial<Omit<SgsstPcmsoExame, "id" | "empresa_id" | "created_at" | "funcao">> & {
+      id: string;
+    }) => {
+      const { data, error } = await (supabase
+        .from("sgsst_pcmso_exames" as any)
+        .update(campos)
+        .eq("id", id)
+        .select()
+        .single() as any);
+
+      if (error) throw error;
+      return data as SgsstPcmsoExame;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pcmso_exames", pcmsoId] });
+      toast.success("Exame previsto atualizado!");
+    },
+    onError: (err: any) => {
+      toast.error(`Erro ao atualizar exame: ${err.message || err}`);
+    },
+  });
+
   const removeExame = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase
@@ -410,6 +445,7 @@ export function useSgsstPcmsoExames(pcmsoId?: string) {
     error,
     refetch,
     addExame,
+    updateExame,
     removeExame,
   };
 }
