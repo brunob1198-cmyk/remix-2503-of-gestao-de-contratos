@@ -45,6 +45,7 @@ import {
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { PcmsoFormDialog } from "@/components/sgsst/PcmsoFormDialog";
 import { PcmsoStatusDialog } from "@/components/sgsst/PcmsoStatusDialog";
+import { BlocoEditavel } from "@/components/sgsst/BlocoEditavel";
 import { format, parseISO } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -61,7 +62,8 @@ export default function SgsstPcmsoDetailPage() {
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { empresa } = useEmpresaAtual();
   const { profile } = useAuth();
-  const { exames, isLoading: loadingExames, addExame, removeExame } = useSgsstPcmsoExames(pcmsoId);
+  const { exames, isLoading: loadingExames, addExame, updateExame, removeExame } =
+    useSgsstPcmsoExames(pcmsoId);
   const { historico } = useSgsstPcmsoHistorico(pcmsoId);
 
   // Dialog States
@@ -71,6 +73,8 @@ export default function SgsstPcmsoDetailPage() {
 
   // Exame Dialog State
   const [isAddExameOpen, setIsAddExameOpen] = useState(false);
+  /** Id do exame em edição. Nulo = o diálogo está cadastrando um novo. */
+  const [editandoExameId, setEditandoExameId] = useState<string | null>(null);
   const [nomeExame, setNomeExame] = useState("");
   const [tipoExame, setTipoExame] = useState<TipoExamePcmso>("Periódico");
   const [periodicidadeMeses, setPeriodicidadeMeses] = useState(12);
@@ -163,12 +167,46 @@ export default function SgsstPcmsoDetailPage() {
     }
   };
 
+  /** Zera o formulário para um cadastro novo. */
+  const limparFormExame = () => {
+    setEditandoExameId(null);
+    setNomeExame("");
+    setTipoExame("Periódico");
+    setPeriodicidadeMeses(12);
+    setFuncaoId("none");
+    setGrupoRisco("");
+    setObsExame("");
+    setJustificativa("");
+    setBaseLegal("");
+    setFaixaEtaria("TODAS");
+    setRiscoId("none");
+  };
+
+  const abrirNovoExame = () => {
+    limparFormExame();
+    setIsAddExameOpen(true);
+  };
+
+  const abrirEdicaoExame = (ex: SgsstPcmsoExame) => {
+    setEditandoExameId(ex.id);
+    setNomeExame(ex.nome_exame || "");
+    setTipoExame(ex.tipo_exame || "Periódico");
+    setPeriodicidadeMeses(ex.periodicidade_meses ?? 12);
+    setFuncaoId(ex.funcao_id || "none");
+    setGrupoRisco(ex.grupo_risco || "");
+    setObsExame(ex.observacoes || "");
+    setJustificativa(ex.justificativa_tecnica || "");
+    setBaseLegal(ex.base_legal || "");
+    setFaixaEtaria(ex.faixa_etaria || "TODAS");
+    setRiscoId(ex.risco_catalogo_id || "none");
+    setIsAddExameOpen(true);
+  };
+
   const handleAddExameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomeExame.trim()) return;
 
-    await addExame.mutateAsync({
-      pcmso_id: currentPcmso.id,
+    const campos = {
       nome_exame: nomeExame.trim(),
       tipo_exame: tipoExame,
       periodicidade_meses: Number(periodicidadeMeses) || 12,
@@ -179,7 +217,13 @@ export default function SgsstPcmsoDetailPage() {
       base_legal: baseLegal.trim() || null,
       faixa_etaria: faixaEtaria,
       risco_catalogo_id: riscoId === "none" ? null : riscoId,
-    });
+    };
+
+    if (editandoExameId) {
+      await updateExame.mutateAsync({ id: editandoExameId, ...campos });
+    } else {
+      await addExame.mutateAsync({ pcmso_id: currentPcmso.id, ...campos });
+    }
 
     setIsAddExameOpen(false);
     setNomeExame("");
@@ -315,7 +359,7 @@ export default function SgsstPcmsoDetailPage() {
               </p>
             </div>
             {allowEdit && !isReadOnly && (
-              <Button onClick={() => setIsAddExameOpen(true)} size="sm" className="gap-1.5">
+              <Button onClick={abrirNovoExame} size="sm" className="gap-1.5">
                 <Plus className="h-4 w-4" /> Configurar Exame Previsto
               </Button>
             )}
@@ -374,11 +418,21 @@ export default function SgsstPcmsoDetailPage() {
                         <TableCell className="text-xs text-muted-foreground max-w-[16rem] truncate" title={ex.justificativa_tecnica || undefined}>{ex.justificativa_tecnica || "—"}</TableCell>
                         <TableCell className="text-right">
                           {allowEdit && !isReadOnly && (
-                            <SgsstConfirmDelete
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Editar exame previsto"
+                                onClick={() => abrirEdicaoExame(ex)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <SgsstConfirmDelete
                                 alvo="este exame do PCMSO"
                                 consequencia={"O exame deixa de ser exigido por este programa, e a periodicidade prevista para as funções vinculadas deixa de ser cobrada."}
                                 onConfirm={() => removeExame.mutate(ex.id)}
                               />
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
@@ -399,19 +453,31 @@ export default function SgsstPcmsoDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-xs sm:text-sm">
-              <div className="space-y-1.5">
-                <Label className="font-semibold">Objetivo do PCMSO:</Label>
-                <div className="p-3 rounded bg-muted/40 text-xs border min-h-[80px]">
-                  {currentPcmso.objetivo || "Não informado."}
-                </div>
-              </div>
+              {/* Editáveis aqui mesmo. Corrigir a redação do objetivo obrigava a
+                  abrir "Editar Dados" e passar por vigência e médico responsável —
+                  caminho demais para um ajuste de texto, e formulário longo aberto
+                  por motivo pequeno é onde se altera campo por engano. */}
+              <BlocoEditavel
+                rotulo="Objetivo do PCMSO:"
+                valor={currentPcmso.objetivo}
+                somenteLeitura={!allowEdit || isReadOnly}
+                linhas={8}
+                placeholder="Objetivo geral do programa, articulado com as demais NRs."
+                onSalvar={(texto) =>
+                  updatePcmso.mutate({ id: currentPcmso.id, objetivo: texto || null })
+                }
+              />
 
-              <div className="space-y-1.5">
-                <Label className="font-semibold">Observações Gerais / Orientações para ASO:</Label>
-                <div className="p-3 rounded bg-muted/40 text-xs border min-h-[60px]">
-                  {currentPcmso.observacoes || "Sem observações registradas."}
-                </div>
-              </div>
+              <BlocoEditavel
+                rotulo="Observações Gerais / Orientações para ASO:"
+                valor={currentPcmso.observacoes}
+                somenteLeitura={!allowEdit || isReadOnly}
+                textoSeVazio="Sem observações registradas."
+                placeholder="Orientações que devem chegar a quem emite o ASO."
+                onSalvar={(texto) =>
+                  updatePcmso.mutate({ id: currentPcmso.id, observacoes: texto || null })
+                }
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -471,10 +537,22 @@ export default function SgsstPcmsoDetailPage() {
       />
 
       {/* Modal Configurar Exame Previsto */}
-      <Dialog open={isAddExameOpen} onOpenChange={setIsAddExameOpen}>
+      <Dialog
+        open={isAddExameOpen}
+        onOpenChange={(aberto) => {
+          setIsAddExameOpen(aberto);
+          // Fechar sem salvar nao pode deixar o modo de edicao ligado: o proximo
+          // "Configurar" sobrescreveria o exame que estava sendo editado.
+          if (!aberto) setEditandoExameId(null);
+        }}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Configurar Exame Ocupacional Previsto</DialogTitle>
+            <DialogTitle>
+              {editandoExameId
+                ? "Editar Exame Ocupacional Previsto"
+                : "Configurar Exame Ocupacional Previsto"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddExameSubmit} className="space-y-4 py-2 text-xs sm:text-sm">
             <div className="space-y-1.5">
@@ -618,8 +696,11 @@ export default function SgsstPcmsoDetailPage() {
               <Button type="button" variant="outline" onClick={() => setIsAddExameOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={!nomeExame.trim()}>
-                Configurar Exame
+              <Button
+                type="submit"
+                disabled={!nomeExame.trim() || addExame.isPending || updateExame.isPending}
+              >
+                {editandoExameId ? "Salvar alterações" : "Configurar Exame"}
               </Button>
             </DialogFooter>
           </form>
