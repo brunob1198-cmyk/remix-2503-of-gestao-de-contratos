@@ -318,6 +318,33 @@ export function riscosDoGhe(params: {
   return { situacao: "OK", riscos };
 }
 
+/**
+ * Funções do grupo que ainda não constam como expostas ao risco.
+ *
+ * Serve ao inventário do PGR, onde marcar o GHE e marcar as funções são duas
+ * operações diferentes: o grupo é o que aparece na seção de GHE do PCMSO, e as
+ * funções é o que liga o risco a quem o exerce.
+ *
+ * Marcar as funções automaticamente ao escolher o grupo seria decidir pelo
+ * usuário, e há caso legítimo em que o risco alcança o grupo como local sem
+ * alcançar toda função dele — o visitante do setor ruidoso está no local e não é
+ * função do grupo. Então a regra é apontar a diferença e deixar o atalho à mão,
+ * nunca agir sozinho.
+ *
+ * `funcoesDoGrupo` em `null` é "não carregou": devolve lista vazia porque não há
+ * diferença CONHECIDA a apontar — o que é diferente de uma diferença de zero.
+ */
+export function funcoesFaltandoDoGrupo(params: {
+  gheId: string | null | undefined;
+  funcoesDoGrupo: readonly FuncaoDoGhe[] | null | undefined;
+  funcaoIdsMarcados: readonly string[];
+}): FuncaoDoGhe[] {
+  if (!params.gheId || params.gheId === "none") return [];
+  if (!params.funcoesDoGrupo) return [];
+  const marcados = new Set(params.funcaoIdsMarcados);
+  return params.funcoesDoGrupo.filter((f) => !marcados.has(f.id));
+}
+
 export interface DivergenciaQuantidade {
   declarada: number | null;
   contada: number | null;

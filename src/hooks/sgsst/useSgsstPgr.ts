@@ -88,6 +88,8 @@ export interface SgsstPgrInventario {
   descricao_local?: string | null;
   /** Grupos que nao correspondem a funcao cadastrada (terceiros, visitantes). */
   grupos_expostos?: string | null;
+  /** GHE exposto ao risco. Alternativo ao vinculo por funcao; os dois convivem. */
+  ghe_id?: string | null;
   // Dados de monitoramento.
   intensidade_medida?: number | null;
   unidade_medida?: string | null;
