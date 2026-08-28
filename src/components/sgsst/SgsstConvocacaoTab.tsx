@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CalendarClock, AlertTriangle, CheckCircle2, Clock, HelpCircle } from "lucide-react";
+import { CalendarClock, AlertTriangle, CheckCircle2, Clock, HelpCircle, Send } from "lucide-react";
 import { format } from "date-fns";
 import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
 import { SgsstStatCards } from "@/components/sgsst/SgsstStatCards";
@@ -29,7 +29,7 @@ const TOM_SITUACAO: Record<SituacaoConvocacao, string> = {
 };
 
 export function SgsstConvocacaoTab() {
-  const { itens, resumo, isLoading, error, refetch } = useSgsstConvocacao();
+  const { itens, resumo, isLoading, error, refetch, porQueVazia } = useSgsstConvocacao();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSituacao, setFilterSituacao] = useState<string>("PENDENTES");
@@ -91,8 +91,12 @@ export function SgsstConvocacaoTab() {
     modulo: "Convocação",
     onRetry: refetch,
     emptyTitulo: "Ninguém a convocar",
+    // Nomeia a condição que faltou em vez de listar as três e deixar o usuário
+    // adivinhar. Sem filtro ativo, a lista vazia quase sempre é pré-requisito
+    // faltando — e o mais comum é o PCMSO estar em rascunho.
     emptyDescricao:
-      "A convocação cruza a periodicidade dos exames do PCMSO com a data do último exame de cada trabalhador ativo. Precisa de um PCMSO ativo com exames previstos e de colaboradores cadastrados.",
+      porQueVazia ||
+      "A convocação cruza a periodicidade dos exames do PCMSO com a data do último exame de cada trabalhador ativo.",
     filtrado: temFiltroAtivo,
     onLimparFiltros: limparFiltros,
   });
@@ -281,6 +285,18 @@ export function SgsstConvocacaoTab() {
                         <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
                           <CheckCircle2 className="h-3 w-3" />
                           {format(new Date(`${i.dataAgendada}T00:00:00`), "dd/MM")}
+                        </span>
+                      ) : i.jaSolicitado ? (
+                        /* Pedido aberto sem data marcada — o estado logo depois de
+                           emitir a guia. Antes caía no travessão, e a fila mandava
+                           convocar de novo quem já tinha sido convocado. */
+                        <span className="inline-flex items-center gap-1 text-sky-700 dark:text-sky-400">
+                          <Send className="h-3 w-3" />
+                          solicitado
+                          {i.dataSolicitacao
+                            ? ` ${format(new Date(`${i.dataSolicitacao}T00:00:00`), "dd/MM")}`
+                            : ""}
+                          <span className="text-muted-foreground">· sem data</span>
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>

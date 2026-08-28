@@ -445,19 +445,10 @@ export async function emitirPdfTimbrado(params: {
 }): Promise<void> {
   const { default: html2pdf } = await import("html2pdf.js");
 
-  const container = document.createElement("div");
-  container.innerHTML =
-    (params.marcaDagua === false ? "" : cssMarcaDagua()) + params.html;
-
-  // O container PRECISA estar no documento antes de paginar. Ver `aguardarFontes`.
-  //
-  // A largura é a mesma que o html2pdf dá ao clone dele (largura útil da página em
-  // milímetros): medir numa largura e rasterizar em outra é como as quebras saíam
-  // do lugar.
-  container.id = `doc-emissao-${contadorDeEmissao++}`;
-  container.style.cssText =
-    `position: fixed; left: -100000px; top: 0; width: ${larguraRenderMm()}mm;`;
-  document.body.appendChild(container);
+  const { palco, container } = montarPalcoDeEmissao(
+    (params.marcaDagua === false ? "" : cssMarcaDagua()) + params.html
+  );
+  document.body.appendChild(palco);
 
   try {
     await aguardarFontes(container);
@@ -475,14 +466,47 @@ export async function emitirPdfTimbrado(params: {
 
     baixar(timbrado, params.nomeArquivo);
   } finally {
-    // Sai do documento mesmo se a emissão falhar: um container esquecido leva a
-    // folha de estilo do documento junto, e ela vaza para a interface.
-    container.remove();
+    // Sai do documento mesmo se a emissão falhar: um palco esquecido leva a folha
+    // de estilo do documento junto, e ela vaza para a interface.
+    palco.remove();
   }
 }
 
 /** Identificador único por emissão: o seletor que fixa a fonte precisa dele. */
 let contadorDeEmissao = 0;
+
+/**
+ * Monta os dois elementos da emissão: o palco e o container.
+ *
+ * O POSICIONAMENTO VAI NO PALCO, NUNCA NO CONTAINER — e é por isto que esta
+ * função existe separada e testada.
+ *
+ * O html2pdf CLONA o elemento que recebe e insere o clone dentro do container
+ * dele. O clone leva junto o `style` inline. Quando o `position: fixed` que tira o
+ * conteúdo da tela ficava no próprio container, ele viajava para dentro do
+ * html2pdf: o clone saía do fluxo, o container da biblioteca ficava com ALTURA
+ * ZERO e **todo documento saía em branco** — só o timbre aparecia, porque ele é
+ * estampado depois, pelo pdf-lib, direto no PDF já paginado.
+ *
+ * Então: o `palco` fica fora da tela e é nosso; o `container` carrega só a largura,
+ * que é o que precisa ser medido, e é ele que o html2pdf recebe.
+ */
+export function montarPalcoDeEmissao(html: string): {
+  palco: HTMLDivElement;
+  container: HTMLDivElement;
+} {
+  const palco = document.createElement("div");
+  palco.style.cssText =
+    `position: fixed; left: -100000px; top: 0; width: ${larguraRenderMm()}mm;`;
+
+  const container = document.createElement("div");
+  container.id = `doc-emissao-${contadorDeEmissao++}`;
+  container.style.width = "100%";
+  container.innerHTML = html;
+
+  palco.appendChild(container);
+  return { palco, container };
+}
 
 /** Largura útil da página, em mm — a mesma que o html2pdf dá ao container. */
 function larguraRenderMm(): number {

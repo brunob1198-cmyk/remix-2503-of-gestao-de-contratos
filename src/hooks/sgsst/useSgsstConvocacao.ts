@@ -6,6 +6,7 @@ import {
   faixaSeAplica,
   idadeEm,
   ordenarPorUrgencia,
+  diagnosticoDaFilaVazia,
   type SituacaoConvocacao,
 } from "@/utils/sgsstConvocacao";
 import type { FaixaEtariaPcmso } from "@/hooks/sgsst/useSgsstPcmso";
@@ -44,6 +45,16 @@ export interface ItemConvocacao {
   /** Já existe exame agendado para este trabalhador com este nome. */
   jaAgendado: boolean;
   dataAgendada: string | null;
+  /**
+   * Já existe SOLICITAÇÃO aberta, mesmo sem data marcada.
+   *
+   * É o estado logo depois de emitir a guia de encaminhamento: o exame foi pedido
+   * e ainda não tem data na clínica. Sem este campo a fila continuava mandando
+   * convocar quem já foi convocado — e não havia como distinguir o que já foi
+   * providenciado do que nem começou.
+   */
+  jaSolicitado: boolean;
+  dataSolicitacao: string | null;
 }
 
 interface ColabLinha {
@@ -71,6 +82,7 @@ interface ExameFeitoLinha {
   colaborador_id: string;
   nome_exame: string;
   data_realizacao: string | null;
+  data_solicitacao: string | null;
   data_agendada: string | null;
   status: string | null;
 }
@@ -85,7 +97,7 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
     // A base muda quando um exame é lançado; meio minuto evita recalcular a cada
     // navegação sem deixar o painel obsoleto.
     staleTime: 1000 * 30,
-    queryFn: async (): Promise<ItemConvocacao[]> => {
+    queryFn: async (): Promise<{ itens: ItemConvocacao[]; porQueVazia: string }> => {
       const [colabRes, previstosRes, feitosRes] = await Promise.all([
         supabase
           .from("sgsst_colaborador_dados" as never)
@@ -106,7 +118,7 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
 
         supabase
           .from("sgsst_exames" as never)
-          .select("colaborador_id, nome_exame, data_realizacao, data_agendada, status") as never as Promise<{
+          .select("colaborador_id, nome_exame, data_realizacao, data_agendada, data_solicitacao, status") as never as Promise<{
           data: ExameFeitoLinha[] | null;
           error: unknown;
         }>,
@@ -117,13 +129,16 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
       }
 
       const colaboradores = colabRes.data ?? [];
-      const previstos = (previstosRes.data ?? []).filter((p) => p.pcmso?.status === "ATIVO");
+      const previstosTodos = previstosRes.data ?? [];
+      const previstos = previstosTodos.filter((p) => p.pcmso?.status === "ATIVO");
       const feitos = feitosRes.data ?? [];
 
       // Última realização por trabalhador + nome do exame.
       const ultimaPor = new Map<string, string>();
       // Agendamento futuro por trabalhador + nome do exame.
       const agendadoPor = new Map<string, string>();
+      // Solicitacao aberta por trabalhador + nome do exame, com ou sem data.
+      const solicitadoPor = new Map<string, string>();
 
       for (const f of feitos) {
         const chave = `${f.colaborador_id}::${f.nome_exame}`;
@@ -136,6 +151,23 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
         if (f.data_agendada && (f.status === "AGENDADO" || f.status === "PENDENTE")) {
           const atual = agendadoPor.get(chave);
           if (!atual || f.data_agendada < atual) agendadoPor.set(chave, f.data_agendada);
+        }
+
+        // Solicitação aberta, COM OU SEM data marcada.
+        //
+        // O mapa de agendamento acima exige `data_agendada`, e por isso a
+        // solicitação recém-criada — o estado logo depois de emitir a guia — era
+        // invisível aqui: a fila continuava mandando convocar quem já tinha sido
+        // convocado. Registrar a solicitação separadamente é o que permite
+        // distinguir "ainda não pedi" de "pedi e falta marcar".
+        if (f.status === "PENDENTE" || f.status === "AGENDADO") {
+          const atual = solicitadoPor.get(chave);
+          const data = f.data_solicitacao ?? "";
+          // Vence a mais ANTIGA: é ela que mede há quanto tempo o pedido está
+          // aberto, que é o que interessa acompanhar.
+          if (atual === undefined || (data && data < atual)) {
+            solicitadoPor.set(chave, data);
+          }
         }
       }
 
@@ -179,15 +211,27 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
             diasRestantes: calc.diasRestantes,
             jaAgendado: !!agendada,
             dataAgendada: agendada,
+            jaSolicitado: solicitadoPor.has(chave),
+            dataSolicitacao: solicitadoPor.get(chave) || null,
           });
         }
       }
 
-      return ordenarPorUrgencia(itens);
+      return {
+        itens: ordenarPorUrgencia(itens),
+        // Guardado no resultado da consulta porque so aqui se sabe POR QUE a fila
+        // ficou vazia — e a tela precisa dizer isso em vez de listar as tres
+        // condicoes e deixar o usuario adivinhar qual falhou.
+        porQueVazia: diagnosticoDaFilaVazia({
+          colaboradoresAtivos: colaboradores.length,
+          previstosTotal: previstosTodos.length,
+          previstosAtivos: previstos.length,
+        }),
+      };
     },
   });
 
-  const itens = data ?? [];
+  const itens = data?.itens ?? [];
 
   return {
     itens,
@@ -200,6 +244,8 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
       semBase: itens.filter((i) => i.situacao === "SEM_BASE").length,
       agendados: itens.filter((i) => i.jaAgendado).length,
     },
+    /** Explica a fila vazia, nomeando a condicao que faltou. */
+    porQueVazia: data?.porQueVazia ?? "",
     isLoading,
     error,
     refetch,
