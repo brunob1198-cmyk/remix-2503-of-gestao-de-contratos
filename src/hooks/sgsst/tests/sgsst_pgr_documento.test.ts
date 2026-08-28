@@ -105,12 +105,17 @@ describe("montarHtmlPgr", () => {
 
   it("traz as secoes obrigatorias na ordem da norma", () => {
     const html = montarHtmlPgr(dados());
+    // Sem o numero: inserir uma secao nova e legitimo e renumera todas as
+    // seguintes. O invariante e a SEQUENCIA, nao o numero de cada uma.
     const ordem = [
-      "1. Objetivo",
-      "2. Metodologia",
-      "3. Panorama do inventário",
-      "4. Inventário de riscos",
-      "5. Plano de ação",
+      "Objetivo",
+      "Base legal",
+      "Metodologia",
+      "Panorama do inventário",
+      "Inventário de riscos",
+      "Plano de ação",
+      "Acidentes e doenças no período",
+      "Observações",
     ];
     const posicoes = ordem.map((t) => html.indexOf(t));
     expect(posicoes.every((p) => p >= 0)).toBe(true);
@@ -481,11 +486,15 @@ describe("secao de acidentes no PGR", () => {
     expect(html).toContain("Base (HHT)");
   });
 
-  it("a secao tem numero 6 e cita a alinea, e Observacoes vira 7", () => {
+  it("a secao cita a alinea e vem ANTES de Observacoes", () => {
+    // Nao fixa o numero: base legal entrou como secao 2 e renumerou daqui para
+    // baixo. Observacoes fecha o documento, e isso e o que importa manter.
     const html = montarHtmlPgr(dados({ incidentes: [] }));
-    expect(html).toContain("6. Acidentes e doenças no período");
+    expect(html).toContain("Acidentes e doenças no período");
     expect(html).toContain("1.5.5.5");
-    expect(html).toContain("7. Observações");
+    expect(html.indexOf("Acidentes e doenças no período")).toBeLessThan(
+      html.indexOf("Observações")
+    );
   });
 
   it("sem o dado carregado, diz isso em vez de dizer que nao houve acidente", () => {

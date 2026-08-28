@@ -26,6 +26,7 @@ import {
 } from "@/utils/sgsstPgrAcidentes";
 import { comAfastamento, formatarTaxa } from "@/utils/sgsstIndicadores";
 import { hojeIso } from "@/utils/dataLocal";
+import { BASE_LEGAL_PGR, type ReferenciaLegal } from "@/utils/sgsstBaseLegal";
 
 /**
  * Emissão do PGR — Programa de Gerenciamento de Riscos, NR-01.
@@ -135,6 +136,45 @@ function gruposTexto(item: SgsstPgrInventario, funcoes: InventarioFuncao[]): str
  * existir so tem ele, e deixa-los sair como "nenhuma registrada" seria o
  * documento sub-reportar controle que existe.
  */
+/**
+ * Seção de base legal.
+ *
+ * Compartilhada entre PGR e PCMSO: cada documento passa a sua lista, porque as
+ * normas centrais de um são periféricas no outro.
+ *
+ * A tabela traz a pertinência de cada norma, e não só a sigla. Lista de siglas
+ * obriga quem lê a supor por que a norma está ali; a pertinência é o que permite
+ * conferir o escopo do documento.
+ */
+function secaoBaseLegal(referencias: readonly ReferenciaLegal[]): string {
+  return `
+    <p>
+      As referências abaixo são a base legal <strong>observada</strong> na elaboração
+      deste programa. A declaração de conformidade é do profissional que assina o
+      documento; esta lista informa o escopo normativo considerado.
+    </p>
+
+    <table class="doc-tabela">
+      <thead>
+        <tr><th>Norma</th><th>Do que trata</th><th>Por que se aplica a este programa</th></tr>
+      </thead>
+      <tbody>
+        ${referencias
+          .map(
+            (r) => `
+              <tr>
+                <td><strong>${esc(r.norma)}</strong></td>
+                <td>${esc(r.ementa)}</td>
+                <td>${esc(r.pertinencia)}</td>
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
 function medidasExistentesTexto(
   item: SgsstPgrInventario,
   medidas: SgsstPgrMedidaControle[]
@@ -456,13 +496,16 @@ export function montarHtmlPgr(dados: PgrDocumentoDados): string {
       <h2 class="doc-sec">1. Objetivo</h2>
       ${bloco(pgr.objetivo, "Objetivo não preenchido.")}
 
-      <h2 class="doc-sec">2. Metodologia de identificação e avaliação de riscos</h2>
+      <h2 class="doc-sec">2. Base legal <span class="doc-sub">requisitos legais e infralegais</span></h2>
+      ${secaoBaseLegal(BASE_LEGAL_PGR)}
+
+      <h2 class="doc-sec">3. Metodologia de identificação e avaliação de riscos</h2>
       ${bloco(
         pgr.metodologia,
         "Metodologia não descrita. A NR-01 exige que o programa declare como os riscos foram identificados e avaliados."
       )}
 
-      <h2 class="doc-sec">3. Panorama do inventário</h2>
+      <h2 class="doc-sec">4. Panorama do inventário</h2>
       <div class="doc-cards">
         <div class="doc-card">
           <span class="rot">Itens no inventário</span>
@@ -497,7 +540,7 @@ export function montarHtmlPgr(dados: PgrDocumentoDados): string {
           : ""
       }
 
-      <h2 class="doc-sec">4. Inventário de riscos <span class="doc-sub">NR-01 1.5.7.3.2</span></h2>
+      <h2 class="doc-sec">5. Inventário de riscos <span class="doc-sub">NR-01 1.5.7.3.2</span></h2>
       ${
         ordenado.length === 0
           ? `<div class="doc-aviso">Inventário vazio. Um PGR sem inventário de riscos não
@@ -532,7 +575,7 @@ export function montarHtmlPgr(dados: PgrDocumentoDados): string {
              </table>`
       }
 
-      <h2 class="doc-sec">5. Plano de ação <span class="doc-sub">NR-01 1.5.5.2</span></h2>
+      <h2 class="doc-sec">6. Plano de ação <span class="doc-sub">NR-01 1.5.5.2</span></h2>
       ${
         todasMedidas.length === 0
           ? `<div class="doc-aviso">Nenhuma medida de controle registrada. A norma exige plano
@@ -557,10 +600,10 @@ export function montarHtmlPgr(dados: PgrDocumentoDados): string {
              </table>`
       }
 
-      <h2 class="doc-sec">6. Acidentes e doenças no período <span class="doc-sub">NR-01 1.5.5.5</span></h2>
+      <h2 class="doc-sec">7. Acidentes e doenças no período <span class="doc-sub">NR-01 1.5.5.5</span></h2>
       ${secaoAcidentes(dados)}
 
-      <h2 class="doc-sec">7. Observações</h2>
+      <h2 class="doc-sec">8. Observações</h2>
       ${bloco(pgr.observacoes, "Sem observações registradas.")}
 
       <div class="doc-assin">
