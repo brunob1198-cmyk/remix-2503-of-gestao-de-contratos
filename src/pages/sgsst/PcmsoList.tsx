@@ -21,6 +21,13 @@ import {
 } from "@/hooks/sgsst/useSgsstAsosAndExames";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { gerarPdfAso, pendenciasAso } from "@/lib/asoDocumento";
+import { GuiaExameDialog } from "@/components/sgsst/GuiaExameDialog";
+import {
+  podeEmitirGuia,
+  SIGNIFICADO_DO_STATUS,
+  type ExameParaGuia,
+  type StatusExameParaGuia,
+} from "@/utils/sgsstGuiaExame";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -56,6 +63,7 @@ import {
   ClipboardList,
   CalendarClock,
   Building2,
+  Send,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { PcmsoFormDialog } from "@/components/sgsst/PcmsoFormDialog";
@@ -282,6 +290,15 @@ export default function SgsstPcmsoListPage() {
     } else {
       await createAso.mutateAsync(data);
     }
+  };
+
+  const [guiaExame, setGuiaExame] = useState<ExameParaGuia | null>(null);
+  const [isGuiaOpen, setIsGuiaOpen] = useState(false);
+
+  const abrirGuia = (e: { id: string }) => {
+    const alvo = (exames as unknown as ExameParaGuia[]).find((x) => x.id === e.id) ?? null;
+    setGuiaExame(alvo);
+    setIsGuiaOpen(true);
   };
 
   const handleEmitAsoFromExame = (exameId: string) => {
@@ -811,9 +828,28 @@ export default function SgsstPcmsoListPage() {
                           <TableCell><Badge variant="outline" className="text-xs">{e.tipo}</Badge></TableCell>
                           <TableCell className="text-xs font-mono">{formatDateStr(e.data_solicitacao)}</TableCell>
                           <TableCell className="text-xs font-mono">{formatDateStr(e.data_realizacao)}</TableCell>
-                          <TableCell><Badge variant="outline" className="text-xs font-bold">{e.status}</Badge></TableCell>
+                          <TableCell>
+                            <span title={SIGNIFICADO_DO_STATUS[e.status as StatusExameParaGuia] ?? e.status}>
+                              <Badge variant="outline" className="text-xs font-bold">{e.status}</Badge>
+                            </span>
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
+                              {/* Antes de o exame acontecer, o documento útil é a
+                                  GUIA — o papel que o trabalhador leva ao médico.
+                                  Sem ela, a única forma de imprimir algo era
+                                  marcar como realizado um exame que não ocorreu. */}
+                              {allowEdit && podeEmitirGuia(e.status as StatusExameParaGuia).pode && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1 border-sky-300 bg-sky-50 text-xs text-sky-800 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300"
+                                  onClick={() => abrirGuia(e)}
+                                >
+                                  <Send className="h-3.5 w-3.5" /> Emitir guia
+                                </Button>
+                              )}
+
                               {allowEdit && e.status === "REALIZADO" && (
                                 <Button
                                   variant="outline"
@@ -906,6 +942,26 @@ export default function SgsstPcmsoListPage() {
         open={isAsoDetailOpen}
         onOpenChange={setIsAsoDetailOpen}
         aso={viewingAso}
+      />
+
+      <GuiaExameDialog
+        open={isGuiaOpen}
+        onOpenChange={setIsGuiaOpen}
+        exame={guiaExame}
+        exames={exames as unknown as ExameParaGuia[]}
+        nomeDoTrabalhador={
+          guiaExame
+            ? (() => {
+                const alvo = exames.find((x) => x.id === guiaExame.id);
+                return (
+                  alvo?.colaborador?.profile?.nome ||
+                  alvo?.colaborador?.recurso?.nome ||
+                  alvo?.colaborador?.nome ||
+                  "Sem Nome"
+                );
+              })()
+            : ""
+        }
       />
 
       <ExameFormDialog
