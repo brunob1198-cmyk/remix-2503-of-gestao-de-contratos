@@ -403,11 +403,14 @@ export function useSgsstPcmsoExames(pcmsoId?: string) {
       id: string;
     }) => {
       const { data, error } = await (supabase
-        .from("sgsst_pcmso_exames" as any)
-        .update(campos)
+        .from("sgsst_pcmso_exames" as never)
+        .update(campos as never)
         .eq("id", id)
         .select()
-        .single() as any);
+        .single() as never as Promise<{
+        data: SgsstPcmsoExame | null;
+        error: { message?: string } | null;
+      }>);
 
       if (error) throw error;
       return data as SgsstPcmsoExame;
@@ -416,7 +419,7 @@ export function useSgsstPcmsoExames(pcmsoId?: string) {
       queryClient.invalidateQueries({ queryKey: ["sgsst_pcmso_exames", pcmsoId] });
       toast.success("Exame previsto atualizado!");
     },
-    onError: (err: any) => {
+    onError: (err: { message?: string }) => {
       toast.error(`Erro ao atualizar exame: ${err.message || err}`);
     },
   });
