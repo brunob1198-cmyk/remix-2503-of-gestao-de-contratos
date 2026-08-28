@@ -162,19 +162,41 @@ describe("ativos do papel timbrado", () => {
 
 describe("marca d'água como fundo CSS", () => {
   it("o azulejo tem a altura de uma página de conteúdo", () => {
-    // A conta que faz a marca cair uma vez por folha: a largura de render
-    // (1024 px) mapeia a largura útil, o que dá a escala px/mm, e a altura útil
-    // nessa escala é a altura do azulejo.
+    // ESTE TESTE JÁ EXISTIU COM A CONTA ERRADA, e foi por isso que o defeito
+    // durou. Ele fixava `alturaUtilMm * 1024 / 186`, supondo que o conteúdo fosse
+    // diagramado a 1024px de largura — o `windowWidth` passado ao html2canvas.
+    // Não é o que acontece: o html2pdf fixa a largura do container em
+    // MILÍMETROS (mediu-se `width: 186.002mm`), e o navegador resolve isso em
+    // 703px, não 1024. O azulejo saía 1,457× mais alto que a folha.
+    //
+    // A conta certa é a do próprio html2pdf, que usa a definição CSS de
+    // milímetro (96 dpi): `toPx(mm) = mm * 96 / 25.4`. É essa altura que ele usa
+    // tanto para decidir onde quebrar quanto para fatiar o raster, então é essa
+    // que a marca d'água tem de acompanhar.
     //
     // A área útil vem das margens EXPORTADAS, e não de um número repetido aqui.
-    // Repetir era o jeito silencioso de as duas divergirem — e as margens agora
-    // são calculadas a partir do tamanho do timbre, então mudam sozinhas.
     const alturaUtilMm = 297 - MARGEM_SUPERIOR_MM - MARGEM_INFERIOR_MM;
     const altura = alturaPaginaEmPixels();
 
-    expect(altura).toBeCloseTo((alturaUtilMm * 1024) / 186, 4);
-    expect(altura).toBeGreaterThan(1300);
-    expect(altura).toBeLessThan(1450);
+    expect(altura).toBeCloseTo((alturaUtilMm * 96) / 25.4, 4);
+
+    // Medido no pipeline real: `pageSize.inner.px.height` devolveu 949 para estas
+    // margens. A faixa é estreita de propósito — é o número que precisa casar.
+    expect(altura).toBeGreaterThan(940);
+    expect(altura).toBeLessThan(960);
+  });
+
+  it("a altura do azulejo reproduz a fórmula de paginação do html2pdf", () => {
+    // A biblioteca calcula a altura da página em px com
+    // `Math.floor(val * k / 72 * 96)`, onde `k = 72 / 25.4` para unidade mm.
+    // Reproduzir a fórmula aqui é o que impede as duas contas de divergirem de
+    // novo: se alguém trocar a escala do azulejo, este teste cai antes de a marca
+    // desalinhar em produção.
+    const alturaUtilMm = 297 - MARGEM_SUPERIOR_MM - MARGEM_INFERIOR_MM;
+    const kMm = 72 / 25.4;
+    const comoOHtml2pdfFaz = Math.floor(((alturaUtilMm * kMm) / 72) * 96);
+
+    expect(Math.floor(alturaPaginaEmPixels())).toBe(comoOHtml2pdfFaz);
   });
 
   it("o CSS repete verticalmente e usa a altura calculada", () => {
@@ -188,19 +210,22 @@ describe("marca d'água como fundo CSS", () => {
     expect(css).toContain("top center");
   });
 
-  it("a largura de render do CSS casa com a das opções do html2pdf", () => {
-    // A escala px/mm do azulejo vem do `windowWidth`. Se os dois divergirem, a
-    // marca desalinha — e nada mais avisaria.
+  it("o azulejo acompanha as MARGENS das opções, não o windowWidth", () => {
+    // A versão anterior deste teste derivava a escala do `windowWidth`, afirmando
+    // que era dele que vinha o px/mm do azulejo. É falso: o html2pdf fixa a
+    // largura do container em milímetros, então o `windowWidth` não define a
+    // largura de diagramação e não entra nesta conta.
+    //
+    // O que precisa casar são as MARGENS: elas definem a área útil, e é a área
+    // útil que dá a altura da folha.
     const opcoes = opcoesPdfTimbrado("x.pdf") as {
       html2canvas: { windowWidth: number };
       margin: number[];
     };
 
-    const larguraUtilMm = 210 - opcoes.margin[1] - opcoes.margin[3];
     const alturaUtilMm = 297 - opcoes.margin[0] - opcoes.margin[2];
-    const esperado = (alturaUtilMm * opcoes.html2canvas.windowWidth) / larguraUtilMm;
 
-    expect(alturaPaginaEmPixels()).toBeCloseTo(esperado, 4);
+    expect(alturaPaginaEmPixels()).toBeCloseTo((alturaUtilMm * 96) / 25.4, 4);
   });
 
   it("mantém JPEG: PNG transparente pesava ~1,2 MB por página", () => {
@@ -403,18 +428,20 @@ describe("resolucao do raster", () => {
   });
 
   it("o scale nao mexe no alinhamento do azulejo", () => {
-    // O `scale` multiplica os pixels do canvas; o layout em CSS continua com
-    // `windowWidth` de largura, e a conta do azulejo e em pixel de CSS. Se alguem
-    // passar a considerar o scale na altura do azulejo, a marca desalinha.
+    // O `scale` multiplica os pixels do canvas; a diagramação em CSS não muda, e a
+    // conta do azulejo é em pixel de CSS. Se alguém passar a considerar o scale na
+    // altura do azulejo, a marca desalinha.
     const opcoes = opcoesPdfTimbrado("x.pdf") as {
       html2canvas: { windowWidth: number; scale: number };
       margin: number[];
     };
 
-    const larguraUtilMm = 210 - opcoes.margin[1] - opcoes.margin[3];
     const alturaUtilMm = 297 - opcoes.margin[0] - opcoes.margin[2];
-    const semScale = (alturaUtilMm * opcoes.html2canvas.windowWidth) / larguraUtilMm;
+    const semScale = (alturaUtilMm * 96) / 25.4;
 
     expect(alturaPaginaEmPixels()).toBeCloseTo(semScale, 4);
+    // E o scale segue valendo 2: a checagem acima não deve virar desculpa para
+    // baixar a resolução do raster.
+    expect(opcoes.html2canvas.scale).toBe(2);
   });
 });

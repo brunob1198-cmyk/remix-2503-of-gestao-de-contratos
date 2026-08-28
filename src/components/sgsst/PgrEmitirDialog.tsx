@@ -25,6 +25,7 @@ import {
   type RegistroHht,
 } from "@/utils/sgsstPgrAcidentes";
 import { hojeIso } from "@/utils/dataLocal";
+import { useSgsstGhe } from "@/hooks/sgsst/useSgsstGhe";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { gerarPdfPgr, pendenciasPgr, type PgrDocumentoDados } from "@/lib/pgrDocumento";
@@ -105,22 +106,30 @@ export function PgrEmitirDialog({ open, onOpenChange, pgr }: PgrEmitirDialogProp
 
   const hht = hhtDoPeriodo(registrosHht, periodo, pgr.projeto_id);
 
+  const { ghes } = useSgsstGhe();
+
   const dados: PgrDocumentoDados = useMemo(() => {
     const funcoesPorItem: Record<string, ReturnType<typeof funcoesDoItem>> = {};
     for (const item of inventario) {
       funcoesPorItem[item.id] = funcoesDoItem(item.id);
     }
 
+    // Só os GHEs referenciados pelo inventário: um mapa com todos os grupos da
+    // empresa não erraria nada, mas carregaria no documento grupo que este PGR
+    // não menciona.
+    const ghesPorId = new Map(ghes.map((g) => [g.id, `${g.codigo} — ${g.nome}`]));
+
     return {
       pgr,
       inventario,
       medidasPorItem,
       funcoesPorItem,
+      ghesPorId,
       incidentes,
       hht,
       geradoPor: profile?.nome ?? null,
     };
-  }, [pgr, inventario, medidasPorItem, funcoesDoItem, incidentes, hht, profile?.nome]);
+  }, [pgr, inventario, medidasPorItem, funcoesDoItem, ghes, incidentes, hht, profile?.nome]);
 
   const pendencias = useMemo(() => pendenciasPgr(dados), [dados]);
 

@@ -51,6 +51,13 @@ export interface PgrDocumentoDados {
   /** Grupos expostos, indexados pelo id do item de inventário. */
   funcoesPorItem: Record<string, InventarioFuncao[]>;
   /**
+   * GHE por id, já formatado como "GHE-01 — Nome".
+   *
+   * Opcional: sem ele o inventário sai como sempre saiu, listando as funções. O
+   * grupo ACRESCENTA informação à célula de grupos expostos; não a substitui.
+   */
+  ghesPorId?: Map<string, string>;
+  /**
    * Ocorrências do projeto dentro do período do PGR. A NR-01 1.5.5.5 manda a
    * análise de acidentes alimentar o gerenciamento de riscos, e sem isto o
    * documento dizia o que PODE acontecer sem nunca dizer o que aconteceu.
@@ -107,9 +114,20 @@ function medicaoTexto(item: SgsstPgrInventario): string {
   return `${medida}${unidade}${limite}${resultado}${data}`;
 }
 
-function gruposTexto(item: SgsstPgrInventario, funcoes: InventarioFuncao[]): string {
+function gruposTexto(
+  item: SgsstPgrInventario,
+  funcoes: InventarioFuncao[],
+  ghesPorId?: Map<string, string>
+): string {
   const nomes = funcoes.map((f) => f.funcao?.nome).filter(Boolean) as string[];
   const partes: string[] = [];
+
+  // O GHE vem primeiro porque é a unidade mais ampla: quem lê precisa saber que o
+  // risco foi levantado para o GRUPO antes de ler quais funções o compõem. E vem
+  // em negrito porque, quando existe, é ele que responde pela alínea "f" — as
+  // funções detalham quem está dentro.
+  const ghe = item.ghe_id ? ghesPorId?.get(item.ghe_id) : undefined;
+  if (ghe) partes.push(`<strong>${esc(ghe)}</strong>`);
 
   if (nomes.length > 0) partes.push(esc(nomes.join(", ")));
   if (item.grupos_expostos?.trim()) partes.push(esc(item.grupos_expostos));
@@ -198,7 +216,8 @@ function linhaInventario(
   item: SgsstPgrInventario,
   indice: number,
   funcoes: InventarioFuncao[],
-  medidas: SgsstPgrMedidaControle[]
+  medidas: SgsstPgrMedidaControle[],
+  ghesPorId?: Map<string, string>
 ): string {
   const exposicao = item.tipo_exposicao
     ? TIPO_EXPOSICAO_LABEL[item.tipo_exposicao] +
@@ -220,7 +239,7 @@ function linhaInventario(
         '<span class="doc-falta">não informado</span>'
       }</td>
       <td>${exposicao}</td>
-      <td>${gruposTexto(item, funcoes)}</td>
+      <td>${gruposTexto(item, funcoes, ghesPorId)}</td>
       <td>${medicaoTexto(item)}</td>
       <td class="doc-num">${item.probabilidade} × ${item.severidade} = ${
         item.nivel_risco ?? item.probabilidade * item.severidade
@@ -567,7 +586,8 @@ export function montarHtmlPgr(dados: PgrDocumentoDados): string {
                       item,
                       i + 1,
                       funcoesPorItem[item.id] ?? [],
-                      medidasPorItem[item.id] ?? []
+                      medidasPorItem[item.id] ?? [],
+                      dados.ghesPorId
                     )
                   )
                   .join("")}
