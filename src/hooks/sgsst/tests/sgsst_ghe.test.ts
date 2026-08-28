@@ -7,6 +7,7 @@ import {
   riscosDoGhe,
   divergenciaDeQuantidade,
   quadroDeFuncoes,
+  funcoesFaltandoDoGrupo,
   pendenciasDoGhe,
   OCASIOES_EXAME,
   type ExamePrevistoGhe,
@@ -362,5 +363,48 @@ describe("pendenciasDoGhe", () => {
       riscos: { situacao: "OK", riscos: [] },
     });
     expect(zero.join(" ")).not.toContain("não declarada");
+  });
+});
+
+describe("funcoesFaltandoDoGrupo", () => {
+  const funcoes = [
+    { id: "f1", nome: "Mecânico" },
+    { id: "f2", nome: "Soldador" },
+  ];
+
+  it("sem grupo escolhido, não aponta diferença", () => {
+    expect(
+      funcoesFaltandoDoGrupo({ gheId: "none", funcoesDoGrupo: funcoes, funcaoIdsMarcados: [] })
+    ).toEqual([]);
+    expect(
+      funcoesFaltandoDoGrupo({ gheId: null, funcoesDoGrupo: funcoes, funcaoIdsMarcados: [] })
+    ).toEqual([]);
+  });
+
+  it("aponta só as que faltam", () => {
+    const faltando = funcoesFaltandoDoGrupo({
+      gheId: "g1",
+      funcoesDoGrupo: funcoes,
+      funcaoIdsMarcados: ["f1"],
+    });
+    expect(faltando.map((f) => f.nome)).toEqual(["Soldador"]);
+  });
+
+  it("nada a apontar quando todas já estão marcadas", () => {
+    expect(
+      funcoesFaltandoDoGrupo({
+        gheId: "g1",
+        funcoesDoGrupo: funcoes,
+        funcaoIdsMarcados: ["f1", "f2"],
+      })
+    ).toEqual([]);
+  });
+
+  it("grupo cujas funções não carregaram não aponta diferença", () => {
+    // `null` é "não sei quais são" e não "são zero". Apontar aqui ofereceria um
+    // atalho que marcaria nada, e sugeriria que o grupo está vazio.
+    expect(
+      funcoesFaltandoDoGrupo({ gheId: "g1", funcoesDoGrupo: null, funcaoIdsMarcados: [] })
+    ).toEqual([]);
   });
 });

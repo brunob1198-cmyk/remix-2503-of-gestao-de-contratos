@@ -12,6 +12,8 @@ import {
   calcularClassificacaoRisco,
   useSgsstFuncoesDoRisco,
 } from "@/hooks/sgsst/useSgsstPgr";
+import { useSgsstGhe } from "@/hooks/sgsst/useSgsstGhe";
+import { funcoesFaltandoDoGrupo } from "@/utils/sgsstGhe";
 import { SgsstRisco } from "@/hooks/sgsst/useSgsstRiscos";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,6 +87,7 @@ export function PgrInventarioFormDialog({
   const [descricaoLocal, setDescricaoLocal] = useState("");
   const [gruposExpostos, setGruposExpostos] = useState("");
   const [funcaoIds, setFuncaoIds] = useState<string[]>([]);
+  const [gheId, setGheId] = useState<string>("none");
   const [tecnicaAvaliacao, setTecnicaAvaliacao] = useState<TecnicaAvaliacao | "">("");
   const [intensidadeMedida, setIntensidadeMedida] = useState("");
   const [unidadeMedida, setUnidadeMedida] = useState("");
@@ -98,6 +101,29 @@ export function PgrInventarioFormDialog({
   const { sugestoes } = useSgsstFuncoesDoRisco(
     open && riscoCatalogoId !== "none" ? riscoCatalogoId : null
   );
+
+  const { ghes, funcoesDoGhe } = useSgsstGhe();
+  const ghesAtivos = ghes.filter((g) => g.status !== "inativo");
+
+  /**
+   * Identidade ESTÁVEL das funções vinculadas.
+   *
+   * O pai monta `funcoesVinculadas` inline (`[]` ao criar, um `.map()` novo ao
+   * editar), então o array chega com identidade diferente a cada render dele. O
+   * efeito de carga abaixo depende dessas funções — e depender do array cru fazia
+   * o formulário INTEIRO se rezerar a cada re-render do pai, apagando o que
+   * estava sendo digitado. Uma revalidação em segundo plano bastava.
+   *
+   * Comparar pelo conteúdo (a string de ids) faz o efeito rodar quando as funções
+   * realmente mudam, e só então.
+   */
+  const idsVinculados = (funcoesVinculadas ?? []).join(",");
+
+  const funcoesDoGrupoFaltando = funcoesFaltandoDoGrupo({
+    gheId,
+    funcoesDoGrupo: gheId === "none" ? null : funcoesDoGhe(gheId),
+    funcaoIdsMarcados: funcaoIds,
+  });
 
   // Load areas (setores)
   const { data: areas = [] } = useQuery({
@@ -147,7 +173,8 @@ export function PgrInventarioFormDialog({
       setTempoExposicao(inventarioItem.tempo_exposicao || "");
       setDescricaoLocal(inventarioItem.descricao_local || "");
       setGruposExpostos(inventarioItem.grupos_expostos || "");
-      setFuncaoIds(funcoesVinculadas ?? []);
+      setFuncaoIds(idsVinculados ? idsVinculados.split(",") : []);
+      setGheId(inventarioItem.ghe_id || "none");
       setTecnicaAvaliacao(inventarioItem.tecnica_avaliacao || "");
       setIntensidadeMedida(
         inventarioItem.intensidade_medida === null ||
@@ -185,6 +212,7 @@ export function PgrInventarioFormDialog({
       setDescricaoLocal("");
       setGruposExpostos("");
       setFuncaoIds([]);
+      setGheId("none");
       setTecnicaAvaliacao("");
       setIntensidadeMedida("");
       setUnidadeMedida("");
@@ -193,7 +221,7 @@ export function PgrInventarioFormDialog({
       setResultadoAvaliacao("");
       setMetodologiaMedicao("");
     }
-  }, [inventarioItem, open, funcoesVinculadas]);
+  }, [inventarioItem, open, idsVinculados]);
 
   /**
    * Escolhido o risco do catálogo, herda o que já está cadastrado lá.
@@ -329,6 +357,7 @@ export function PgrInventarioFormDialog({
       tempo_exposicao: tempoExposicao.trim() || null,
       descricao_local: descricaoLocal.trim() || null,
       grupos_expostos: gruposExpostos.trim() || null,
+      ghe_id: gheId === "none" ? null : gheId,
       tecnica_avaliacao: tecnicaAvaliacao || null,
       intensidade_medida: intensidadeParseada ?? null,
       unidade_medida: unidadeMedida.trim() || null,
@@ -603,6 +632,53 @@ export function PgrInventarioFormDialog({
                 </span>
               </p>
             )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="gheInv">GHE exposto</Label>
+              <Select value={gheId} onValueChange={setGheId}>
+                <SelectTrigger id="gheInv">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">-- Sem grupo --</SelectItem>
+                  {ghesAtivos.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.codigo} — {g.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Marcar o grupo NÃO substitui as funções acima: é o grupo que aparece na seção de
+                GHE do PCMSO, e são as funções que ligam o risco a quem o exerce.
+              </p>
+
+              {funcoesDoGrupoFaltando.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/5 p-2.5">
+                  <p className="text-xs">
+                    O grupo tem{" "}
+                    <strong>
+                      {funcoesDoGrupoFaltando.length} função(ões)
+                    </strong>{" "}
+                    ainda não marcadas como expostas:{" "}
+                    {funcoesDoGrupoFaltando.map((f) => f.nome).join(", ")}.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="shrink-0 gap-1"
+                    onClick={() =>
+                      setFuncaoIds([
+                        ...new Set([...funcaoIds, ...funcoesDoGrupoFaltando.map((f) => f.id)]),
+                      ])
+                    }
+                  >
+                    <Wand2 className="h-3.5 w-3.5" /> Marcar todas
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="gruposExp">Outros grupos expostos</Label>
