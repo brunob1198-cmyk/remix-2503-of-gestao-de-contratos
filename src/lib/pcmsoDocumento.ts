@@ -3,6 +3,18 @@ import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import { estilosDocumentoSgsst } from "@/lib/sgsstDocumentoEstilos";
 import { BASE_LEGAL_PCMSO, type ReferenciaLegal } from "@/utils/sgsstBaseLegal";
 import {
+  matrizExamesDoGhe,
+  riscosDoGhe,
+  cabecalhoDoGhe,
+  quadroDeFuncoes,
+  divergenciaDeQuantidade,
+  ROTULO_OCASIAO,
+  type GheBasico,
+  type FuncaoDoGhe,
+  type RiscoDoInventario,
+  type OrigemDoVinculo,
+} from "@/utils/sgsstGhe";
+import {
   FAIXA_ETARIA_LABEL,
   type SgsstPcmso,
   type SgsstPcmsoExame,
@@ -24,6 +36,35 @@ export interface PcmsoDocumentoDados {
   empresa: { nome?: string | null; cnpj?: string | null } | null;
   /** Nome de quem gerou, para o rodapé de rastreabilidade. */
   geradoPor?: string | null;
+
+  /**
+   * Funções avaliadas pelo programa, para o quadro de descrição das atividades.
+   *
+   * Opcional: quando não vem, a seção não é impressa. Isto é deliberado — um
+   * quadro vazio afirmaria que o programa não avalia função nenhuma, e a
+   * ausência do dado no chamador não é essa afirmação.
+   */
+  funcoes?: readonly FuncaoDoGhe[];
+
+  /** GHEs da organização. Sem eles, a seção de grupos não sai. */
+  ghes?: readonly GheBasico[];
+
+  /** Funções de cada GHE, por `ghe.id`. */
+  funcoesPorGhe?: Map<string, FuncaoDoGhe[]>;
+
+  /** Códigos dos GHEs de cada função, por `funcao.id`. */
+  ghesPorFuncao?: Map<string, string[]>;
+
+  /**
+   * Inventário de riscos do PGR, de onde saem os riscos por GHE.
+   *
+   * `undefined` significa "não foi consultado" e faz a tabela de riscos do grupo
+   * dizer isso, em vez de imprimir "nenhum risco" — que é conclusão diferente.
+   */
+  inventario?: readonly RiscoDoInventario[];
+
+  /** Colaboradores ativos por `funcao.id`, para confrontar com a quantidade declarada. */
+  ativosPorFuncao?: Map<string, number>;
 }
 
 function esc(v: unknown): string {
@@ -175,10 +216,308 @@ function quadroExames(exames: SgsstPcmsoExame[]): string {
 
 
 
+/**
+ * Quadro de funções avaliadas com a descrição detalhada das atividades.
+ *
+ * É a primeira coisa que os modelos de PCMSO trazem, e não por formalidade: a
+ * descrição da atividade é o que permite conferir se o exame previsto faz sentido
+ * para o que a pessoa efetivamente faz. Sem ela, "audiometria — periódico — 12
+ * meses" é uma linha que ninguém consegue contestar nem confirmar.
+ *
+ * Função sem descrição aparece no quadro com a lacuna MARCADA. Omiti-la faria o
+ * documento parecer completo com uma função de menos; marcá-la diz ao leitor
+ * exatamente onde falta levantamento.
+ */
+function secaoQuadroFuncoes(
+  funcoes: readonly FuncaoDoGhe[],
+  ghesPorFuncao?: Map<string, string[]>
+): string {
+  const linhas = quadroDeFuncoes({ funcoes, ghesPorFuncao });
+  if (linhas.length === 0) {
+    return `<p class="doc-aviso">⚠ Nenhuma função cadastrada para este programa.</p>`;
+  }
+
+  const temGhe = linhas.some((l) => l.ghes.length > 0);
+  const semDescricao = linhas.filter((l) => !l.descricao).length;
+
+  const aviso =
+    semDescricao > 0
+      ? `<p class="doc-aviso">⚠ ${semDescricao} ${
+          semDescricao === 1 ? "função está" : "funções estão"
+        } sem descrição detalhada das atividades.</p>`
+      : "";
+
+  return `
+    <p>
+      As funções abaixo são as avaliadas por este programa. A descrição das
+      atividades é a base para o dimensionamento dos exames das seções seguintes.
+    </p>
+    ${aviso}
+    <table class="doc-tabela">
+      <thead>
+        <tr>
+          <th style="width:4%">#</th>
+          <th style="width:20%">Função</th>
+          <th style="width:9%">CBO</th>
+          ${temGhe ? `<th style="width:10%">GHE</th>` : ""}
+          <th>Descrição detalhada das atividades</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${linhas
+          .map(
+            (l) => `
+              <tr>
+                <td>${l.ordem}</td>
+                <td><strong>${esc(l.nome)}</strong></td>
+                <td>${esc(l.cbo) || "—"}</td>
+                ${
+                  temGhe
+                    ? `<td>${
+                        l.ghes.length ? esc(l.ghes.join(", ")) : `<span class="doc-falta">sem GHE</span>`
+                      }</td>`
+                    : ""
+                }
+                <td>${
+                  l.descricao
+                    ? esc(l.descricao)
+                    : `<span class="doc-falta">descrição das atividades não cadastrada</span>`
+                }</td>
+              </tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+/** "grupo", "função" ou "grupo e função" — de onde a previsão veio. */
+function textoDaOrigem(origens: readonly OrigemDoVinculo[]): string {
+  if (origens.length === 0) return "";
+  if (origens.length > 1) return "grupo e função";
+  return origens[0] === "GRUPO" ? "grupo" : "função";
+}
+
+/**
+ * Seção de GHE: um bloco por grupo, com cabeçalho, riscos e matriz de exames.
+ *
+ * A matriz repete o formato dos modelos de mercado (exame nas linhas, ocasião nas
+ * colunas) porque é o formato que o médico examinador e o auditor já leem. Só as
+ * colunas efetivamente usadas são impressas: coluna inteira vazia consome largura
+ * de que as outras precisam, e numa página A4 isso decide se o texto da célula
+ * quebra ou não.
+ *
+ * A coluna de origem existe para o documento não afirmar que todo o grupo faz um
+ * exame que é de uma função específica dentro dele.
+ */
+function secaoGhes(dados: PcmsoDocumentoDados): string {
+  const ghes = (dados.ghes ?? []).filter((g) => (g.status ?? "ativo") !== "inativo");
+  if (ghes.length === 0) return "";
+
+  const blocos = ghes
+    .slice()
+    .sort((a, b) => a.codigo.localeCompare(b.codigo, "pt-BR", { numeric: true }))
+    .map((ghe) => {
+      const funcoes = dados.funcoesPorGhe?.get(ghe.id) ?? [];
+      const funcaoIds = funcoes.map((f) => f.id);
+
+      const matriz = matrizExamesDoGhe({
+        exames: dados.exames,
+        gheId: ghe.id,
+        funcaoIdsDoGhe: funcaoIds,
+      });
+      const riscos = riscosDoGhe({
+        inventario: dados.inventario,
+        gheId: ghe.id,
+        funcaoIdsDoGhe: funcaoIds,
+      });
+
+      const contada = dados.ativosPorFuncao
+        ? funcaoIds.reduce((s, id) => s + (dados.ativosPorFuncao!.get(id) ?? 0), 0)
+        : null;
+      const divergencia = divergenciaDeQuantidade({
+        declarada: ghe.quantidade_trabalhadores,
+        contada,
+      });
+
+      const cabecalho = cabecalhoDoGhe(ghe);
+
+      const tabelaRiscos =
+        riscos.situacao === "DESCONHECIDO"
+          ? `<p class="doc-falta">Inventário de riscos do PGR não consultado nesta emissão.</p>`
+          : riscos.situacao === "SEM_RISCO"
+            ? `<p class="doc-aviso">⚠ Nenhum risco do inventário do PGR alcança este grupo.</p>`
+            : `
+              <table class="doc-tabela">
+                <thead>
+                  <tr>
+                    <th style="width:18%">Risco ambiental</th>
+                    <th style="width:26%">Agente</th>
+                    <th>Danos à saúde</th>
+                    <th style="width:14%">Levantado para</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${riscos.riscos
+                    .map(
+                      (r) => `
+                        <tr>
+                          <td><strong>${esc(r.categoria)}</strong></td>
+                          <td>${esc(r.agente) || "—"}</td>
+                          <td>${
+                            r.danos
+                              ? esc(r.danos)
+                              : `<span class="doc-falta">dano à saúde não descrito</span>`
+                          }</td>
+                          <td>${esc(textoDaOrigem(r.origens))}</td>
+                        </tr>
+                      `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            `;
+
+      const tabelaExames =
+        matriz.situacao === "DESCONHECIDO"
+          ? `<p class="doc-falta">Exames previstos não consultados nesta emissão.</p>`
+          : matriz.situacao === "SEM_EXAME"
+            ? `<p class="doc-aviso">⚠ Nenhum exame previsto para este grupo nem para suas funções.</p>`
+            : `
+              <table class="doc-tabela">
+                <thead>
+                  <tr>
+                    <th>Exame</th>
+                    ${matriz.ocasioesUsadas
+                      .map((o) => `<th style="text-align:center">${esc(ROTULO_OCASIAO[o])}</th>`)
+                      .join("")}
+                    <th style="width:14%">Previsto para</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${matriz.linhas
+                    .map((l) => {
+                      const origens = new Set<OrigemDoVinculo>();
+                      for (const o of matriz.ocasioesUsadas) {
+                        for (const org of l.celulas[o].origens) origens.add(org);
+                      }
+                      return `
+                        <tr>
+                          <td>${esc(l.exame)}</td>
+                          ${matriz.ocasioesUsadas
+                            .map((o) => {
+                              const c = l.celulas[o];
+                              if (!c.previsto) return `<td style="text-align:center">—</td>`;
+                              // A periodicidade substitui o "X" no periódico: o X
+                              // diz que há exame, a periodicidade diz quando — e é
+                              // a segunda informação que se confere na auditoria.
+                              const conteudo = c.periodicidade
+                                ? esc(c.periodicidade)
+                                : "<strong>X</strong>";
+                              return `<td style="text-align:center">${conteudo}</td>`;
+                            })
+                            .join("")}
+                          <td>${esc(textoDaOrigem([...origens]))}</td>
+                        </tr>
+                      `;
+                    })
+                    .join("")}
+                </tbody>
+              </table>
+            `;
+
+      return `
+        <div class="doc-bloco">
+          <div class="tit">${esc(ghe.codigo)} — ${esc(ghe.nome)}</div>
+
+          <table class="doc-grid">
+            ${cabecalho
+              .map((l) => `<tr><td class="rot">${esc(l.rotulo)}</td><td>${esc(l.valor)}</td></tr>`)
+              .join("")}
+            <tr>
+              <td class="rot">Funções do grupo</td>
+              <td>${
+                funcoes.length
+                  ? esc(funcoes.map((f) => f.nome).join(", "))
+                  : `<span class="doc-falta">nenhuma função vinculada</span>`
+              }</td>
+            </tr>
+            <tr>
+              <td class="rot">Trabalhadores</td>
+              <td>${
+                divergencia.declarada !== null
+                  ? `${divergencia.declarada} declarado(s)`
+                  : `<span class="doc-falta">quantidade não declarada</span>`
+              }${
+                divergencia.contada !== null ? ` · ${divergencia.contada} ativo(s) no cadastro` : ""
+              }</td>
+            </tr>
+          </table>
+
+          ${
+            divergencia.aviso
+              ? `<p class="doc-aviso">⚠ ${esc(divergencia.aviso)}</p>`
+              : ""
+          }
+          ${ghe.descricao ? `<p>${esc(ghe.descricao)}</p>` : ""}
+
+          <h3 class="doc-grupo">Riscos ambientais do grupo</h3>
+          ${tabelaRiscos}
+
+          <h3 class="doc-grupo">Exames por ocasião</h3>
+          ${tabelaExames}
+        </div>
+      `;
+    })
+    .join("");
+
+  return `
+    <p>
+      O Grupo Homogêneo de Exposição reúne funções submetidas à mesma exposição,
+      de modo que o levantamento de riscos e o planejamento de exames sejam feitos
+      uma vez para o conjunto. Os grupos abaixo são compartilhados com o PGR: o
+      risco listado é o do inventário daquele programa, não um levantamento
+      próprio deste documento.
+    </p>
+    <p>
+      A coluna <em>previsto para</em> distingue o que é do grupo inteiro do que é
+      de uma função específica dentro dele. Onde há periodicidade, ela aparece na
+      célula do exame periódico.
+    </p>
+    ${blocos}
+  `;
+}
+
 export function montarHtmlPcmso(dados: PcmsoDocumentoDados): string {
   const { pcmso, exames, empresa, geradoPor } = dados;
   const emitidoEm = new Date().toLocaleString("pt-BR");
   const empresaNome = empresa?.nome || "—";
+
+  const secaoFuncoes = dados.funcoes?.length
+    ? secaoQuadroFuncoes(dados.funcoes, dados.ghesPorFuncao)
+    : "";
+  const secaoGrupos = secaoGhes(dados);
+
+  /**
+   * Numeração calculada, não escrita à mão.
+   *
+   * As duas seções novas são condicionais — sem função cadastrada ou sem GHE, não
+   * saem. Números fixos deixariam buracos ("1, 2, 4, 6") num documento de
+   * conformidade, e buraco de numeração é a primeira coisa que se interpreta como
+   * página faltando.
+   */
+  const n = (() => {
+    let i = 2; // 1 = Objetivo, 2 = Base legal.
+    const atribuir = (existe: boolean) => (existe ? ++i : i);
+    const funcoes = atribuir(!!secaoFuncoes);
+    const agravos = ++i;
+    const ghe = atribuir(!!secaoGrupos);
+    const exames = ++i;
+    const criterios = ++i;
+    const observacoes = ++i;
+    return { funcoes, agravos, ghe, exames, criterios, observacoes };
+  })();
 
   return `
     ${pdfGlobalStyles}
@@ -232,16 +571,30 @@ export function montarHtmlPcmso(dados: PcmsoDocumentoDados): string {
       <h2 class="doc-sec">2. Base legal <span class="doc-sub">requisitos legais e infralegais</span></h2>
       ${secaoBaseLegal(BASE_LEGAL_PCMSO)}
 
-      <h2 class="doc-sec">3. Agravos à saúde relacionados aos riscos ocupacionais</h2>
+      ${
+        secaoFuncoes
+          ? `<h2 class="doc-sec">${n.funcoes}. Funções avaliadas <span class="doc-sub">descrição detalhada das atividades</span></h2>${secaoFuncoes}`
+          : ""
+      }
+
+      <h2 class="doc-sec">${n.agravos}. Agravos à saúde relacionados aos riscos ocupacionais</h2>
       ${bloco(
         pcmso.agravos_saude,
         "Obrigatório pela NR-07 item 7.5. Preencha em Editar Dados antes de emitir o programa."
       )}
 
-      <h2 class="doc-sec">4. Planejamento de exames médicos e complementares</h2>
+      ${
+        secaoGrupos
+          ? `<h2 class="doc-sec">${n.ghe}. Exames por GHE <span class="doc-sub">grupo homogêneo de exposição</span></h2>${secaoGrupos}`
+          : ""
+      }
+
+      <h2 class="doc-sec">${n.exames}. Planejamento de exames médicos e complementares${
+        secaoGrupos ? ` <span class="doc-sub">por função</span>` : ""
+      }</h2>
       ${quadroExames(exames)}
 
-      <h2 class="doc-sec">5. Critérios de interpretação dos achados e conduta</h2>
+      <h2 class="doc-sec">${n.criterios}. Critérios de interpretação dos achados e conduta</h2>
       ${bloco(
         pcmso.criterios_conduta,
         "Obrigatório pela NR-07 item 7.5. Precisa ser conhecido por todos os médicos que realizam os exames."
@@ -249,7 +602,10 @@ export function montarHtmlPcmso(dados: PcmsoDocumentoDados): string {
 
       ${
         pcmso.observacoes
-          ? `<h2 class="doc-sec">6. Observações complementares</h2>${bloco(pcmso.observacoes, "")}`
+          ? `<h2 class="doc-sec">${n.observacoes}. Observações complementares</h2>${bloco(
+              pcmso.observacoes,
+              ""
+            )}`
           : ""
       }
 

@@ -5,6 +5,7 @@ import { useSgsstFuncaoVinculosResumo } from "@/hooks/sgsst/useSgsstFuncaoVincul
 import { FuncaoVinculosDialog } from "@/components/sgsst/FuncaoVinculosDialog";
 import { FuncaoResumoDialog, type AbaVinculo } from "@/components/sgsst/FuncaoResumoDialog";
 import { FuncaoPendenciasPanel } from "@/components/sgsst/FuncaoPendenciasPanel";
+import { GheManager } from "@/components/sgsst/GheManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -31,6 +32,7 @@ import {
   GraduationCap,
   HardHat,
   ClipboardCheck,
+  Layers,
 } from "lucide-react";
 import { FuncaoFormDialog } from "@/components/sgsst/FuncaoFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -182,6 +184,10 @@ export default function SgsstFuncoesPage() {
           <TabsTrigger value="cadastro" className="gap-1.5">
             <Briefcase className="h-4 w-4" />
             Funções
+          </TabsTrigger>
+          <TabsTrigger value="ghe" className="gap-1.5">
+            <Layers className="h-4 w-4" />
+            GHE
           </TabsTrigger>
           <TabsTrigger value="pendencias" className="gap-1.5">
             <ClipboardCheck className="h-4 w-4" />
@@ -425,6 +431,10 @@ export default function SgsstFuncoesPage() {
           />
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="ghe" className="mt-0">
+          <GheManager />
         </TabsContent>
 
         <TabsContent value="pendencias" className="mt-0">
