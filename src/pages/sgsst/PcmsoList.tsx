@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useSgsstCounts } from "@/hooks/sgsst/useSgsstCounts";
 import { TablePagination } from "@/components/medicoes/TablePagination";
-import { useSgsstPcmso, SgsstPcmso, StatusPcmso } from "@/hooks/sgsst/useSgsstPcmso";
+import {
+  useSgsstPcmso,
+  useSgsstPcmsoDependentes,
+  SgsstPcmso,
+  StatusPcmso,
+} from "@/hooks/sgsst/useSgsstPcmso";
+import { avisoExclusaoPcmso } from "@/utils/sgsstExclusaoPcmso";
 import {
   useSgsstAsos,
   useSgsstExames,
@@ -120,6 +126,10 @@ export default function SgsstPcmsoListPage() {
     search: debouncedSearchPcmso,
     status: selectedStatusPcmso,
   });
+
+  // Contagem de ASOs e exames por PCMSO da página. Uma consulta para a página
+  // inteira; a confirmação de exclusão depende dela para dizer a consequência.
+  const { dependentesDe } = useSgsstPcmsoDependentes(pcmsoList.map((p) => p.id));
 
   const {
     asos,
@@ -503,9 +513,50 @@ export default function SgsstPcmsoListPage() {
                         <TableCell className="text-xs font-mono">{formatDateStr(p.data_revisao)}</TableCell>
                         <TableCell><Badge variant="outline" className="text-xs">{p.status}</Badge></TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/medicoes/sgsst/pcmso/${p.id}`); }} title="Visualizar">
-                            <Eye className="h-4 w-4 text-primary" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/medicoes/sgsst/pcmso/${p.id}`); }} title="Visualizar">
+                              <Eye className="h-4 w-4 text-primary" />
+                            </Button>
+
+                            {allowEdit && (
+                              <SgsstConfirmDelete
+                                alvo={`o PCMSO "${p.titulo}"`}
+                                onConfirm={() => removePcmso.mutate(p.id)}
+                                consequencia={(() => {
+                                  const dep = dependentesDe(p.id);
+
+                                  // Enquanto a contagem nao chegou, nao afirma que
+                                  // nao ha vinculo: zero aqui seria exatamente a
+                                  // informacao que esta confirmacao nao pode errar.
+                                  if (!dep) {
+                                    return "Conferindo quantos ASOs e exames apontam para este programa…";
+                                  }
+
+                                  const aviso = avisoExclusaoPcmso({
+                                    status: p.status,
+                                    dependentes: dep,
+                                  });
+
+                                  return (
+                                    <span className="block space-y-2">
+                                      {aviso.linhas.map((linha, idx) => (
+                                        <span
+                                          key={idx}
+                                          className={
+                                            idx === 0 && aviso.desvinculaDocumento
+                                              ? "block font-medium text-amber-800"
+                                              : "block"
+                                          }
+                                        >
+                                          {linha}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  );
+                                })()}
+                              />
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

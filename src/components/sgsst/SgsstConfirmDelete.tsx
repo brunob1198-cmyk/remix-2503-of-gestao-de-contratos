@@ -16,8 +16,15 @@ import {
 interface SgsstConfirmDeleteProps {
   /** O que será excluído, já legível. Ex.: 'a ação "Trocar guarda-corpo"'. */
   alvo: string;
-  /** Consequência concreta da exclusão, para o usuário decidir com informação. */
-  consequencia?: string;
+  /**
+   * Consequência concreta da exclusão, para o usuário decidir com informação.
+   *
+   * Aceita nó, e não só texto: a exclusão de PCMSO tem mais de uma consequência,
+   * e a mais grave — ASO já emitido perdendo o vínculo — precisa de destaque
+   * próprio. Como o conteúdo entra dentro de um `<p>`, quem passar várias linhas
+   * deve usar `span` com `display: block`, e não `p` aninhado.
+   */
+  consequencia?: ReactNode;
   onConfirm: () => void;
   disabled?: boolean;
   /** Rótulo do botão-gatilho; omitido, renderiza só o ícone de lixeira. */
@@ -55,6 +62,11 @@ export function SgsstConfirmDelete({
             className="text-destructive hover:text-destructive"
             title={`Excluir ${alvo}`}
             aria-label={`Excluir ${alvo}`}
+            // A linha da tabela costuma ter onClick de navegacao. Sem interromper
+            // a propagacao, o clique no gatilho abria a tela de detalhe em vez do
+            // dialogo — o botao parecia nao funcionar. O AlertDialogContent abaixo
+            // ja fazia isto; faltava no gatilho.
+            onClick={(e) => e.stopPropagation()}
           >
             <Trash2 className="h-4 w-4" />
             {triggerLabel && <span className="ml-1.5">{triggerLabel}</span>}

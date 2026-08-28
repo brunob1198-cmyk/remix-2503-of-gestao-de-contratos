@@ -442,3 +442,59 @@ export function useSgsstPcmsoHistorico(pcmsoId?: string) {
     isLoading,
   };
 }
+
+/**
+ * Quantos ASOs e exames apontam para cada PCMSO da página.
+ *
+ * Serve à confirmação de exclusão: o `ON DELETE SET NULL` nessas duas tabelas faz
+ * os registros sobreviverem sem o vínculo, e o PDF do ASO imprime o PCMSO de
+ * referência. Sem a contagem, a confirmação não tem como dizer o que vai
+ * acontecer — e o usuário descobre depois, num atestado com o campo em branco.
+ *
+ * Uma consulta para a página inteira, não uma por linha.
+ */
+export function useSgsstPcmsoDependentes(pcmsoIds: readonly string[]) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+
+  // Ordenado para a chave não mudar só porque a ordem da página mudou.
+  const chaveIds = [...pcmsoIds].sort().join(",");
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["sgsst_pcmso", "dependentes", empresaId, chaveIds],
+    enabled: !!empresaId && pcmsoIds.length > 0,
+    queryFn: async () => {
+      const contar = async (tabela: string) => {
+        const { data, error } = await (supabase
+          .from(tabela as never)
+          .select("pcmso_id")
+          .in("pcmso_id", pcmsoIds as string[]) as never as Promise<{
+          data: { pcmso_id: string | null }[] | null;
+          error: { message?: string } | null;
+        }>);
+        if (error) throw error;
+        return data ?? [];
+      };
+
+      const [asos, exames] = await Promise.all([contar("sgsst_asos"), contar("sgsst_exames")]);
+
+      const porPcmso: Record<string, { asos: number; exames: number }> = {};
+      for (const id of pcmsoIds) porPcmso[id] = { asos: 0, exames: 0 };
+      for (const a of asos) if (a.pcmso_id && porPcmso[a.pcmso_id]) porPcmso[a.pcmso_id].asos += 1;
+      for (const e of exames) if (e.pcmso_id && porPcmso[e.pcmso_id]) porPcmso[e.pcmso_id].exames += 1;
+
+      return porPcmso;
+    },
+  });
+
+  return {
+    /**
+     * Contagem do PCMSO. Enquanto carrega devolve `null` — e não zero: zero
+     * afirmaria "não há ASO vinculado", que é justamente a informação que a
+     * confirmação de exclusão não pode errar.
+     */
+    dependentesDe: (pcmsoId: string) => data?.[pcmsoId] ?? null,
+    isLoading,
+    error,
+  };
+}
