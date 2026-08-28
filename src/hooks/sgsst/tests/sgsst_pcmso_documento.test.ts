@@ -172,3 +172,145 @@ describe("montarHtmlPcmso", () => {
     expect(html).toMatch(/Nenhum exame previsto/i);
   });
 });
+
+/**
+ * GHE e quadro de funções.
+ *
+ * As duas seções são CONDICIONAIS: sem função cadastrada ou sem GHE, não saem. Por
+ * isso a numeração das seções é calculada, e é ela que precisa de teste — buraco
+ * de numeração num documento de conformidade se lê como página faltando.
+ */
+describe("montarHtmlPcmso — funções e GHE", () => {
+  const funcoes = [
+    { id: "f1", nome: "Mecânico", descricao: "Executa manutenção de equipamentos.", cbo: "9113-05" },
+    { id: "f2", nome: "Recepcionista", descricao: "", cbo: "4221-05" },
+  ];
+
+  const ghe = {
+    id: "g1",
+    codigo: "GHE-01",
+    nome: "Operacional",
+    setor: "OPERACIONAL",
+    area_influencia: "OFICINA",
+    carga_horaria: "44 horas semanais",
+    quantidade_trabalhadores: 2,
+    status: "ativo",
+  };
+
+  it("sem função e sem GHE, a numeração não abre buraco", () => {
+    const html = montarHtmlPcmso({
+      pcmso: pcmsoCompleto(),
+      exames: [exame()],
+      empresa: { nome: "Construtora X" },
+    });
+    const numeros = [...html.matchAll(/class="doc-sec">(\d+)\./g)].map((m) => Number(m[1]));
+    expect(numeros).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("com as duas seções, a numeração continua sequencial", () => {
+    const html = montarHtmlPcmso({
+      pcmso: pcmsoCompleto({ observacoes: "Sem ocorrências." }),
+      exames: [exame()],
+      empresa: { nome: "Construtora X" },
+      funcoes,
+      ghes: [ghe],
+      funcoesPorGhe: new Map([["g1", funcoes]]),
+    });
+    const numeros = [...html.matchAll(/class="doc-sec">(\d+)\./g)].map((m) => Number(m[1]));
+    expect(numeros).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(html).toContain("Funções avaliadas");
+    expect(html).toContain("Exames por GHE");
+  });
+
+  it("com função e sem GHE, a numeração fecha em 7 sem pular", () => {
+    const html = montarHtmlPcmso({
+      pcmso: pcmsoCompleto({ observacoes: "Sem ocorrências." }),
+      exames: [exame()],
+      empresa: { nome: "Construtora X" },
+      funcoes,
+    });
+    const numeros = [...html.matchAll(/class="doc-sec">(\d+)\./g)].map((m) => Number(m[1]));
+    expect(numeros).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(html).not.toContain("Exames por GHE");
+  });
+
+  it("o quadro mantém a função sem descrição e MARCA a lacuna", () => {
+    const html = montarHtmlPcmso({
+      pcmso: pcmsoCompleto(),
+      exames: [exame()],
+      empresa: { nome: "Construtora X" },
+      funcoes,
+    });
+    expect(html).toContain("Recepcionista");
+    expect(html).toContain("descrição das atividades não cadastrada");
+    expect(html).toContain("1 função está");
+  });
+
+  it("o campo função continua no documento junto do GHE", () => {
+    // A exigência era acrescentar o grupo SEM remover a função: as duas seções
+    // saem no mesmo PDF.
+    const html = montarHtmlPcmso({
+      pcmso: pcmsoCompleto(),
+      exames: [exame({ funcao: { id: "f1", nome: "Mecânico" } })],
+      empresa: { nome: "Construtora X" },
+      funcoes,
+      ghes: [ghe],
+      funcoesPorGhe: new Map([["g1", funcoes]]),
+    });
+    expect(html).toContain("Exames por GHE");
+    expect(html).toContain("Planejamento de exames médicos");
+    expect(html).toContain("por função");
+  });
+
+  it("inventário não consultado não vira 'nenhum risco'", () => {
+    const html = montarHtmlPcmso({
+      pcmso: pcmsoCompleto(),
+      exames: [exame()],
+      empresa: { nome: "Construtora X" },
+      ghes: [ghe],
+      funcoesPorGhe: new Map([["g1", funcoes]]),
+    });
+    expect(html).toContain("não consultado nesta emissão");
+    expect(html).not.toContain("Nenhum risco do inventário");
+  });
+
+  it("inventário consultado e vazio avisa que nenhum risco alcança o grupo", () => {
+    const html = montarHtmlPcmso({
+      pcmso: pcmsoCompleto(),
+      exames: [exame()],
+      empresa: { nome: "Construtora X" },
+      ghes: [ghe],
+      funcoesPorGhe: new Map([["g1", funcoes]]),
+      inventario: [],
+    });
+    expect(html).toContain("Nenhum risco do inventário");
+  });
+
+  it("GHE inativo não sai no documento", () => {
+    const html = montarHtmlPcmso({
+      pcmso: pcmsoCompleto(),
+      exames: [exame()],
+      empresa: { nome: "Construtora X" },
+      ghes: [{ ...ghe, status: "inativo" }],
+      funcoesPorGhe: new Map([["g1", funcoes]]),
+    });
+    expect(html).not.toContain("Exames por GHE");
+  });
+
+  it("divergência entre quantidade declarada e ativos aparece no bloco do grupo", () => {
+    const html = montarHtmlPcmso({
+      pcmso: pcmsoCompleto(),
+      exames: [exame()],
+      empresa: { nome: "Construtora X" },
+      ghes: [{ ...ghe, quantidade_trabalhadores: 2 }],
+      funcoesPorGhe: new Map([["g1", funcoes]]),
+      ativosPorFuncao: new Map([
+        ["f1", 3],
+        ["f2", 1],
+      ]),
+    });
+    expect(html).toContain("2 declarado(s)");
+    expect(html).toContain("4 ativo(s) no cadastro");
+    expect(html).toContain("Confirme qual reflete o grupo hoje");
+  });
+});

@@ -499,7 +499,11 @@ export function useSgsstPgrInventario(pgrId?: string) {
       return criado;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario", pgrId] });
+      // Base inteira e nao ["sgsst_pgr_inventario", pgrId]: a consulta do inventario
+      // por empresa (secao de GHE do PCMSO) tem sufixo proprio na chave, e o
+      // casamento do TanStack e elemento a elemento — a chave com pgrId nao a
+      // alcanca, e ela ficaria mostrando risco que acabou de mudar.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario"] });
       queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario_funcoes", pgrId] });
       toast.success("Risco incluído no inventário!");
     },
@@ -531,7 +535,11 @@ export function useSgsstPgrInventario(pgrId?: string) {
       return data as SgsstPgrInventario;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario", pgrId] });
+      // Base inteira e nao ["sgsst_pgr_inventario", pgrId]: a consulta do inventario
+      // por empresa (secao de GHE do PCMSO) tem sufixo proprio na chave, e o
+      // casamento do TanStack e elemento a elemento — a chave com pgrId nao a
+      // alcanca, e ela ficaria mostrando risco que acabou de mudar.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario"] });
       queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario_funcoes", pgrId] });
       toast.success("Item do inventário atualizado!");
     },
@@ -550,7 +558,11 @@ export function useSgsstPgrInventario(pgrId?: string) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario", pgrId] });
+      // Base inteira e nao ["sgsst_pgr_inventario", pgrId]: a consulta do inventario
+      // por empresa (secao de GHE do PCMSO) tem sufixo proprio na chave, e o
+      // casamento do TanStack e elemento a elemento — a chave com pgrId nao a
+      // alcanca, e ela ficaria mostrando risco que acabou de mudar.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_pgr_inventario"] });
       toast.success("Item removido do inventário!");
     },
     onError: (err: any) => {

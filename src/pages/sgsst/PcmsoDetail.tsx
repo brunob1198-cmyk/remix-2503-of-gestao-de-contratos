@@ -12,6 +12,7 @@ import {
   SgsstPcmsoExame,
 } from "@/hooks/sgsst/useSgsstPcmso";
 import { useSgsstFuncoes } from "@/hooks/sgsst/useSgsstFuncoes";
+import { useSgsstGhe, useSgsstInventarioParaGhe } from "@/hooks/sgsst/useSgsstGhe";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { gerarPdfPcmso, pendenciasPcmso } from "@/lib/pcmsoDocumento";
@@ -59,6 +60,10 @@ export default function SgsstPcmsoDetailPage() {
   const { data: currentPcmso, isLoading: loadingDetail } = useSgsstPcmsoDetail(pcmsoId);
 
   const { funcoes } = useSgsstFuncoes();
+  const { ghes, funcoesDoGhe, ghesPorFuncao } = useSgsstGhe();
+  // O inventário do PGR só é consultado quando há GHE: sem grupo, a seção não
+  // sai no documento e a consulta seria carga sem destino.
+  const { inventario } = useSgsstInventarioParaGhe(ghes.length > 0);
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { empresa } = useEmpresaAtual();
   const { profile } = useAuth();
@@ -79,6 +84,7 @@ export default function SgsstPcmsoDetailPage() {
   const [tipoExame, setTipoExame] = useState<TipoExamePcmso>("Periódico");
   const [periodicidadeMeses, setPeriodicidadeMeses] = useState(12);
   const [funcaoId, setFuncaoId] = useState("none");
+  const [gheId, setGheId] = useState("none");
   const [grupoRisco, setGrupoRisco] = useState("");
   const [obsExame, setObsExame] = useState("");
   const [justificativa, setJustificativa] = useState("");
@@ -152,11 +158,22 @@ export default function SgsstPcmsoDetailPage() {
 
     setEmitindo(true);
     try {
+      // Monta o mapa de funções por GHE só na emissão: `funcoesDoGhe` devolve
+      // `null` enquanto os vínculos não carregaram, e o grupo cuja lista não
+      // veio entra sem função em vez de sumir do documento — sumir esconderia
+      // um grupo que existe.
+      const funcoesPorGhe = new Map(ghes.map((g) => [g.id, funcoesDoGhe(g.id) ?? []]));
+
       await gerarPdfPcmso({
         pcmso: currentPcmso,
         exames,
         empresa,
         geradoPor: profile?.nome ?? null,
+        funcoes,
+        ghes,
+        funcoesPorGhe,
+        ghesPorFuncao: ghesPorFuncao(),
+        inventario,
       });
       toast.success("Documento gerado.");
     } catch (err) {
@@ -174,6 +191,7 @@ export default function SgsstPcmsoDetailPage() {
     setTipoExame("Periódico");
     setPeriodicidadeMeses(12);
     setFuncaoId("none");
+    setGheId("none");
     setGrupoRisco("");
     setObsExame("");
     setJustificativa("");
@@ -193,6 +211,7 @@ export default function SgsstPcmsoDetailPage() {
     setTipoExame(ex.tipo_exame || "Periódico");
     setPeriodicidadeMeses(ex.periodicidade_meses ?? 12);
     setFuncaoId(ex.funcao_id || "none");
+    setGheId(ex.ghe_id || "none");
     setGrupoRisco(ex.grupo_risco || "");
     setObsExame(ex.observacoes || "");
     setJustificativa(ex.justificativa_tecnica || "");
@@ -211,6 +230,7 @@ export default function SgsstPcmsoDetailPage() {
       tipo_exame: tipoExame,
       periodicidade_meses: Number(periodicidadeMeses) || 12,
       funcao_id: funcaoId === "none" ? null : funcaoId,
+      ghe_id: gheId === "none" ? null : gheId,
       grupo_risco: grupoRisco.trim() || null,
       observacoes: obsExame.trim() || null,
       justificativa_tecnica: justificativa.trim() || null,
@@ -600,6 +620,29 @@ export default function SgsstPcmsoDetailPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
+                <Label htmlFor="gheEx">GHE (grupo de exposição)</Label>
+                <Select value={gheId} onValueChange={setGheId}>
+                  <SelectTrigger id="gheEx">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Sem grupo --</SelectItem>
+                    {ghes
+                      .filter((g) => g.status !== "inativo")
+                      .map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.codigo} — {g.nome}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] leading-tight text-muted-foreground">
+                  Grupo e função convivem: use o grupo para o exame que todo o grupo faz, e a
+                  função para o que é específico de uma delas. Marcar os dois é válido.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
                 <Label htmlFor="funcaoEx">Função Específica</Label>
                 <Select value={funcaoId} onValueChange={setFuncaoId}>
                   <SelectTrigger id="funcaoEx">
@@ -615,6 +658,9 @@ export default function SgsstPcmsoDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
 
               <div className="space-y-1.5">
                 <Label htmlFor="faixa">Faixa etária</Label>

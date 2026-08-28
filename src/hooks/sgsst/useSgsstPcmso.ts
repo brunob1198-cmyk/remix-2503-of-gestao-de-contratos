@@ -65,6 +65,8 @@ export interface SgsstPcmsoExame {
   tipo_exame: TipoExamePcmso;
   periodicidade_meses: number;
   funcao_id?: string | null;
+  /** GHE ao qual o exame se aplica. Conviva com `funcao_id`; nao o substitui. */
+  ghe_id?: string | null;
   /** @deprecated Texto livre mantido por compatibilidade. Use `risco_catalogo_id`. */
   grupo_risco?: string | null;
   observacoes?: string | null;
