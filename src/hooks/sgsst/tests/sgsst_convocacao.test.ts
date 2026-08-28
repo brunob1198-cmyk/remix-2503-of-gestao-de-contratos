@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  diagnosticoDaFilaVazia,
   idadeEm,
   faixaSeAplica,
   somarMeses,
@@ -181,5 +182,66 @@ describe("ordenarPorUrgencia", () => {
     const copia = [...original];
     ordenarPorUrgencia(original);
     expect(original).toEqual(copia);
+  });
+});
+
+/**
+ * Por que a fila está vazia.
+ *
+ * A mensagem antiga listava as três condições e não dizia qual falhou. Com dois
+ * PCMSOs e um colaborador na base, quem lê conclui que já cumpriu tudo e que a
+ * tela está com defeito — foi exatamente o que aconteceu no teste do roteiro.
+ */
+describe("diagnosticoDaFilaVazia", () => {
+  it("sem colaborador ativo, aponta o colaborador", () => {
+    const m = diagnosticoDaFilaVazia({
+      colaboradoresAtivos: 0,
+      previstosTotal: 5,
+      previstosAtivos: 5,
+    });
+    expect(m).toContain("colaborador");
+  });
+
+  it("sem exame previsto em lugar nenhum, aponta o quadro de exames", () => {
+    const m = diagnosticoDaFilaVazia({
+      colaboradoresAtivos: 3,
+      previstosTotal: 0,
+      previstosAtivos: 0,
+    });
+    expect(m).toContain("Nenhum exame previsto");
+  });
+
+  it("com previstos mas nenhum PCMSO ATIVO, diz que rascunho não conta", () => {
+    // O caso real: dois programas em RASCUNHO. Ignorá-los está certo — programa em
+    // elaboração não define o que é exigido hoje — mas a tela tem de dizer isso.
+    const m = diagnosticoDaFilaVazia({
+      colaboradoresAtivos: 1,
+      previstosTotal: 2,
+      previstosAtivos: 0,
+    });
+    expect(m).toContain("ATIVO");
+    expect(m).toContain("RASCUNHO");
+    expect(m).toContain("2 exame(s)");
+  });
+
+  it("com tudo no lugar, aponta função e faixa etária", () => {
+    const m = diagnosticoDaFilaVazia({
+      colaboradoresAtivos: 1,
+      previstosTotal: 2,
+      previstosAtivos: 2,
+    });
+    expect(m).toContain("função");
+    expect(m).toContain("faixa etária");
+  });
+
+  it("a ordem das checagens vai do pré-requisito mais básico ao mais específico", () => {
+    // Sem colaborador E sem previsto, a mensagem é a do colaborador: adiantar a
+    // condição mais específica mandaria o usuário corrigir na ordem errada.
+    const m = diagnosticoDaFilaVazia({
+      colaboradoresAtivos: 0,
+      previstosTotal: 0,
+      previstosAtivos: 0,
+    });
+    expect(m).toContain("colaborador");
   });
 });

@@ -162,3 +162,51 @@ export function ordenarPorUrgencia<T extends { situacao: SituacaoConvocacao; dia
     return da - db;
   });
 }
+
+/**
+ * Por que a fila de convocação está vazia.
+ *
+ * A mensagem genérica — "precisa de um PCMSO ativo com exames previstos e de
+ * colaboradores cadastrados" — lista as três condições e não diz qual falhou. Com
+ * dois PCMSOs e um colaborador na base, quem lê conclui que já cumpriu tudo e que
+ * a tela está com defeito.
+ *
+ * O caso que motivou isto: os dois programas estavam em RASCUNHO. A fila ignorá-los
+ * está CORRETO — programa em elaboração não define o que é exigido hoje —, mas a
+ * tela precisava dizer isso em vez de deixar o usuário procurar o erro.
+ */
+export function diagnosticoDaFilaVazia(params: {
+  colaboradoresAtivos: number;
+  /** Exames previstos em qualquer PCMSO, independente do status. */
+  previstosTotal: number;
+  /** Exames previstos que estão num PCMSO ATIVO. */
+  previstosAtivos: number;
+}): string {
+  if (params.colaboradoresAtivos === 0) {
+    return (
+      "Nenhum colaborador ativo cadastrado. A convocação é montada por trabalhador, " +
+      "então sem colaborador não há quem chamar."
+    );
+  }
+
+  if (params.previstosTotal === 0) {
+    return (
+      "Nenhum exame previsto em nenhum PCMSO. É o quadro de exames do programa que " +
+      "define o que cada função precisa fazer e de quanto em quanto tempo."
+    );
+  }
+
+  if (params.previstosAtivos === 0) {
+    return (
+      `Há ${params.previstosTotal} exame(s) previsto(s), mas nenhum em PCMSO com ` +
+      "status ATIVO. Programa em RASCUNHO ou ENCERRADO não define o que é exigido " +
+      "hoje — mude o status do PCMSO para ATIVO e a fila passa a considerá-lo."
+    );
+  }
+
+  return (
+    "Há exames previstos em PCMSO ativo, mas nenhum alcança os colaboradores " +
+    "cadastrados. Confira se o exame está vinculado à função certa e se a faixa " +
+    "etária dele bate com a idade dos trabalhadores."
+  );
+}
