@@ -269,6 +269,17 @@ export default function EscopoPage() {
             </Table>
           </div>
 
+          {!isLoadingEscopo && localItens.length > 0 && (
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={setItemsPerPage}
+              totalItems={processedItems.length}
+            />
+          )}
+
           {/* Add item selector */}
           <div className="mt-4">
             {availableLpuItems.length > 0 ? (

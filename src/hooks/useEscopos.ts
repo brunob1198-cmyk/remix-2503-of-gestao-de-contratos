@@ -67,6 +67,7 @@ export function useEscopos(siteId?: string, projetoId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["escopo_itens", siteId] });
+      queryClient.invalidateQueries({ queryKey: ["sites-escopo-totais"] });
       toast({ title: "Escopo salvo", description: "O escopo da obra foi atualizado com sucesso." });
     },
     onError: (error: Error) => {
