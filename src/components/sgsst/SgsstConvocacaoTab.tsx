@@ -3,7 +3,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CalendarClock, AlertTriangle, CheckCircle2, Clock, HelpCircle, Send } from "lucide-react";
+import { CalendarClock, AlertTriangle, CheckCircle2, Clock, HelpCircle, Send, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useSgsstExames } from "@/hooks/sgsst/useSgsstAsosAndExames";
+import { hojeIso } from "@/utils/dataLocal";
 import { format } from "date-fns";
 import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
 import { SgsstStatCards } from "@/components/sgsst/SgsstStatCards";
@@ -30,6 +35,49 @@ const TOM_SITUACAO: Record<SituacaoConvocacao, string> = {
 
 export function SgsstConvocacaoTab() {
   const { itens, resumo, isLoading, error, refetch, porQueVazia } = useSgsstConvocacao();
+  const { canEdit } = usePermissions();
+  const allowEdit = canEdit("sgsst-pcmso");
+  const { createExame } = useSgsstExames();
+
+  /** Chave da linha em convocação, para desabilitar só o botão dela. */
+  const [convocandoChave, setConvocandoChave] = useState<string | null>(null);
+
+  /**
+   * Convocar = registrar a solicitação do exame para aquele trabalhador.
+   *
+   * A fila sabia quem chamar e não tinha como agir: para convocar, o usuário saía
+   * da tela, ia em Exames Ocupacionais e digitava de novo o nome do trabalhador e
+   * do exame que a fila já mostrava. Aqui a solicitação nasce com os dados da
+   * própria linha.
+   *
+   * `status: PENDENTE` e sem data de realização, porque o exame ainda não
+   * aconteceu — é da solicitação que sai a guia de encaminhamento. A natureza
+   * fica COMPLEMENTAR, que é o padrão do campo: o exame PREVISTO do PCMSO não
+   * guarda natureza, e chutar CLINICO a partir do nome erraria em silêncio num
+   * campo que o relatório analítico da NR-07 conta.
+   */
+  const convocar = async (item: ItemConvocacao) => {
+    setConvocandoChave(item.chave);
+    try {
+      await createExame.mutateAsync({
+        colaborador_id: item.colaboradorId,
+        nome_exame: item.nomeExame,
+        tipo: item.tipoExame as never,
+        data_solicitacao: hojeIso(),
+        data_realizacao: null,
+        status: "PENDENTE",
+        natureza: "COMPLEMENTAR",
+        observacoes: `Convocação gerada pela fila em ${hojeIso()}.`,
+      } as never);
+
+      toast.info("Emita a guia de encaminhamento na aba Exames Ocupacionais.", {
+        description: `${item.trabalhador} — ${item.nomeExame}`,
+        duration: 8000,
+      });
+    } finally {
+      setConvocandoChave(null);
+    }
+  };
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSituacao, setFilterSituacao] = useState<string>("PENDENTES");
@@ -110,7 +158,8 @@ export function SgsstConvocacaoTab() {
         </h2>
         <p className="text-sm text-muted-foreground">
           Quem precisa ser chamado, com base na periodicidade e na faixa etária definidas
-          no PCMSO ativo.
+          no PCMSO ativo. <strong>Convocar</strong> registra a solicitação do exame; a guia
+          de encaminhamento sai depois, na aba Exames Ocupacionais.
         </p>
       </div>
 
@@ -223,6 +272,7 @@ export function SgsstConvocacaoTab() {
                 <TableHead>Vence em</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead>Agenda</TableHead>
+                {allowEdit && <TableHead className="text-right">Ação</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -302,6 +352,33 @@ export function SgsstConvocacaoTab() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
+
+                    {allowEdit && (
+                      <TableCell className="text-right">
+                        {/* Convocar = registrar a solicitação do exame. A fila era só
+                            uma lista: dizia quem chamar e não tinha como agir, então o
+                            usuário tinha de sair da tela, ir em Exames Ocupacionais e
+                            digitar de novo o que a fila já sabia. */}
+                        {i.jaSolicitado ? (
+                          <span className="text-xs text-muted-foreground">já solicitado</span>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1 border-sky-300 bg-sky-50 text-xs text-sky-800 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300"
+                            disabled={convocandoChave === i.chave}
+                            onClick={() => convocar(i)}
+                          >
+                            {convocandoChave === i.chave ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Send className="h-3.5 w-3.5" />
+                            )}
+                            Convocar
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
