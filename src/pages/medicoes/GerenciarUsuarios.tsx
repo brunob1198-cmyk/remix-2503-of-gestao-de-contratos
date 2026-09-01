@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedState } from "@/hooks/usePersistedState";
 import { TELAS } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,10 +13,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle, XCircle, Clock, Shield, Eye, Pencil } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CheckCircle, XCircle, Clock, Shield, Eye, Pencil, Users, History, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { SmartImage } from "@/components/ui/SmartImage";
+
+const AuditLogPage = lazy(() => import("./AuditLog"));
 
 interface UserRow {
   id: string;
@@ -59,6 +64,18 @@ export default function GerenciarUsuariosPage() {
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
   const [userPerms, setUserPerms] = useState<PermRow[]>([]);
   const [permDialogOpen, setPermDialogOpen] = useState(false);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = usePersistedState<string>("usuarios:activeTab", "usuarios");
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+      searchParams.delete("tab");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, activeTab, setActiveTab, setSearchParams]);
 
   const fetchUsers = async () => {
     if (!empresaId) return;
@@ -180,6 +197,17 @@ export default function GerenciarUsuariosPage() {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Gerenciar Usuários</h2>
 
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="usuarios" className="flex items-center gap-2">
+            <Users className="h-4 w-4" /> Usuários
+          </TabsTrigger>
+          <TabsTrigger value="audit-log" className="flex items-center gap-2">
+            <History className="h-4 w-4" /> Log de Alterações
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="usuarios" className="space-y-6 m-0">
       {/* Pending Approval */}
       {pendingUsers.length > 0 && (
         <Card>
@@ -270,6 +298,18 @@ export default function GerenciarUsuariosPage() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="audit-log" className="m-0">
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          }>
+            <AuditLogPage />
+          </Suspense>
+        </TabsContent>
+      </Tabs>
 
       {/* Permissions Dialog */}
       <Dialog open={permDialogOpen} onOpenChange={setPermDialogOpen}>
