@@ -14,7 +14,7 @@ import {
   LayoutDashboard, FolderKanban, MapPin, 
   ClipboardList, Receipt, DollarSign, FileDown, ListChecks,
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
-  CalendarRange, ShoppingCart, History, Zap, Wand2,
+  CalendarRange, ShoppingCart, Zap, Wand2,
   Pin, PinOff,
   Percent, Settings2, Activity,
   GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon, HeartPulse, GraduationCap, Shield, FolderArchive, FileBarChart, ClipboardCheck
@@ -73,7 +73,6 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "relatorios", title: "Relatórios", url: "/medicoes/relatorios", icon: FileDown, telaId: "relatorios", group: "gestao" },
   { id: "supply-chain", title: "Supply Chain", url: "/medicoes/supply-chain", icon: ShoppingCart, telaId: "supply-chain", group: "gestao" },
   { id: "power-bi", title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi", group: "gestao" },
-  { id: "audit-log", title: "Log de Alterações", url: "/medicoes/audit-log", icon: History, adminOnly: true, group: "gestao" },
   { id: "integracao", title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true, group: "gestao" },
   { id: "usuarios", title: "Gerenciar Usuários", url: "/medicoes/usuarios", icon: Users, adminOnly: true, group: "gestao" },
   { id: "perfil", title: "Meu Perfil", url: "/medicoes/perfil", icon: UserCircle, group: "gestao" },

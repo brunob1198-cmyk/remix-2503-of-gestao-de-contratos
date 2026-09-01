@@ -36,7 +36,6 @@ const GerenciarUsuariosPage = lazyWithRetry(() => import("./pages/medicoes/Geren
 const MeuPerfilPage = lazyWithRetry(() => import("./pages/medicoes/MeuPerfil"));
 const SupplyChainPage = lazyWithRetry(() => import("./pages/medicoes/SupplyChain"));
 const DiarioCampoPage = lazyWithRetry(() => import("./pages/medicoes/DiarioCampo"));
-const AuditLogPage = lazyWithRetry(() => import("./pages/medicoes/AuditLog"));
 const ForecastPublicPage = lazyWithRetry(() => import("./pages/ForecastPublic"));
 
 // Lazy Loaded Pages
@@ -147,7 +146,7 @@ const App = () => {
                 <Route path="planejamento" element={<PlanejamentoObraPage />} />
                 <Route path="supply-chain" element={<SupplyChainPage />} />
                 
-                <Route path="audit-log" element={<AuditLogPage />} />
+                <Route path="audit-log" element={<Navigate to="/medicoes/usuarios?tab=audit-log" replace />} />
                 <Route path="sgsst/funcoes" element={<SgsstFuncoesPage />} />
                 <Route path="sgsst/colaboradores" element={<SgsstColaboradoresPage />} />
                 <Route path="sgsst/riscos" element={<SgsstRiscosPage />} />

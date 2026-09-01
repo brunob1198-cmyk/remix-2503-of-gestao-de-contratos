@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { History, ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -97,14 +97,6 @@ export default function AuditLogPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <History className="h-6 w-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold">Log de Alterações</h1>
-          <p className="text-muted-foreground text-sm">Histórico de quem alterou o quê no sistema</p>
-        </div>
-      </div>
-
       <Card>
         <CardContent className="pt-4 pb-4">
           <div className="flex items-end gap-4">
