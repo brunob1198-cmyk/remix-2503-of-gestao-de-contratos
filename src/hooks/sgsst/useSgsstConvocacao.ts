@@ -10,6 +10,7 @@ import {
   type SituacaoConvocacao,
 } from "@/utils/sgsstConvocacao";
 import type { FaixaEtariaPcmso } from "@/hooks/sgsst/useSgsstPcmso";
+import { incoerenciaDoExame } from "@/utils/sgsstExameCoerencia";
 
 /**
  * Painel de convocação: quem precisa de exame e quando.
@@ -55,6 +56,14 @@ export interface ItemConvocacao {
    */
   jaSolicitado: boolean;
   dataSolicitacao: string | null;
+  /**
+   * Existe exame deste nome marcado como REALIZADO mas SEM data.
+   *
+   * O calculo da periodicidade exige a data, entao esse exame nao entra. Sem este
+   * sinal a fila dizia "nunca realizado" ao lado de um exame que a lista mostra
+   * como realizado, e nada explicava a contradicao.
+   */
+  realizadoSemData: boolean;
 }
 
 interface ColabLinha {
@@ -139,6 +148,8 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
       const agendadoPor = new Map<string, string>();
       // Solicitacao aberta por trabalhador + nome do exame, com ou sem data.
       const solicitadoPor = new Map<string, string>();
+      // Marcado REALIZADO e sem data: nao entra no calculo, e a fila precisa dizer.
+      const realizadoSemDataPor = new Set<string>();
 
       for (const f of feitos) {
         const chave = `${f.colaborador_id}::${f.nome_exame}`;
@@ -146,6 +157,11 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
         if (f.status === "REALIZADO" && f.data_realizacao) {
           const atual = ultimaPor.get(chave);
           if (!atual || f.data_realizacao > atual) ultimaPor.set(chave, f.data_realizacao);
+        } else if (
+          incoerenciaDoExame({ status: f.status, dataRealizacao: f.data_realizacao })
+            ?.gravidade === "IMPEDE"
+        ) {
+          realizadoSemDataPor.add(chave);
         }
 
         if (f.data_agendada && (f.status === "AGENDADO" || f.status === "PENDENTE")) {
@@ -211,6 +227,7 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
             diasRestantes: calc.diasRestantes,
             jaAgendado: !!agendada,
             dataAgendada: agendada,
+            realizadoSemData: realizadoSemDataPor.has(chave),
             jaSolicitado: solicitadoPor.has(chave),
             dataSolicitacao: solicitadoPor.get(chave) || null,
           });

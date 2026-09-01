@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { incoerenciaDoExame } from "@/utils/sgsstExameCoerencia";
 import {
   SgsstExame,
   SgsstExameInput,
@@ -48,6 +50,9 @@ export function ExameFormDialog({
   const [natureza, setNatureza] = useState<NaturezaExame>("COMPLEMENTAR");
   const [resultadoClassificacao, setResultadoClassificacao] = useState<ClassificacaoResultado | "none">("none");
 
+  /** Recalculada a cada render: é barata e precisa acompanhar status e data. */
+  const incoerencia = incoerenciaDoExame({ status, dataRealizacao });
+
   useEffect(() => {
     if (exame) {
       setColaboradorId(exame.colaborador_id || "");
@@ -81,6 +86,15 @@ export function ExameFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!colaboradorId || !nomeExame.trim()) return;
+
+    // Realizado sem data é CONTRADIÇÃO, não informação pendente: não existe saber
+    // que o exame aconteceu e não saber quando. Gravado assim, a lista mostrava
+    // "REALIZADO" e a fila de convocação continuava dizendo "nunca realizado",
+    // porque o cálculo da periodicidade exige a data.
+    if (incoerencia?.gravidade === "IMPEDE") {
+      toast.error(incoerencia.resumo, { description: incoerencia.comoResolver, duration: 9000 });
+      return;
+    }
 
     await onSave({
       colaborador_id: colaboradorId,
@@ -284,6 +298,20 @@ export function ExameFormDialog({
               </p>
             </div>
           </div>
+
+          {incoerencia?.gravidade === "IMPEDE" && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
+              <strong>{incoerencia.resumo}</strong>
+              <br />
+              {incoerencia.comoResolver}
+            </div>
+          )}
+
+          {incoerencia?.gravidade === "AVISA" && (
+            <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+              <strong>{incoerencia.resumo}</strong> {incoerencia.comoResolver}
+            </div>
+          )}
 
           {status === "REALIZADO" && resultadoClassificacao === "none" && (
             <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">

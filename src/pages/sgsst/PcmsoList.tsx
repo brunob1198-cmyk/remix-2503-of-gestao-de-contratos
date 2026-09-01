@@ -22,6 +22,7 @@ import {
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { gerarPdfAso, pendenciasAso } from "@/lib/asoDocumento";
 import { GuiaExameDialog } from "@/components/sgsst/GuiaExameDialog";
+import { incoerenciaDoExame } from "@/utils/sgsstExameCoerencia";
 import {
   podeEmitirGuia,
   SIGNIFICADO_DO_STATUS,
@@ -829,9 +830,35 @@ export default function SgsstPcmsoListPage() {
                           <TableCell className="text-xs font-mono">{formatDateStr(e.data_solicitacao)}</TableCell>
                           <TableCell className="text-xs font-mono">{formatDateStr(e.data_realizacao)}</TableCell>
                           <TableCell>
-                            <span title={SIGNIFICADO_DO_STATUS[e.status as StatusExameParaGuia] ?? e.status}>
-                              <Badge variant="outline" className="text-xs font-bold">{e.status}</Badge>
-                            </span>
+                            <div className="flex flex-col items-start gap-1">
+                              <span title={SIGNIFICADO_DO_STATUS[e.status as StatusExameParaGuia] ?? e.status}>
+                                <Badge variant="outline" className="text-xs font-bold">{e.status}</Badge>
+                              </span>
+                              {/* Marca a linha incoerente que já está gravada. O
+                                  formulário passou a impedir novas, mas as antigas
+                                  continuam no banco e são justamente as que fazem a
+                                  fila de convocação parecer errada. */}
+                              {(() => {
+                                const inc = incoerenciaDoExame({
+                                  status: e.status,
+                                  dataRealizacao: e.data_realizacao,
+                                });
+                                if (!inc) return null;
+                                return (
+                                  <span
+                                    className={`flex items-start gap-1 text-[11px] leading-tight ${
+                                      inc.gravidade === "IMPEDE"
+                                        ? "text-destructive"
+                                        : "text-amber-700 dark:text-amber-500"
+                                    }`}
+                                    title={inc.comoResolver}
+                                  >
+                                    <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                                    {inc.resumo}
+                                  </span>
+                                );
+                              })()}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
