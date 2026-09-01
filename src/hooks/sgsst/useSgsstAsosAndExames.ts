@@ -296,6 +296,9 @@ export function useSgsstExames(params?: SgsstExamesParams) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_exames"] });
+      // A fila de convocacao e DERIVADA dos exames: sem esta linha ela continuava
+      // mandando convocar quem acabou de ser convocado, ate o cache expirar.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_convocacao"] });
       toast.success("Exame Ocupacional solicitado com sucesso!");
     },
     onError: (err: any) => {
@@ -320,6 +323,9 @@ export function useSgsstExames(params?: SgsstExamesParams) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_exames"] });
+      // A fila de convocacao e DERIVADA dos exames: sem esta linha ela continuava
+      // mandando convocar quem acabou de ser convocado, ate o cache expirar.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_convocacao"] });
       toast.success("Exame Ocupacional atualizado com sucesso!");
     },
     onError: (err: any) => {
@@ -338,6 +344,9 @@ export function useSgsstExames(params?: SgsstExamesParams) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_exames"] });
+      // A fila de convocacao e DERIVADA dos exames: sem esta linha ela continuava
+      // mandando convocar quem acabou de ser convocado, ate o cache expirar.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_convocacao"] });
       toast.success("Exame Ocupacional removido!");
     },
     onError: (err: any) => {
@@ -579,6 +588,9 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_asos"] });
       queryClient.invalidateQueries({ queryKey: ["sgsst_exames"] });
+      // A fila de convocacao e DERIVADA dos exames: sem esta linha ela continuava
+      // mandando convocar quem acabou de ser convocado, ate o cache expirar.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_convocacao"] });
       toast.success("ASO emitido com sucesso!");
     },
     onError: (err: any) => {
@@ -650,6 +662,9 @@ export function useSgsstAsos(params?: SgsstAsosParams) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_asos"] });
       queryClient.invalidateQueries({ queryKey: ["sgsst_exames"] });
+      // A fila de convocacao e DERIVADA dos exames: sem esta linha ela continuava
+      // mandando convocar quem acabou de ser convocado, ate o cache expirar.
+      queryClient.invalidateQueries({ queryKey: ["sgsst_convocacao"] });
       toast.success("ASO atualizado!");
     },
     onError: (err: any) => {

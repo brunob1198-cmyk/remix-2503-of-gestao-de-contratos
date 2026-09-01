@@ -12,7 +12,10 @@ export default defineConfig({
   },
   server: {
     host: "::",
-    port: 8080,
+    // 8080 continua o padrão. A variável existe porque a porta às vezes já está
+    // ocupada por outro projeto na mesma máquina, e sem isso a única saída era
+    // editar este arquivo — que é versionado.
+    port: Number(process.env.PORT) || 8080,
   },
   build: {
     rollupOptions: {

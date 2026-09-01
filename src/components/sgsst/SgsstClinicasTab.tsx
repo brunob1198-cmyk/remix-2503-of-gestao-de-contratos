@@ -8,7 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit2, Building2 } from "lucide-react";
+import { Plus, Edit2, Building2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  buscarCep,
+  cepCompleto,
+  enderecoComComplemento,
+  mascaraCep,
+  MENSAGEM_CEP,
+} from "@/utils/cep";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
 import { TablePagination } from "@/components/medicoes/TablePagination";
@@ -53,8 +61,51 @@ export function SgsstClinicasTab() {
   const [endereco, setEndereco] = useState("");
   const [cidade, setCidade] = useState("");
   const [uf, setUf] = useState("");
+  const [cep, setCep] = useState("");
+  /**
+   * Número e complemento ficam FORA do campo de logradouro.
+   *
+   * Sem essa separação, digitar o número significaria clicar no meio do texto que
+   * a consulta acabou de preencher — e uma consulta nova apagaria o número junto.
+   * Na gravação os dois são juntados por `enderecoComComplemento`, que insere o
+   * complemento depois do logradouro e antes do bairro, como se escreve endereço.
+   */
+  const [enderecoComplemento, setEnderecoComplemento] = useState("");
+  const [buscandoCep, setBuscandoCep] = useState(false);
   const [examesRealizados, setExamesRealizados] = useState("");
   const [status, setStatus] = useState<StatusClinica>("ATIVA");
+
+  /**
+   * Consulta o CEP ao completar os oito dígitos.
+   *
+   * A clínica tem colunas próprias de cidade e UF, então a consulta preenche as
+   * três coisas: logradouro e bairro no campo de endereço, e cidade e UF nos
+   * campos delas. Jogar cidade e UF dentro da linha de endereço deixaria as
+   * colunas vazias, e é por elas que a lista filtra e ordena.
+   */
+  const handleCepChange = async (valor: string) => {
+    const mascarado = mascaraCep(valor);
+    setCep(mascarado);
+
+    if (!cepCompleto(mascarado)) return;
+
+    setBuscandoCep(true);
+    const resultado = await buscarCep(mascarado);
+    setBuscandoCep(false);
+
+    if (resultado.situacao === "OK") {
+      const { logradouro, bairro, localidade, uf: ufDoCep } = resultado.endereco;
+      setEndereco([logradouro, bairro].filter(Boolean).join(", "));
+      setCidade(localidade);
+      setUf(ufDoCep);
+      toast.success(MENSAGEM_CEP.OK);
+      return;
+    }
+
+    // Não apaga o que já estava escrito: o usuário pode ter digitado o endereço à
+    // mão antes, e uma consulta que falhou não é motivo para perder isso.
+    toast.warning(MENSAGEM_CEP[resultado.situacao]);
+  };
 
   const totalPages = Math.ceil(total / pageSize) || 1;
 
@@ -71,6 +122,11 @@ export function SgsstClinicasTab() {
       setTelefone(editando.telefone || "");
       setEmail(editando.email || "");
       setEndereco(editando.endereco || "");
+      // O complemento nao tem coluna propria: ele foi gravado dentro do endereco. Ao
+      // editar, o campo volta vazio de proposito — reaparecer com o texto que ja
+      // esta na linha acima duplicaria o complemento na proxima gravacao.
+      setCep("");
+      setEnderecoComplemento("");
       setCidade(editando.cidade || "");
       setUf(editando.uf || "");
       setExamesRealizados(editando.exames_realizados || "");
@@ -83,6 +139,8 @@ export function SgsstClinicasTab() {
       setTelefone("");
       setEmail("");
       setEndereco("");
+      setCep("");
+      setEnderecoComplemento("");
       setCidade("");
       setUf("");
       setExamesRealizados("");
@@ -113,7 +171,7 @@ export function SgsstClinicasTab() {
       crm_responsavel: crm.trim() || null,
       telefone: telefone.trim() || null,
       email: email.trim() || null,
-      endereco: endereco.trim() || null,
+      endereco: enderecoComComplemento(endereco, enderecoComplemento) || null,
       cidade: cidade.trim() || null,
       // O banco só aceita UF com 2 letras; normalizar aqui evita erro no salvar.
       uf: uf.trim().toUpperCase().slice(0, 2) || null,
@@ -372,25 +430,82 @@ export function SgsstClinicasTab() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="cliEnd">Endereço</Label>
-              <Input id="cliEnd" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5 col-span-2">
-                <Label htmlFor="cliCidade">Cidade</Label>
-                <Input id="cliCidade" value={cidade} onChange={(e) => setCidade(e.target.value)} />
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <div>
+                <h4 className="text-sm font-semibold leading-none">Endereço</h4>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Digite o CEP e o logradouro, o bairro, a cidade e a UF são preenchidos pela
+                  base dos Correios. Complete apenas o número e o complemento.
+                </p>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="cliUf">UF</Label>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label className="text-xs" htmlFor="cliCep">
+                    CEP
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="cliCep"
+                      placeholder="00.000-000"
+                      inputMode="numeric"
+                      value={cep}
+                      onChange={(e) => handleCepChange(e.target.value)}
+                    />
+                    {buscandoCep && (
+                      <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1 sm:col-span-2">
+                  <Label className="text-xs" htmlFor="cliCompl">
+                    Número / Complemento
+                  </Label>
+                  <Input
+                    id="cliCompl"
+                    placeholder="Ex.: 2392, Sala 4"
+                    value={enderecoComplemento}
+                    onChange={(e) => setEnderecoComplemento(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs" htmlFor="cliEnd">
+                  Logradouro e bairro
+                </Label>
                 <Input
-                  id="cliUf"
-                  maxLength={2}
-                  placeholder="SP"
-                  value={uf}
-                  onChange={(e) => setUf(e.target.value.toUpperCase())}
+                  id="cliEnd"
+                  placeholder="Preenchido pelo CEP — pode ser ajustado à mão"
+                  value={endereco}
+                  onChange={(e) => setEndereco(e.target.value)}
                 />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-xs" htmlFor="cliCidade">
+                    Cidade
+                  </Label>
+                  <Input
+                    id="cliCidade"
+                    value={cidade}
+                    onChange={(e) => setCidade(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs" htmlFor="cliUf">
+                    UF
+                  </Label>
+                  <Input
+                    id="cliUf"
+                    maxLength={2}
+                    placeholder="GO"
+                    value={uf}
+                    onChange={(e) => setUf(e.target.value.toUpperCase())}
+                  />
+                </div>
               </div>
             </div>
 
