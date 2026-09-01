@@ -331,6 +331,19 @@ export function SgsstConvocacaoTab() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs">
+                      {/* Explica a contradição em vez de deixar o usuário achar que a
+                          tela está com defeito: a lista mostra o exame como realizado
+                          e aqui ele consta como nunca feito, porque sem data não há
+                          como calcular vencimento. */}
+                      {i.realizadoSemData && (
+                        <span
+                          className="mb-1 flex items-start gap-1 text-destructive"
+                          title="Corrija a data na aba Exames Ocupacionais."
+                        >
+                          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                          há exame marcado como realizado sem data — não conta
+                        </span>
+                      )}
                       {i.jaAgendado && i.dataAgendada ? (
                         <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
                           <CheckCircle2 className="h-3 w-3" />
