@@ -210,3 +210,26 @@ export function diagnosticoDaFilaVazia(params: {
     "etária dele bate com a idade dos trabalhadores."
   );
 }
+
+/**
+ * Chave que liga o exame PREVISTO no PCMSO ao exame REALIZADO.
+ *
+ * O DEFEITO QUE ISTO CORRIGE
+ *
+ * A ligação era feita por `colaboradorId::nome_exame` com comparação exata. O nome
+ * é texto digitado à mão nos dois lados — no quadro de exames do programa e no
+ * lançamento do exame — então "Avaliação Clínica Ocupacional" e "avaliação clínica
+ * ocupacional" eram exames DIFERENTES para a fila.
+ *
+ * Medido na aplicação: com um exame realizado em 20/08 cadastrado em caixa alta e o
+ * previsto em caixa baixa, a fila seguia dizendo "nunca realizado · Vencido". O
+ * trabalhador aparecia em atraso por causa da tecla Shift.
+ *
+ * Normaliza caixa, acentuação não — acento é parte do nome e trocá-lo é erro de
+ * digitação diferente, que juntar esconderia. Espaço repetido colapsa, porque dois
+ * espaços entre palavras não são uma distinção que alguém quis fazer.
+ */
+export function chaveDoExame(colaboradorId: string, nomeExame: string): string {
+  const nome = (nomeExame ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  return `${colaboradorId}::${nome}`;
+}

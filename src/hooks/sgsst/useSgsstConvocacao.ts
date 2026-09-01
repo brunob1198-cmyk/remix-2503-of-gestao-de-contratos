@@ -7,6 +7,7 @@ import {
   idadeEm,
   ordenarPorUrgencia,
   diagnosticoDaFilaVazia,
+  chaveDoExame,
   type SituacaoConvocacao,
 } from "@/utils/sgsstConvocacao";
 import type { FaixaEtariaPcmso } from "@/hooks/sgsst/useSgsstPcmso";
@@ -152,7 +153,7 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
       const realizadoSemDataPor = new Set<string>();
 
       for (const f of feitos) {
-        const chave = `${f.colaborador_id}::${f.nome_exame}`;
+        const chave = chaveDoExame(f.colaborador_id, f.nome_exame);
 
         if (f.status === "REALIZADO" && f.data_realizacao) {
           const atual = ultimaPor.get(chave);
@@ -199,7 +200,7 @@ export function useSgsstConvocacao(options?: { hoje?: Date }) {
           if (p.funcao_id && p.funcao_id !== c.funcao_id) continue;
           if (!faixaSeAplica(p.faixa_etaria, idade)) continue;
 
-          const chave = `${c.id}::${p.nome_exame}`;
+          const chave = chaveDoExame(c.id, p.nome_exame);
           const ultima = ultimaPor.get(chave) ?? null;
           const agendada = agendadoPor.get(chave) ?? null;
 
