@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   diagnosticoDaFilaVazia,
+  chaveDoExame,
   idadeEm,
   faixaSeAplica,
   somarMeses,
@@ -243,5 +244,43 @@ describe("diagnosticoDaFilaVazia", () => {
       previstosAtivos: 0,
     });
     expect(m).toContain("colaborador");
+  });
+});
+
+/**
+ * A ligação previsto↔realizado.
+ *
+ * O nome do exame é digitado à mão nos DOIS lados — no quadro do programa e no
+ * lançamento. Comparação exata fazia "Avaliação Clínica Ocupacional" e "avaliação
+ * clínica ocupacional" serem exames diferentes, e a fila dizia "nunca realizado"
+ * para quem tinha o exame feito. Medido na aplicação antes da correção.
+ */
+describe("chaveDoExame", () => {
+  it("liga nomes que diferem só na caixa", () => {
+    expect(chaveDoExame("c1", "Avaliação Clínica Ocupacional")).toBe(
+      chaveDoExame("c1", "avaliação clínica ocupacional")
+    );
+  });
+
+  it("liga nomes com espaço sobrando nas pontas e no meio", () => {
+    expect(chaveDoExame("c1", "  Audiometria   Tonal ")).toBe(
+      chaveDoExame("c1", "Audiometria Tonal")
+    );
+  });
+
+  it("NÃO junta nomes que diferem no acento", () => {
+    // Acento é parte do nome. Juntar esconderia um erro de digitação real, e o
+    // usuário nunca saberia por que dois exames viraram um.
+    expect(chaveDoExame("c1", "Avaliacao Clinica")).not.toBe(
+      chaveDoExame("c1", "Avaliação Clínica")
+    );
+  });
+
+  it("não junta exames de trabalhadores diferentes", () => {
+    expect(chaveDoExame("c1", "Audiometria")).not.toBe(chaveDoExame("c2", "Audiometria"));
+  });
+
+  it("não junta exames de nomes diferentes", () => {
+    expect(chaveDoExame("c1", "Audiometria")).not.toBe(chaveDoExame("c1", "Espirometria"));
   });
 });
