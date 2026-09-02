@@ -222,8 +222,16 @@ export default function GerenciarUsuariosPage() {
               <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border bg-amber-50/50">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    {u.avatar_url && <SmartImage src={u.avatar_url} context="profiles" className="h-full w-full object-cover" />}
-                    <AvatarFallback>{getInitials(u.nome)}</AvatarFallback>
+                    {u.avatar_url ? (
+                      <SmartImage
+                        src={u.avatar_url}
+                        context="profiles"
+                        containerClassName="absolute inset-0 h-full w-full"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback>{getInitials(u.nome)}</AvatarFallback>
+                    )}
                   </Avatar>
                   <div>
                     <p className="font-medium">{u.nome || "Sem nome"}</p>
@@ -258,8 +266,16 @@ export default function GerenciarUsuariosPage() {
                 <div key={u.id} className="flex items-center justify-between p-3 rounded-lg border">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
-                      {u.avatar_url && <SmartImage src={u.avatar_url} context="profiles" className="h-full w-full object-cover" />}
-                      <AvatarFallback>{getInitials(u.nome)}</AvatarFallback>
+                      {u.avatar_url ? (
+                        <SmartImage
+                          src={u.avatar_url}
+                          context="profiles"
+                          containerClassName="absolute inset-0 h-full w-full"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <AvatarFallback>{getInitials(u.nome)}</AvatarFallback>
+                      )}
                     </Avatar>
                     <div>
                       <p className="font-medium">
