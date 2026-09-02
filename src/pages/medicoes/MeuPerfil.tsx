@@ -156,15 +156,17 @@ export default function MeuPerfilPage() {
                     do shadcn não conhece `context` — receber a prop e ignorá-la
                     fazia a foto simplesmente não carregar. Mesmo uso de
                     GerenciarUsuarios. */}
-                {avatarUrl && (
+                {avatarUrl ? (
                   <SmartImage
                     src={avatarUrl}
                     context="profiles"
                     alt="Sua foto de perfil"
+                    containerClassName="absolute inset-0 h-full w-full"
                     className="h-full w-full object-cover"
                   />
+                ) : (
+                  <AvatarFallback className="text-xl">{initials}</AvatarFallback>
                 )}
-                <AvatarFallback className="text-xl">{initials}</AvatarFallback>
               </Avatar>
               <label
                 htmlFor="avatar-upload"
