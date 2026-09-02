@@ -36,12 +36,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AnotacoesCampoDialog } from "@/components/medicoes/AnotacoesCampoDialog";
 import { CriarSiteDialog } from "@/components/medicoes/CriarSiteDialog";
 import { TransferirApontamentoButton } from "@/components/medicoes/TransferirApontamentoButton";
 import { useDiarioObra } from "@/hooks/useDiarioObra";
 import { useDiarioCalendario } from "@/hooks/useDiarioCalendario";
-import { useDiarioCampoAtividades } from "@/hooks/useDiarioCampo";
 import { useRecursos } from "@/hooks/useRecursos";
 import { useSites } from "@/hooks/useSites";
 import { useItensLpu } from "@/hooks/useItensLpu";
@@ -142,15 +140,12 @@ export default function DiarioObraPage() {
     previsoes = {}
   } = useDiarioObra(selectedSiteId, selectedDate);
 
-  const { atividades: atividadesCampo } = useDiarioCampoAtividades(selectedProjetoId, "", selectedDate);
   const { data: calendarEntries = [] } = useDiarioCalendario(selectedSiteId, "2000-01-01", "2099-12-31");
 
   const lastDiarioId = useRef<string | null>(null);
   const [obs, setObs] = useState("");
 
   useEffect(() => {
-    // Adiciona atividadesCampo como dependência para carregar as observações quando os dados chegarem
-
     if (diario && diario.id !== lastDiarioId.current) {
       lastDiarioId.current = diario.id;
       const d = diario as any;
@@ -170,7 +165,7 @@ export default function DiarioObraPage() {
       setHeaderSaved(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diario?.id, atividadesCampo]);
+  }, [diario?.id]);
 
   const handleCalendarDayClick = (dateStr: string) => {
     setSelectedDate(dateStr);
@@ -604,22 +599,6 @@ export default function DiarioObraPage() {
                     )}
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <AnotacoesCampoDialog
-                  atividadesCampo={atividadesCampo}
-                  diarioObraId={diario?.id || null}
-                  itensDisponiveis={itensDisponiveis}
-                  producoes={producoes}
-                  fotosObra={fotos}
-                  onFotoTransferred={() => {
-                    queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
-                  }}
-                  ensureDiario={ensureDiario}
-                  selectedDate={selectedDate}
-                  photoGroups={photoGroups}
-                />
               </div>
             </div>
 

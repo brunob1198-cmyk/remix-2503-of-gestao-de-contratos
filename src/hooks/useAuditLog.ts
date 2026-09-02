@@ -21,7 +21,6 @@ const TABELA_LABELS: Record<string, string> = {
   lancamentos_medicao: "Lançamentos Medição",
   lancamentos_faturamento: "Lançamentos Faturamento",
   diarios_obra: "Diário de Obra",
-  diarios_campo: "Diário de Campo",
   escopo_itens: "Escopo",
   itens_lpu: "Itens LPU",
   contratos: "Contratos",

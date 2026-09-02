@@ -5,7 +5,6 @@ const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev"
 // Mapeamento FIXO por contexto/tabela conforme solicitado
 const TABLE_BUCKET_MAP: Record<string, string> = {
   "diario_fotos": "diario-fotos",
-  "diario_campo_fotos": "diario-fotos/campo",
   "contratos": "contratos",
   "profiles": "avatars",
   "timeline": "timeline-evidencias",

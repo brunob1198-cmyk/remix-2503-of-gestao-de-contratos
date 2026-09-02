@@ -22,9 +22,13 @@
     "Os warnings passaram de 37 para 39 por DERIVA ANTERIOR, não por esta mudança:",
     "medido com `git stash` no HEAD 75d6520e, o estado limpo já acusava 39. Os",
     "arquivos desta fase não emitem warning algum. O gate é só sobre erros, então",
-    "a deriva não estava sendo travada — fica registrada aqui."
+    "a deriva não estava sendo travada — fica registrada aqui.",
+    "",
+    "ATUALIZAÇÃO (remoção do Diário de Campo): erros 1596 -> 1587. Os arquivos",
+    "deletados (DiarioCampo.tsx, AnotacoesCampoDialog.tsx, useDiarioCampo.ts)",
+    "carregavam parte do passivo de `any`; removê-los reduziu a contagem."
   ],
-  "errors": 1596,
+  "errors": 1587,
   "warnings": 39,
   "tolerance": 1
 }

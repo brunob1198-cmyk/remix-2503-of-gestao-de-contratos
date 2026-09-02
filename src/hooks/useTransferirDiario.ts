@@ -25,8 +25,6 @@ function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
     "diario_veiculos",
     "diario_fotos",
     "diario_calendario",
-    "diario_campo_atividades",
-    "diario_campo_calendario",
     "rdo",
     "sites",
     "sites_destino_transferencia",

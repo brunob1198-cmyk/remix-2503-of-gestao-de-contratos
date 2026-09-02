@@ -11,7 +11,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
-  LayoutDashboard, FolderKanban, MapPin, 
+  LayoutDashboard, FolderKanban,
   ClipboardList, Receipt, DollarSign, FileDown, ListChecks,
   HardHat, Boxes, BarChart3, LogOut, Users, Webhook, UserCircle,
   CalendarRange, ShoppingCart, Zap, Wand2,
@@ -63,7 +63,6 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "cadastros", title: "Cadastros", url: "/medicoes/cadastros", icon: FolderKanban, telaIds: ["projetos", "sites", "lpu"], group: "gestao" },
   { id: "checklists", title: "Checklists", url: "/medicoes/checklists", icon: ClipboardCheck, telaId: "checklists", group: "gestao" },
   { id: "diario", title: "Diário de Obra", url: "/medicoes/diario", icon: HardHat, telaId: "diario", group: "gestao" },
-  { id: "diario-campo", title: "Diário de Campo", url: "/medicoes/diario-campo", icon: MapPin, telaId: "diario", group: "gestao" },
   { id: "rdo", title: "RDO", url: "/medicoes/rdo", icon: FileDown, telaId: "rdo", group: "gestao" },
   { id: "analise", title: "Análise de Obras", url: "/medicoes/analise", icon: BarChart3, telaId: "analise", group: "gestao" },
   { id: "planejamento", title: "Planejamento", url: "/medicoes/planejamento", icon: CalendarRange, telaId: "planejamento", group: "gestao" },

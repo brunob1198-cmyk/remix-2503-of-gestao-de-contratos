@@ -87,7 +87,6 @@ export async function buildStorageIndex() {
     "avatars",
     "timeline-evidencias",
     "medicao-capas",
-    "diario-campo-fotos",
     "empresas",
     "clientes"
   ];
@@ -191,7 +190,6 @@ export function extractStorageInfo(pathOrUrl: string, context?: string) {
   // 1. Extração de bucket baseada estritamente no mapeamento fixo (Objetivo 1 e 2)
   const TABLE_BUCKET_MAP: Record<string, string> = {
     "diario_fotos": "diario-fotos",
-    "diario_campo_fotos": "diario-fotos",
     "contratos": "contratos",
     "profiles": "avatars",
     "timeline": "timeline-evidencias",

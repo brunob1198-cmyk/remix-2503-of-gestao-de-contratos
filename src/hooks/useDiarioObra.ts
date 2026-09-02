@@ -460,31 +460,6 @@ export function useDiarioObra(siteId?: string, data?: string) {
           await supabase.from("diarios_obra").update(updates).eq("id", targetId);
         }
 
-        // Mover diários de campo associados
-        const { data: currentCampos } = await supabase
-          .from("diarios_campo")
-          .select("*")
-          .eq("site_id", siteId)
-          .eq("data", currentDiario.data);
-          
-        if (currentCampos && currentCampos.length > 0) {
-           for (const campo of currentCampos) {
-              const { data: targetCampo } = await supabase
-                .from("diarios_campo")
-                .select("id")
-                .eq("site_id", siteId)
-                .eq("data", novaData)
-                .maybeSingle();
-                
-              if (targetCampo) {
-                 await supabase.from("diario_campo_fotos").update({ diario_campo_id: targetCampo.id }).eq("diario_campo_id", campo.id);
-                 await supabase.from("diarios_campo").delete().eq("id", campo.id);
-              } else {
-                 await supabase.from("diarios_campo").update({ data: novaData }).eq("id", campo.id);
-              }
-           }
-        }
-
         const { error: delErr } = await supabase.from("diarios_obra").delete().eq("id", diarioId);
         if (delErr) throw delErr;
 
@@ -492,31 +467,6 @@ export function useDiarioObra(siteId?: string, data?: string) {
       } else {
         const { error: updErr } = await supabase.from("diarios_obra").update({ data: novaData }).eq("id", diarioId);
         if (updErr) throw updErr;
-
-        // Também mover diários de campo associados
-        const { data: currentCampos } = await supabase
-          .from("diarios_campo")
-          .select("*")
-          .eq("site_id", siteId)
-          .eq("data", currentDiario.data);
-          
-        if (currentCampos && currentCampos.length > 0) {
-           for (const campo of currentCampos) {
-              const { data: targetCampo } = await supabase
-                .from("diarios_campo")
-                .select("id")
-                .eq("site_id", siteId)
-                .eq("data", novaData)
-                .maybeSingle();
-                
-              if (targetCampo) {
-                 await supabase.from("diario_campo_fotos").update({ diario_campo_id: targetCampo.id }).eq("diario_campo_id", campo.id);
-                 await supabase.from("diarios_campo").delete().eq("id", campo.id);
-              } else {
-                 await supabase.from("diarios_campo").update({ data: novaData }).eq("id", campo.id);
-              }
-           }
-        }
 
         return { targetId: diarioId, novaData };
       }
@@ -532,8 +482,6 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["rdo"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-totais"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-producao-acumulada-projeto"] });
-      queryClient.invalidateQueries({ queryKey: ["diario_campo_atividades"] });
-      queryClient.invalidateQueries({ queryKey: ["diario_campo_calendario"] });
       toast({ title: `Diário movido com sucesso para a nova data!` });
     },
     onError: (e: Error) => toast({ title: "Erro ao mover diário", description: e.message, variant: "destructive" }),

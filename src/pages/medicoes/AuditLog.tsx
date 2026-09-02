@@ -12,7 +12,7 @@ import { ptBR } from "date-fns/locale";
 
 const TABELAS = [
   "sites", "projetos", "lancamentos_producao", "lancamentos_medicao",
-  "lancamentos_faturamento", "diarios_obra", "diarios_campo", "escopo_itens",
+  "lancamentos_faturamento", "diarios_obra", "escopo_itens",
   "itens_lpu", "contratos", "clientes", "recursos", "diario_producao",
   "diario_equipe", "diario_equipamentos", "diario_veiculos", "faturamentos", "faturamento_itens",
 ];

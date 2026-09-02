@@ -35,7 +35,6 @@ const DiarioObraPage = lazyWithRetry(() => import("./pages/medicoes/DiarioObra")
 const GerenciarUsuariosPage = lazyWithRetry(() => import("./pages/medicoes/GerenciarUsuarios"));
 const MeuPerfilPage = lazyWithRetry(() => import("./pages/medicoes/MeuPerfil"));
 const SupplyChainPage = lazyWithRetry(() => import("./pages/medicoes/SupplyChain"));
-const DiarioCampoPage = lazyWithRetry(() => import("./pages/medicoes/DiarioCampo"));
 const ForecastPublicPage = lazyWithRetry(() => import("./pages/ForecastPublic"));
 
 // Lazy Loaded Pages
@@ -129,7 +128,6 @@ const App = () => {
                 <Route path="sites/:siteId/escopo" element={<EscopoPage />} />
                 <Route path="lpu" element={<Navigate to="/medicoes/cadastros" replace />} />
                 <Route path="diario" element={<ErrorBoundary><DiarioObraPage /></ErrorBoundary>} />
-                <Route path="diario-campo" element={<DiarioCampoPage />} />
                 <Route path="analise" element={<AnaliseObraPage />} />
                 <Route path="producao" element={<Navigate to="/medicoes/acompanhamento" replace />} />
                 <Route path="medicao" element={<ErrorBoundary><MedicaoPage /></ErrorBoundary>} />

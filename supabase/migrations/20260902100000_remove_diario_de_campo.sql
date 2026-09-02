@@ -1,0 +1,34 @@
+-- ============================================================================
+-- Remoção do Diário de Campo
+-- ============================================================================
+--
+-- A tela "Diário de Campo" foi criada para uma situação que não deve mais
+-- acontecer, e o botão "Anotações de Campo" embutido no Diário de Obra (que
+-- copiava fotos de `diario_campo_fotos` para `diario_fotos`) foi removido
+-- junto no código. Esta migration derruba os dois objetos de banco dedicados
+-- à feature.
+--
+-- `diario_campo_fotos` é dropada antes de `diarios_campo` porque referencia
+-- essa tabela via FK (diario_campo_id). O DROP TABLE já leva junto, como
+-- efeito colateral do Postgres, tudo que pertence só a estas tabelas:
+--   - as policies de RLS de ambas
+--   - o trigger update_diarios_campo_updated_at
+--   - o trigger tr_cleanup_diario_campo_fotos (função handle_r2_file_cleanup
+--     continua existindo — é compartilhada com outras tabelas)
+--   - o trigger trg_check_diario_campo_foto_geo (função check_diario_foto_geo
+--     continua existindo — é compartilhada com diario_fotos)
+--   - o trigger audit_diarios_campo (função fn_audit_trigger continua existindo)
+--   - constraints e índices de ambas as tabelas
+--
+-- NÃO remove: a função handle_r2_file_cleanup, a função check_diario_foto_geo,
+-- a função fn_audit_trigger, nem o bucket de storage `diario-fotos` — todos
+-- compartilhados com o Diário de Obra, que continua em produção.
+--
+-- ATENÇÃO STORAGE: como o DROP TABLE não dispara o trigger de limpeza (ele só
+-- reage a DELETE/UPDATE de linha), os arquivos já enviados para o bucket em
+-- `diario-fotos/campo` não são apagados por esta migration. Se quiser
+-- recuperar aquele espaço, isso precisa de uma limpeza manual do bucket.
+-- ============================================================================
+
+DROP TABLE IF EXISTS public.diario_campo_fotos;
+DROP TABLE IF EXISTS public.diarios_campo;
