@@ -17,6 +17,7 @@ import {
 } from "@/hooks/sgsst/useSgsstAsosAndExames";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { useSgsstPcmso } from "@/hooks/sgsst/useSgsstPcmso";
+import { useSgsstClinicas } from "@/hooks/sgsst/useSgsstClinicas";
 import { FileText } from "lucide-react";
 
 interface ExameFormDialogProps {
@@ -36,6 +37,7 @@ export function ExameFormDialog({
 }: ExameFormDialogProps) {
   const { colaboradores } = useSgsstColaboradoresResumo();
   const { pcmsoList } = useSgsstPcmso();
+  const { clinicas } = useSgsstClinicas();
 
   const [colaboradorId, setColaboradorId] = useState("");
   const [pcmsoId, setPcmsoId] = useState("none");
@@ -49,6 +51,9 @@ export function ExameFormDialog({
   const [observacoes, setObservacoes] = useState("");
   const [natureza, setNatureza] = useState<NaturezaExame>("COMPLEMENTAR");
   const [resultadoClassificacao, setResultadoClassificacao] = useState<ClassificacaoResultado | "none">("none");
+  const [clinicaId, setClinicaId] = useState("none");
+  const [dataAgendada, setDataAgendada] = useState("");
+  const [horaAgendada, setHoraAgendada] = useState("");
 
   /** Recalculada a cada render: é barata e precisa acompanhar status e data. */
   const incoerencia = incoerenciaDoExame({ status, dataRealizacao });
@@ -64,6 +69,9 @@ export function ExameFormDialog({
       setResultado(exame.resultado || "");
       setNatureza(exame.natureza || "COMPLEMENTAR");
       setResultadoClassificacao(exame.resultado_classificacao || "none");
+      setClinicaId(exame.clinica_id || "none");
+      setDataAgendada(exame.data_agendada ? exame.data_agendada.split("T")[0] : "");
+      setHoraAgendada(exame.hora_agendada ? exame.hora_agendada.slice(0, 5) : "");
       setMedicoResponsavel(exame.medico_responsavel || "");
       setStatus(exame.status || "PENDENTE");
       setObservacoes(exame.observacoes || "");
@@ -80,6 +88,9 @@ export function ExameFormDialog({
       setObservacoes("");
       setNatureza("COMPLEMENTAR");
       setResultadoClassificacao("none");
+      setClinicaId("none");
+      setDataAgendada("");
+      setHoraAgendada("");
     }
   }, [exame, open]);
 
@@ -110,6 +121,9 @@ export function ExameFormDialog({
       medico_responsavel: medicoResponsavel.trim() || null,
       status,
       observacoes: observacoes.trim() || null,
+      clinica_id: clinicaId === "none" ? null : clinicaId,
+      data_agendada: dataAgendada || null,
+      hora_agendada: horaAgendada || null,
     });
 
     onOpenChange(false);
@@ -188,6 +202,68 @@ export function ExameFormDialog({
               onChange={(e) => setNomeExame(e.target.value)}
               required
             />
+          </div>
+
+          {/* Onde e quando o exame vai ser feito.
+              A clínica é o que a GUIA DE ENCAMINHAMENTO imprime como endereço — sem
+              ela o trabalhador recebe um papel sem saber para onde ir. E a data
+              agendada é o que a fila de convocação lê como "agendado". */}
+          <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+            <div>
+              <h4 className="text-sm font-semibold leading-none">Onde o exame será feito</h4>
+              <p className="mt-1 text-xs text-muted-foreground">
+                A clínica escolhida aqui é o endereço que sai na guia de encaminhamento.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="clinica">Clínica credenciada</Label>
+                <Select value={clinicaId} onValueChange={setClinicaId}>
+                  <SelectTrigger id="clinica">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- A definir --</SelectItem>
+                    {clinicas
+                      .filter((c) => c.status !== "INATIVA")
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nome}
+                          {c.cidade ? ` — ${c.cidade}` : ""}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="dataAgendada">Data agendada</Label>
+                <Input
+                  id="dataAgendada"
+                  type="date"
+                  value={dataAgendada}
+                  onChange={(e) => setDataAgendada(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="horaAgendada">Hora</Label>
+                <Input
+                  id="horaAgendada"
+                  type="time"
+                  value={horaAgendada}
+                  onChange={(e) => setHoraAgendada(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {clinicas.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nenhuma clínica cadastrada ainda. Cadastre na aba <strong>Clínicas</strong> e
+                ela passa a aparecer aqui.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
