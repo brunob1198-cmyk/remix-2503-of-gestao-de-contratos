@@ -66,6 +66,18 @@ export interface SgsstExame {
   medico_responsavel?: string | null;
   observacoes?: string | null;
   status: StatusExameOcupacional;
+  /**
+   * Clínica credenciada que vai realizar o exame.
+   *
+   * A coluna existe no banco desde a migration de clínicas, mas ficou sem tipo e
+   * sem campo no formulário — então a guia de encaminhamento nunca conseguia
+   * imprimir o endereço, e a fila de convocação nunca conseguia mostrar um exame
+   * como agendado. Três colunas gravadas por ninguém.
+   */
+  clinica_id?: string | null;
+  /** Data marcada na clínica. É ela que a fila de convocação lê como "agendado". */
+  data_agendada?: string | null;
+  hora_agendada?: string | null;
   created_at?: string;
   updated_at?: string;
   // Joined Data
