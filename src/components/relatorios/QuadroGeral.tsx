@@ -7,7 +7,7 @@ import { useProjetos } from "@/hooks/useProjetos";
 
 import { useSites } from "@/hooks/useSites";
 import { useAreas } from "@/hooks/useAreas";
-import { useLancamentosProducao, useLancamentosFaturamento } from "@/hooks/useLancamentos";
+import { useLancamentosProducao } from "@/hooks/useLancamentos";
 import { useContratos } from "@/hooks/useContratos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
@@ -19,6 +19,8 @@ import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, La
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
+import { MonthRangePicker } from "@/components/analise/MonthRangePicker";
+import { startOfYear, endOfYear, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 
 function MultiSelectFilter({ label, options, selected, onToggle, onSelectAll, onClearAll }: {
   label: string;
@@ -75,11 +77,14 @@ interface SiteRow {
   site_codigo: string;
   site_nome: string;
   valor_executado: number;
-  valor_faturado: number;
-  valor_nao_faturado: number;
   percentual_evolucao: number;
 }
 
+/**
+ * `mb_orcada_rs`, `mb_real_rs` e `receita_liquida` não aparecem como coluna —
+ * existem só para o rollup de % MB Orç./% MB Real em Cliente/Área/Total sair
+ * de somar reais e dividir no fim, e não de tirar média de percentual.
+ */
 interface ProjetoRow {
   projeto_id: string;
   projeto_codigo: string;
@@ -88,20 +93,28 @@ interface ProjetoRow {
   area: string;
   valor_contrato: number;
   valor_executado: number;
-  valor_faturado: number;
-  valor_nao_faturado: number;
   saldo_contrato: number;
   percentual_evolucao: number;
+  resultado_orc: number;
+  mb_orcada_rs: number;
+  mb_real_rs: number;
+  receita_liquida: number;
+  percentual_mb_orc: number;
+  percentual_mb_real: number;
   siteRows: SiteRow[];
 }
 
 interface Totals {
   valor_contrato: number;
   valor_executado: number;
-  valor_faturado: number;
-  valor_nao_faturado: number;
   saldo_contrato: number;
   percentual_evolucao: number;
+  resultado_orc: number;
+  mb_orcada_rs: number;
+  mb_real_rs: number;
+  receita_liquida: number;
+  percentual_mb_orc: number;
+  percentual_mb_real: number;
 }
 
 interface ClienteGroup {
@@ -116,28 +129,38 @@ interface AreaGroup {
   totals: Totals;
 }
 
-function calcTotals(rows: { valor_contrato: number; valor_executado: number; valor_faturado: number; valor_nao_faturado: number; saldo_contrato: number }[]): Totals {
+function calcTotals(rows: { valor_contrato: number; valor_executado: number; saldo_contrato: number; resultado_orc: number; mb_orcada_rs: number; mb_real_rs: number; receita_liquida: number }[]): Totals {
   const t = rows.reduce(
     (acc, p) => ({
       valor_contrato: acc.valor_contrato + p.valor_contrato,
       valor_executado: acc.valor_executado + p.valor_executado,
-      valor_faturado: acc.valor_faturado + p.valor_faturado,
-      valor_nao_faturado: acc.valor_nao_faturado + p.valor_nao_faturado,
       saldo_contrato: acc.saldo_contrato + p.saldo_contrato,
+      resultado_orc: acc.resultado_orc + p.resultado_orc,
+      mb_orcada_rs: acc.mb_orcada_rs + p.mb_orcada_rs,
+      mb_real_rs: acc.mb_real_rs + p.mb_real_rs,
+      receita_liquida: acc.receita_liquida + p.receita_liquida,
     }),
-    { valor_contrato: 0, valor_executado: 0, valor_faturado: 0, valor_nao_faturado: 0, saldo_contrato: 0 }
+    { valor_contrato: 0, valor_executado: 0, saldo_contrato: 0, resultado_orc: 0, mb_orcada_rs: 0, mb_real_rs: 0, receita_liquida: 0 }
   );
-  
+
   // Round totals to avoid floating point issues
   const rounded = {
     valor_contrato: Math.round(t.valor_contrato * 100) / 100,
     valor_executado: Math.round(t.valor_executado * 100) / 100,
-    valor_faturado: Math.round(t.valor_faturado * 100) / 100,
-    valor_nao_faturado: Math.round(t.valor_nao_faturado * 100) / 100,
     saldo_contrato: Math.round(t.saldo_contrato * 100) / 100,
+    resultado_orc: Math.round(t.resultado_orc * 100) / 100,
+    mb_orcada_rs: Math.round(t.mb_orcada_rs * 100) / 100,
+    mb_real_rs: Math.round(t.mb_real_rs * 100) / 100,
+    receita_liquida: Math.round(t.receita_liquida * 100) / 100,
   };
 
-  return { ...rounded, percentual_evolucao: rounded.valor_contrato > 0 ? (rounded.valor_executado / rounded.valor_contrato) * 100 : 0 };
+  return {
+    ...rounded,
+    percentual_evolucao: rounded.valor_contrato > 0 ? (rounded.valor_executado / rounded.valor_contrato) * 100 : 0,
+    // % acumulado do período = soma dos reais / soma da receita líquida — nunca média das % mensais.
+    percentual_mb_orc: rounded.receita_liquida > 0 ? (rounded.mb_orcada_rs / rounded.receita_liquida) * 100 : 0,
+    percentual_mb_real: rounded.receita_liquida > 0 ? (rounded.mb_real_rs / rounded.receita_liquida) * 100 : 0,
+  };
 }
 
 const formatCurrency = (value: number) =>
@@ -176,7 +199,6 @@ export default function QuadroGeral() {
   const { sites } = useSites();
   const { areas } = useAreas();
   const { lancamentos: producao } = useLancamentosProducao();
-  const { lancamentos: faturamento } = useLancamentosFaturamento();
   const { contratos: parentsContratos } = useContratos();
 
   const { data: escopoItens = [], isLoading: loadingEscopo } = useQuery({
@@ -215,6 +237,56 @@ export default function QuadroGeral() {
     },
   });
 
+  // Resultado/Orç. e MB (Orç./Real) são mensais na origem (view_bi_analise_obras,
+  // uma linha por projeto+mês) — mesma fonte que a tela Análise de Custos e
+  // Margens. Cache compartilhado com o Dashboard: mesma query key, mesmo dado.
+  const { data: biAnalise = [], isLoading: loadingBi } = useQuery({
+    queryKey: ["bi_analise_dashboard"],
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("view_bi_analise_obras")
+        .select("*");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const [rmPeriodoInicioStr, setRmPeriodoInicioStr] = usePersistedState<string>(
+    "quadro-geral-rm-periodo-inicio",
+    startOfYear(new Date()).toISOString()
+  );
+  const [rmPeriodoFimStr, setRmPeriodoFimStr] = usePersistedState<string>(
+    "quadro-geral-rm-periodo-fim",
+    endOfYear(new Date()).toISOString()
+  );
+  const rmPeriodoInicio = useMemo(() => new Date(rmPeriodoInicioStr), [rmPeriodoInicioStr]);
+  const rmPeriodoFim = useMemo(() => new Date(rmPeriodoFimStr), [rmPeriodoFimStr]);
+
+  // Soma por projeto dentro do período escolhido — nunca a % já pronta da
+  // view, que é mensal: acumular precisa ser reais somados / reais somados.
+  const biMapByProjeto = useMemo(() => {
+    const map = new Map<string, { resultadoTotal: number; mbOrcada: number; mbReal: number; receitaLiquida: number }>();
+    const start = startOfMonth(rmPeriodoInicio);
+    const end = endOfMonth(rmPeriodoFim);
+    for (const row of biAnalise as any[]) {
+      const projetoId = row["ID Projeto"];
+      const ano = row["Ano"];
+      const mesNum = row["Mês Num"];
+      if (!projetoId || !ano || !mesNum) continue;
+      const dataRef = new Date(ano, mesNum - 1, 1);
+      if (!isWithinInterval(dataRef, { start, end })) continue;
+      const prev = map.get(projetoId) || { resultadoTotal: 0, mbOrcada: 0, mbReal: 0, receitaLiquida: 0 };
+      map.set(projetoId, {
+        resultadoTotal: prev.resultadoTotal + Number(row["Resultado Total"] || 0),
+        mbOrcada: prev.mbOrcada + Number(row["MB Orç. (R$)"] || 0),
+        mbReal: prev.mbReal + Number(row["MB Real (R$)"] || 0),
+        receitaLiquida: prev.receitaLiquida + Number(row["Receita Líquida"] || 0),
+      });
+    }
+    return map;
+  }, [biAnalise, rmPeriodoInicio, rmPeriodoFim]);
 
   const [filterAreaArr, setFilterAreaArr] = usePersistedState<string[]>("quadro-geral-filter-area", []);
   const [filterClienteArr, setFilterClienteArr] = usePersistedState<string[]>("quadro-geral-filter-cliente", []);
@@ -273,21 +345,11 @@ export default function QuadroGeral() {
     }
 
 
-    // Per-site faturado
-    const faturadoBySite = new Map<string, number>();
-    for (const f of faturamento) {
-      const valor = f.valor_faturado ? Number(f.valor_faturado) : Number(f.quantidade) * Number(f.item_lpu?.preco_unitario || 0);
-      faturadoBySite.set(f.site_id, (faturadoBySite.get(f.site_id) || 0) + valor);
-    }
-
     // Aggregate per projeto
     const executadoByProjeto = new Map<string, number>();
-    const faturadoByProjeto = new Map<string, number>();
     for (const s of sites) {
       const exec = executadoBySite.get(s.id) || 0;
-      const fat = faturadoBySite.get(s.id) || 0;
       executadoByProjeto.set(s.projeto_id, (executadoByProjeto.get(s.projeto_id) || 0) + exec);
-      faturadoByProjeto.set(s.projeto_id, (faturadoByProjeto.get(s.projeto_id) || 0) + fat);
     }
 
     // Contracts Map for summing multiple contracts per project
@@ -339,25 +401,28 @@ export default function QuadroGeral() {
       }
 
       const valor_executado = Math.round((executadoByProjeto.get(p.id) || 0) * 100) / 100;
-      const valor_faturado = Math.round((faturadoByProjeto.get(p.id) || 0) * 100) / 100;
-      const valor_nao_faturado = Math.round((valor_executado - valor_faturado) * 100) / 100;
       // Negativo é sinal de estouro de contrato — não é zerado, porque é
       // justamente o caso que precisa aparecer para virar ação.
       const saldo_contrato = Math.round((valor_contrato - valor_executado) * 100) / 100;
       const percentual_evolucao = valor_contrato > 0 ? (valor_executado / valor_contrato) * 100 : 0;
       const areaName = (p as any).area_id ? (areaMap.get((p as any).area_id) || "Sem área") : "Sem área";
 
+      const bi = biMapByProjeto.get(p.id);
+      const resultado_orc = Math.round((bi?.resultadoTotal || 0) * 100) / 100;
+      const mb_orcada_rs = Math.round((bi?.mbOrcada || 0) * 100) / 100;
+      const mb_real_rs = Math.round((bi?.mbReal || 0) * 100) / 100;
+      const receita_liquida = Math.round((bi?.receitaLiquida || 0) * 100) / 100;
+      const percentual_mb_orc = receita_liquida > 0 ? (mb_orcada_rs / receita_liquida) * 100 : 0;
+      const percentual_mb_real = receita_liquida > 0 ? (mb_real_rs / receita_liquida) * 100 : 0;
+
       const projetoSites = sites.filter(s => s.projeto_id === p.id);
       const siteRows: SiteRow[] = projetoSites.map(s => {
         const sExec = Math.round((executadoBySite.get(s.id) || 0) * 100) / 100;
-        const sFat = Math.round((faturadoBySite.get(s.id) || 0) * 100) / 100;
         return {
           site_id: s.id,
           site_codigo: s.codigo,
           site_nome: s.nome,
           valor_executado: sExec,
-          valor_faturado: sFat,
-          valor_nao_faturado: Math.round((sExec - sFat) * 100) / 100,
           percentual_evolucao: valor_contrato > 0 ? (sExec / valor_contrato) * 100 : 0,
         };
       });
@@ -368,7 +433,8 @@ export default function QuadroGeral() {
         projeto_nome: p.nome,
         cliente: p.cliente || "Sem cliente",
         area: areaName,
-        valor_contrato, valor_executado, valor_faturado, valor_nao_faturado, saldo_contrato, percentual_evolucao,
+        valor_contrato, valor_executado, saldo_contrato, percentual_evolucao,
+        resultado_orc, mb_orcada_rs, mb_real_rs, receita_liquida, percentual_mb_orc, percentual_mb_real,
         siteRows,
       };
     });
@@ -392,7 +458,7 @@ export default function QuadroGeral() {
       .sort((a, b) => a.area.localeCompare(b.area));
 
     return { areaGroups: groups, allProjetoRows: projetoRows };
-  }, [projetos, sites, areas, escopoItens, producao, faturamento, diarioProducoes, parentsContratos]);
+  }, [projetos, sites, areas, escopoItens, producao, diarioProducoes, parentsContratos, biMapByProjeto]);
 
   const areaGroups = memoData.areaGroups;
   const allProjetoRows = memoData.allProjetoRows;
@@ -510,11 +576,12 @@ export default function QuadroGeral() {
               row["Nome Site"] = s.site_nome;
               row["Valor Contrato"] = p.valor_contrato;
               row["Valor Executado"] = s.valor_executado;
-              row["Valor Faturado"] = s.valor_faturado;
-              row["Não Faturado"] = s.valor_nao_faturado;
+              row["Resultado/Orç."] = p.resultado_orc;
+              row["% MB Orç."] = Number(p.percentual_mb_orc.toFixed(1));
+              row["% MB Real"] = Number(p.percentual_mb_real.toFixed(1));
               row["Saldo Contrato"] = p.saldo_contrato;
               row["% Evolução"] = Number(s.percentual_evolucao.toFixed(1));
-              
+
               rows.push(row);
             }
           } else {
@@ -534,11 +601,12 @@ export default function QuadroGeral() {
             
             row["Valor Contrato"] = p.valor_contrato;
             row["Valor Executado"] = p.valor_executado;
-            row["Valor Faturado"] = p.valor_faturado;
-            row["Não Faturado"] = p.valor_nao_faturado;
+            row["Resultado/Orç."] = p.resultado_orc;
+            row["% MB Orç."] = Number(p.percentual_mb_orc.toFixed(1));
+            row["% MB Real"] = Number(p.percentual_mb_real.toFixed(1));
             row["Saldo Contrato"] = p.saldo_contrato;
             row["% Evolução"] = Number(p.percentual_evolucao.toFixed(1));
-            
+
             rows.push(row);
           }
         }
@@ -550,7 +618,7 @@ export default function QuadroGeral() {
     XLSX.writeFile(wb, `quadro_geral_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
-  const isLoading = loadingEscopo || loadingDiario;
+  const isLoading = loadingEscopo || loadingDiario || loadingBi;
 
   if (isLoading) {
     return (
@@ -561,14 +629,19 @@ export default function QuadroGeral() {
   }
 
 
-  function TotalsRow({ t, naoFaturadoHighlight = true }: { t: Totals; naoFaturadoHighlight?: boolean }) {
+  function TotalsRow({ t }: { t: Totals }) {
     return (
       <>
         <TableCell className="text-right font-semibold tabular-nums">{formatCurrency(t.valor_contrato)}</TableCell>
         <TableCell className="text-right font-semibold tabular-nums">{formatCurrency(t.valor_executado)}</TableCell>
-        <TableCell className="text-right font-semibold tabular-nums">{formatCurrency(t.valor_faturado)}</TableCell>
-        <TableCell className={cn("text-right font-semibold tabular-nums", naoFaturadoHighlight && t.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
-          {formatCurrency(t.valor_nao_faturado)}
+        <TableCell className={cn("text-right font-semibold tabular-nums", t.resultado_orc < 0 ? "text-red-600 dark:text-red-400" : "")}>
+          {formatCurrency(t.resultado_orc)}
+        </TableCell>
+        <TableCell className={cn("text-right font-semibold tabular-nums", t.percentual_mb_orc < 0 ? "text-red-600 dark:text-red-400" : "")}>
+          {formatPercent(t.percentual_mb_orc)}
+        </TableCell>
+        <TableCell className={cn("text-right font-semibold tabular-nums", t.percentual_mb_real < 0 ? "text-red-600 dark:text-red-400" : "")}>
+          {formatPercent(t.percentual_mb_real)}
         </TableCell>
         <TableCell className={cn("text-right font-semibold tabular-nums", t.saldo_contrato < 0 ? "text-red-600 dark:text-red-400" : "")}>
           {formatCurrency(t.saldo_contrato)}
@@ -636,6 +709,18 @@ export default function QuadroGeral() {
           <div className="flex flex-wrap items-center gap-3 bg-muted/20 p-3 rounded-lg border border-dashed">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Filtros e Visibilidade:</span>
             <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-2 bg-background p-1 rounded border">
+                <span className="text-xs text-muted-foreground pl-1.5" title="Período usado para acumular Resultado/Orç. e MB (Orç./Real) — esses dados são mensais na origem">
+                  Período MB:
+                </span>
+                <MonthRangePicker
+                  startDate={rmPeriodoInicio}
+                  endDate={rmPeriodoFim}
+                  onChangeStart={(d) => setRmPeriodoInicioStr(d.toISOString())}
+                  onChangeEnd={(d) => setRmPeriodoFimStr(d.toISOString())}
+                  className="h-8 text-xs"
+                />
+              </div>
               <div className="flex items-center gap-1 bg-background p-1 rounded border">
                 <MultiSelectFilter label="Área" options={filterOptions.areas} selected={filterArea} onToggle={toggleSet(setFilterAreaArr)} onSelectAll={() => setFilterAreaArr(filterOptions.areas)} onClearAll={() => setFilterAreaArr([])} />
                 <Checkbox 
@@ -697,8 +782,9 @@ export default function QuadroGeral() {
                     </TableHead>
                     <TableHead className="text-right">Valor Contrato</TableHead>
                     <TableHead className="text-right">Valor Executado</TableHead>
-                    <TableHead className="text-right">Valor Faturado</TableHead>
-                    <TableHead className="text-right">Não Faturado</TableHead>
+                    <TableHead className="text-right">Resultado/Orç.</TableHead>
+                    <TableHead className="text-right">% MB Orç.</TableHead>
+                    <TableHead className="text-right">% MB Real</TableHead>
                     <TableHead className="text-right">Saldo Contrato</TableHead>
                     <TableHead className="text-center min-w-[160px]">% Evolução</TableHead>
                   </TableRow>
@@ -784,9 +870,14 @@ export default function QuadroGeral() {
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_contrato)}</TableCell>
                                         <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_executado)}</TableCell>
-                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.valor_faturado)}</TableCell>
-                                        <TableCell className={cn("text-right tabular-nums text-sm", p.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
-                                          {formatCurrency(p.valor_nao_faturado)}
+                                        <TableCell className={cn("text-right tabular-nums text-sm", p.resultado_orc < 0 ? "text-red-600 dark:text-red-400 font-semibold" : "")}>
+                                          {formatCurrency(p.resultado_orc)}
+                                        </TableCell>
+                                        <TableCell className={cn("text-right tabular-nums text-sm", p.percentual_mb_orc < 0 ? "text-red-600 dark:text-red-400" : "")}>
+                                          {formatPercent(p.percentual_mb_orc)}
+                                        </TableCell>
+                                        <TableCell className={cn("text-right tabular-nums text-sm", p.percentual_mb_real < 0 ? "text-red-600 dark:text-red-400" : "")}>
+                                          {formatPercent(p.percentual_mb_real)}
                                         </TableCell>
                                         <TableCell className={cn("text-right tabular-nums text-sm", p.saldo_contrato < 0 ? "text-red-600 dark:text-red-400 font-semibold" : "")}>
                                           {formatCurrency(p.saldo_contrato)}
@@ -806,10 +897,9 @@ export default function QuadroGeral() {
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums text-xs text-muted-foreground">—</TableCell>
                                         <TableCell className="text-right tabular-nums text-xs">{formatCurrency(s.valor_executado)}</TableCell>
-                                        <TableCell className="text-right tabular-nums text-xs">{formatCurrency(s.valor_faturado)}</TableCell>
-                                        <TableCell className={cn("text-right tabular-nums text-xs", s.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
-                                          {formatCurrency(s.valor_nao_faturado)}
-                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">—</TableCell>
+                                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">—</TableCell>
+                                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">—</TableCell>
                                         <TableCell className="text-right tabular-nums text-xs text-muted-foreground">—</TableCell>
                                         <TableCell><MiniProgressBar value={s.percentual_evolucao} /></TableCell>
                                       </TableRow>
@@ -829,9 +919,14 @@ export default function QuadroGeral() {
                     <TableCell>TOTAL GERAL</TableCell>
                     <TableCell className="text-right tabular-nums">{formatCurrency(grandTotals.valor_contrato)}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatCurrency(grandTotals.valor_executado)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatCurrency(grandTotals.valor_faturado)}</TableCell>
-                    <TableCell className={cn("text-right tabular-nums", grandTotals.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
-                      {formatCurrency(grandTotals.valor_nao_faturado)}
+                    <TableCell className={cn("text-right tabular-nums", grandTotals.resultado_orc < 0 ? "text-red-600 dark:text-red-400" : "")}>
+                      {formatCurrency(grandTotals.resultado_orc)}
+                    </TableCell>
+                    <TableCell className={cn("text-right tabular-nums", grandTotals.percentual_mb_orc < 0 ? "text-red-600 dark:text-red-400" : "")}>
+                      {formatPercent(grandTotals.percentual_mb_orc)}
+                    </TableCell>
+                    <TableCell className={cn("text-right tabular-nums", grandTotals.percentual_mb_real < 0 ? "text-red-600 dark:text-red-400" : "")}>
+                      {formatPercent(grandTotals.percentual_mb_real)}
                     </TableCell>
                     <TableCell className={cn("text-right tabular-nums", grandTotals.saldo_contrato < 0 ? "text-red-600 dark:text-red-400" : "")}>
                       {formatCurrency(grandTotals.saldo_contrato)}
