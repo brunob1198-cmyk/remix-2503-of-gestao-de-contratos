@@ -79,13 +79,23 @@ const StorageMigrationPage = lazyWithRetry(() => import("./pages/medicoes/Storag
 
 const queryClient = createConfiguredQueryClient();
 
-const RootRedirect = () => {
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const hasContaAzulCallback = searchParams.has("code") || searchParams.has("error");
+const RootRoute = () => {
+  const { session, loading } = useAuth();
 
-  return <Navigate to="/medicoes/dashboard" replace />;
+  // Enquanto a sessao e resolvida evitamos piscar a landing para usuarios logados.
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (session) return <Navigate to="/medicoes/dashboard" replace />;
+
+  return <Landing />;
 };
+
 
 const App = () => {
   useAppUpdate();
