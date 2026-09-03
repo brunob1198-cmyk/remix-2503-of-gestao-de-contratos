@@ -251,6 +251,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["diario_equipe"] });
       queryClient.invalidateQueries({ queryKey: ["diario_equipamentos"] });
       queryClient.invalidateQueries({ queryKey: ["diario_veiculos"] });
+      queryClient.invalidateQueries({ queryKey: ["producao_forecast_unificada"] });
       toast({ title: "Diário duplicado com sucesso!" });
     },
     onError: (e: Error) => {
@@ -288,6 +289,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["rdo"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-totais"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-producao-acumulada-projeto"] });
+      queryClient.invalidateQueries({ queryKey: ["producao_forecast_unificada"] });
       toast({ title: "Produção adicionada!" });
     },
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
@@ -319,6 +321,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["rdo-totais"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-producao-acumulada-projeto"] });
       queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+      queryClient.invalidateQueries({ queryKey: ["producao_forecast_unificada"] });
       toast({ title: "Produção removida!" });
     },
     onError: (e: Error) => toast({ title: "Erro ao remover produção", description: e.message, variant: "destructive" }),
@@ -339,6 +342,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["rdo"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-totais"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-producao-acumulada-projeto"] });
+      queryClient.invalidateQueries({ queryKey: ["producao_forecast_unificada"] });
     },
     onError: (e: Error) => toast({ title: "Erro ao atualizar produção", description: e.message, variant: "destructive" }),
   });
@@ -410,6 +414,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["rdo-totais"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-producao-acumulada-projeto"] });
       queryClient.invalidateQueries({ queryKey: ["diario_fotos"] });
+      queryClient.invalidateQueries({ queryKey: ["producao_forecast_unificada"] });
       toast({ title: "Produção movida para a nova data!" });
     },
     onError: (e: Error) => toast({ title: "Erro ao mover produção", description: e.message, variant: "destructive" }),
@@ -482,6 +487,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
       queryClient.invalidateQueries({ queryKey: ["rdo"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-totais"] });
       queryClient.invalidateQueries({ queryKey: ["rdo-producao-acumulada-projeto"] });
+      queryClient.invalidateQueries({ queryKey: ["producao_forecast_unificada"] });
       toast({ title: `Diário movido com sucesso para a nova data!` });
     },
     onError: (e: Error) => toast({ title: "Erro ao mover diário", description: e.message, variant: "destructive" }),

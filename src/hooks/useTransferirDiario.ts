@@ -26,6 +26,7 @@ function invalidateAll(queryClient: ReturnType<typeof useQueryClient>) {
     "diario_fotos",
     "diario_calendario",
     "rdo",
+    "producao_forecast_unificada",
     "sites",
     "sites_destino_transferencia",
   ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
