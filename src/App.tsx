@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createConfiguredQueryClient, indexedDBPersister } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -15,6 +15,7 @@ import { registerChecklistsServiceWorker } from "@/utils/pwaRegister";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 // Lazy Loaded Pages
 const Index = lazyWithRetry(() => import("./pages/Index"));
+const Landing = lazyWithRetry(() => import("./pages/Landing"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const AuthPage = lazyWithRetry(() => import("./pages/Auth"));
 const ForgotPasswordPage = lazyWithRetry(() => import("./pages/ForgotPassword"));
@@ -120,7 +121,7 @@ const App = () => {
             </div>
           }>
             <Routes>
-              <Route path="/" element={<RootRedirect />} />
+              <Route path="/" element={<RootRoute />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
