@@ -159,6 +159,16 @@ export default function DashboardPage() {
       .sort((a, b) => b.value - a.value);
   }, [filteredData]);
 
+  // Áreas sem produção não têm fatia visível na pizza (ângulo zero), mas o
+  // Recharts ainda tenta posicionar o rótulo delas — como todas caem no mesmo
+  // ponto, os textos se sobrepõem. Como areaData já vem ordenado do maior
+  // para o menor valor, filtrar os zeros só remove o final do array e não
+  // altera o índice (e portanto a cor) das áreas com produção.
+  const areaDataComProducao = useMemo(
+    () => areaData.filter((a) => a.value > 0),
+    [areaData]
+  );
+
   // 3. Gráfico Evolutivo de Produção por Mês
   const monthlyEvolutionData = useMemo(() => {
     const monthsMap = new Map<string, number>();
@@ -364,7 +374,7 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={areaData}
+                    data={areaDataComProducao}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -373,7 +383,7 @@ export default function DashboardPage() {
                     dataKey="value"
                     label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
-                    {areaData.map((entry, index) => (
+                    {areaDataComProducao.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
