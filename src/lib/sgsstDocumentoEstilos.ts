@@ -160,11 +160,27 @@ export const estilosDocumentoSgsst = `
        - A marca é um X em texto, e não uma cor de fundo. O PDF sai do html2canvas
          e é impresso em preto e branco com frequência; marcação que depende de cor
          desaparece na fotocópia. */
-    .doc-marca { display: inline-flex; align-items: center; justify-content: center;
+    /* A CAIXINHA DE MARCAÇÃO, E POR QUE ELA NÃO USA FLEX.
+
+       A versão anterior centralizava o "X" com
+       "display: inline-flex; align-items: center; justify-content: center".
+       Na tela ficava certo e no PDF o X saía FORA do quadrado, acima e à
+       esquerda dele. O PDF é rasterizado pelo html2canvas, que não reproduz a
+       centralização de item de flex do mesmo jeito que o navegador: o glifo
+       voltava ao fluxo normal e, num quadrado de 9px, o que sobra da altura da
+       linha transborda para cima.
+
+       Aqui a centralização é feita por LAYOUT DE LINHA, que o html2canvas
+       reproduz fielmente: "line-height" igual à altura da caixa de conteúdo
+       centraliza na vertical, e "text-align: center" na horizontal. A conta da
+       altura tem de descontar as bordas — com "box-sizing: border-box", 9px de
+       caixa e 1px de borda de cada lado deixam 7px de conteúdo. */
+    .doc-marca { display: inline-block; text-align: center;
       width: 9px; height: 9px; box-sizing: border-box; padding: 0;
       border: 1px solid ${CORES_DOC.linhaForte};
-      font-size: 8px; line-height: 1; font-weight: 700; color: ${CORES_DOC.tinta};
-      margin-right: 3px; background: #fff; vertical-align: middle; }
+      font-size: 7px; line-height: 7px; font-weight: 700; color: ${CORES_DOC.tinta};
+      margin-right: 3px; background: #fff; vertical-align: middle;
+      overflow: hidden; }
     .doc-marca.marcada { border-color: ${CORES_DOC.tinta}; }
     /* A opção inteira, caixa mais rótulo, sem quebrar entre as duas. */
     .doc-opcao { display: inline-block; font-size: 9px; color: ${CORES_DOC.texto};

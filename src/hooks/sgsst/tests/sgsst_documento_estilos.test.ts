@@ -173,3 +173,59 @@ describe("contraste do documento impresso", () => {
     expect(new Set(estados).size).toBe(3);
   });
 });
+
+/**
+ * A caixinha de marcação do ASO.
+ *
+ * O "X" saía FORA do quadrado no PDF. A causa: a centralização era feita com
+ * `display: inline-flex` + `align-items: center`, e o html2canvas — que rasteriza
+ * o PDF — não reproduz a centralização de item de flex. Ele desenha o texto a
+ * partir do retângulo do NÓ DE TEXTO, e com flex esse retângulo é mais alto que a
+ * caixa: medido no navegador, sobrava 1,5px acima e 1,5px abaixo (a 3× de zoom).
+ * Com layout de linha, a sobra é zero nos dois lados.
+ */
+describe("caixinha de marcação (.doc-marca)", () => {
+  const regra = (() => {
+    const m = estilosDocumentoSgsst.match(/\.doc-marca\s*\{[^}]*\}/);
+    if (!m) throw new Error("regra .doc-marca não encontrada");
+    return m[0];
+  })();
+
+  it("NÃO usa flex para centralizar", () => {
+    // É a regressão a evitar: na tela flex fica certo, e no PDF o X escapa.
+    expect(regra).not.toContain("inline-flex");
+    expect(regra).not.toContain("align-items");
+    expect(regra).not.toContain("justify-content");
+  });
+
+  it("centraliza por layout de linha, que o html2canvas reproduz", () => {
+    expect(regra).toContain("display: inline-block");
+    expect(regra).toContain("text-align: center");
+  });
+
+  it("a altura da linha é a da caixa DESCONTANDO as bordas", () => {
+    // Com box-sizing: border-box, 9px de caixa e 1px de borda de cada lado deixam
+    // 7px de conteúdo. line-height maior que isso faz o glifo sobrar para fora.
+    const altura = /height:\s*(\d+(?:\.\d+)?)px/.exec(regra);
+    const borda = /border:\s*(\d+(?:\.\d+)?)px/.exec(regra);
+    const lh = /line-height:\s*(\d+(?:\.\d+)?)px/.exec(regra);
+
+    expect(altura, "altura da caixa declarada em px").not.toBeNull();
+    expect(borda, "borda declarada em px").not.toBeNull();
+    expect(lh, "line-height declarado em px, não em número").not.toBeNull();
+
+    const conteudo = Number(altura![1]) - 2 * Number(borda![1]);
+    expect(Number(lh![1])).toBe(conteudo);
+  });
+
+  it("o tipo não é maior que a linha", () => {
+    // Fonte maior que a linha volta a fazer o glifo transbordar.
+    const fs = Number(/font-size:\s*(\d+(?:\.\d+)?)px/.exec(regra)![1]);
+    const lh = Number(/line-height:\s*(\d+(?:\.\d+)?)px/.exec(regra)![1]);
+    expect(fs).toBeLessThanOrEqual(lh);
+  });
+
+  it("recorta o que exceder, como última linha de defesa", () => {
+    expect(regra).toContain("overflow: hidden");
+  });
+});
