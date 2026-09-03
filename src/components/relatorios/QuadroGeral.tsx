@@ -341,7 +341,9 @@ export default function QuadroGeral() {
       const valor_executado = Math.round((executadoByProjeto.get(p.id) || 0) * 100) / 100;
       const valor_faturado = Math.round((faturadoByProjeto.get(p.id) || 0) * 100) / 100;
       const valor_nao_faturado = Math.round((valor_executado - valor_faturado) * 100) / 100;
-      const saldo_contrato = Math.max(0, Math.round((valor_contrato - valor_executado) * 100) / 100);
+      // Negativo é sinal de estouro de contrato — não é zerado, porque é
+      // justamente o caso que precisa aparecer para virar ação.
+      const saldo_contrato = Math.round((valor_contrato - valor_executado) * 100) / 100;
       const percentual_evolucao = valor_contrato > 0 ? (valor_executado / valor_contrato) * 100 : 0;
       const areaName = (p as any).area_id ? (areaMap.get((p as any).area_id) || "Sem área") : "Sem área";
 
@@ -568,7 +570,9 @@ export default function QuadroGeral() {
         <TableCell className={cn("text-right font-semibold tabular-nums", naoFaturadoHighlight && t.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
           {formatCurrency(t.valor_nao_faturado)}
         </TableCell>
-        <TableCell className="text-right font-semibold tabular-nums">{formatCurrency(t.saldo_contrato)}</TableCell>
+        <TableCell className={cn("text-right font-semibold tabular-nums", t.saldo_contrato < 0 ? "text-red-600 dark:text-red-400" : "")}>
+          {formatCurrency(t.saldo_contrato)}
+        </TableCell>
         <TableCell><MiniProgressBar value={t.percentual_evolucao} /></TableCell>
       </>
     );
@@ -599,7 +603,9 @@ export default function QuadroGeral() {
             <CardTitle className="text-xs text-muted-foreground font-medium">Saldo Contrato</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <p className="text-lg font-bold tabular-nums">{formatCurrency(grandTotals.saldo_contrato)}</p>
+            <p className={cn("text-lg font-bold tabular-nums", grandTotals.saldo_contrato < 0 ? "text-red-600 dark:text-red-400" : "")}>
+              {formatCurrency(grandTotals.saldo_contrato)}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -782,7 +788,9 @@ export default function QuadroGeral() {
                                         <TableCell className={cn("text-right tabular-nums text-sm", p.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
                                           {formatCurrency(p.valor_nao_faturado)}
                                         </TableCell>
-                                        <TableCell className="text-right tabular-nums text-sm">{formatCurrency(p.saldo_contrato)}</TableCell>
+                                        <TableCell className={cn("text-right tabular-nums text-sm", p.saldo_contrato < 0 ? "text-red-600 dark:text-red-400 font-semibold" : "")}>
+                                          {formatCurrency(p.saldo_contrato)}
+                                        </TableCell>
                                         <TableCell><MiniProgressBar value={p.percentual_evolucao} /></TableCell>
                                       </TableRow>
                                     )}
@@ -825,7 +833,9 @@ export default function QuadroGeral() {
                     <TableCell className={cn("text-right tabular-nums", grandTotals.valor_nao_faturado > 0 ? "text-orange-600" : "")}>
                       {formatCurrency(grandTotals.valor_nao_faturado)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{formatCurrency(grandTotals.saldo_contrato)}</TableCell>
+                    <TableCell className={cn("text-right tabular-nums", grandTotals.saldo_contrato < 0 ? "text-red-600 dark:text-red-400" : "")}>
+                      {formatCurrency(grandTotals.saldo_contrato)}
+                    </TableCell>
                     <TableCell><MiniProgressBar value={grandPercent} /></TableCell>
                   </TableRow>
                 </TableFooter>
