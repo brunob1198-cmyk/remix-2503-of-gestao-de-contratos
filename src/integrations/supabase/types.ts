@@ -5675,38 +5675,56 @@ export type Database = {
         Row: {
           apr_risco_id: string
           created_at: string
+          data_implementacao: string | null
+          data_verificacao: string | null
           descricao: string
           empresa_id: string
+          forma_acompanhamento: string | null
           id: string
+          observacao_verificacao: string | null
           prazo: string | null
           responsavel_id: string | null
+          resultado_verificacao: string | null
           status: string
           tipo: string
           updated_at: string
+          verificador_id: string | null
         }
         Insert: {
           apr_risco_id: string
           created_at?: string
+          data_implementacao?: string | null
+          data_verificacao?: string | null
           descricao: string
           empresa_id: string
+          forma_acompanhamento?: string | null
           id?: string
+          observacao_verificacao?: string | null
           prazo?: string | null
           responsavel_id?: string | null
+          resultado_verificacao?: string | null
           status?: string
           tipo: string
           updated_at?: string
+          verificador_id?: string | null
         }
         Update: {
           apr_risco_id?: string
           created_at?: string
+          data_implementacao?: string | null
+          data_verificacao?: string | null
           descricao?: string
           empresa_id?: string
+          forma_acompanhamento?: string | null
           id?: string
+          observacao_verificacao?: string | null
           prazo?: string | null
           responsavel_id?: string | null
+          resultado_verificacao?: string | null
           status?: string
           tipo?: string
           updated_at?: string
+          verificador_id?: string | null
         }
         Relationships: [
           {
@@ -5726,6 +5744,13 @@ export type Database = {
           {
             foreignKeyName: "sgsst_apr_medidas_responsavel_id_fkey"
             columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_apr_medidas_verificador_id_fkey"
+            columns: ["verificador_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -11000,6 +11025,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
+      solicitacoes_exclusao_conta: {
+        Row: {
+          concluida_em: string | null
+          concluida_por: string | null
+          created_at: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          concluida_em?: string | null
+          concluida_por?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          concluida_em?: string | null
+          concluida_por?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_exclusao_conta_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
