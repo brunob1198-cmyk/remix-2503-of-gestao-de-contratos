@@ -160,28 +160,37 @@ export const estilosDocumentoSgsst = `
        - A marca é um X em texto, e não uma cor de fundo. O PDF sai do html2canvas
          e é impresso em preto e branco com frequência; marcação que depende de cor
          desaparece na fotocópia. */
-    /* A CAIXINHA DE MARCAÇÃO, E POR QUE ELA NÃO USA FLEX.
+    /* A CAIXINHA DE MARCAÇÃO: O "X" É DESENHO, NÃO TEXTO.
 
-       A versão anterior centralizava o "X" com
-       "display: inline-flex; align-items: center; justify-content: center".
-       Na tela ficava certo e no PDF o X saía FORA do quadrado, acima e à
-       esquerda dele. O PDF é rasterizado pelo html2canvas, que não reproduz a
-       centralização de item de flex do mesmo jeito que o navegador: o glifo
-       voltava ao fluxo normal e, num quadrado de 9px, o que sobra da altura da
-       linha transborda para cima.
+       Duas tentativas anteriores usaram um "X" de texto dentro do quadrado, e as
+       duas saíram erradas no PDF por motivos diferentes. Medido no raster real,
+       contando pixel de tinta dentro e fora do quadrado:
 
-       Aqui a centralização é feita por LAYOUT DE LINHA, que o html2canvas
-       reproduz fielmente: "line-height" igual à altura da caixa de conteúdo
-       centraliza na vertical, e "text-align: center" na horizontal. A conta da
-       altura tem de descontar as bordas — com "box-sizing: border-box", 9px de
-       caixa e 1px de borda de cada lado deixam 7px de conteúdo. */
-    .doc-marca { display: inline-block; text-align: center;
+         inline-flex + align-items:center ... o glifo vazava do quadrado
+         inline-block + line-height 7px .... tinta DENTRO = 0 (o X desaparecia:
+                                             a 7px o rasterizador não desenha)
+         inline-block + line-height 8..9px . vazava por BAIXO (118 a 196 px)
+
+       A raiz é a mesma nas três: o PDF é rasterizado pelo html2canvas, que
+       posiciona texto por métrica de fonte própria. Num quadrado de 9px, um erro
+       de 1px já joga o glifo para fora — e não há valor de line-height que
+       acerte, porque o erro não é de layout, é de baseline.
+
+       Então o X deixa de ser texto. Duas camadas de "linear-gradient" a +45° e
+       -45° desenham as diagonais como FUNDO, e fundo o html2canvas reproduz
+       exatamente: medido, 460 px de tinta dentro do quadrado e ZERO vazando nos
+       quatro lados.
+
+       O quadrado não tem mais conteúdo de texto — quem marca é a classe
+       "marcada", e o opcao() do ASO emite o span vazio. */
+    .doc-marca { display: inline-block;
       width: 9px; height: 9px; box-sizing: border-box; padding: 0;
       border: 1px solid ${CORES_DOC.linhaForte};
-      font-size: 7px; line-height: 7px; font-weight: 700; color: ${CORES_DOC.tinta};
-      margin-right: 3px; background: #fff; vertical-align: middle;
-      overflow: hidden; }
-    .doc-marca.marcada { border-color: ${CORES_DOC.tinta}; }
+      margin-right: 3px; background-color: #fff; vertical-align: middle; }
+    .doc-marca.marcada { border-color: ${CORES_DOC.tinta};
+      background-image:
+        linear-gradient(45deg, transparent 42%, ${CORES_DOC.tinta} 42%, ${CORES_DOC.tinta} 58%, transparent 58%),
+        linear-gradient(-45deg, transparent 42%, ${CORES_DOC.tinta} 42%, ${CORES_DOC.tinta} 58%, transparent 58%); }
     /* A opção inteira, caixa mais rótulo, sem quebrar entre as duas. */
     .doc-opcao { display: inline-block; font-size: 9px; color: ${CORES_DOC.texto};
       margin: 0 10px 3px 0; white-space: nowrap; }

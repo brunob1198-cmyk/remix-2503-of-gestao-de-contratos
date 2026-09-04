@@ -78,9 +78,13 @@ function faltando(rotulo: string): string {
 
 /** Uma caixa de marcação com o rótulo ao lado. */
 function opcao(rotulo: string, marcada: boolean): string {
+  // O quadrado sai VAZIO: o X é desenhado pelo CSS, em fundo, e não por um
+  // caractere. Um "X" de texto aqui voltaria a ser posicionado pela métrica de
+  // fonte do rasterizador — que é o que fazia o X sair do quadrado, ou não sair
+  // de jeito nenhum. Ver a nota em `.doc-marca` nos estilos.
   return `<span class="doc-opcao${marcada ? " marcada" : ""}"><span class="doc-marca${
     marcada ? " marcada" : ""
-  }">${marcada ? "X" : "&nbsp;"}</span>${esc(rotulo)}</span>`;
+  }"></span>${esc(rotulo)}</span>`;
 }
 
 /** Linha de categoria com as opções ao lado. */
