@@ -780,3 +780,52 @@ export function useSgsstAsoHistorico(asoId?: string) {
     isLoading,
   };
 }
+
+/**
+ * ASO vigente de cada trabalhador, para o portão de aptidão da PT.
+ *
+ * Uma consulta para a lista inteira, e não uma por trabalhador: a PT precisa
+ * conferir a equipe toda mais o candidato que está sendo autorizado, e N consultas
+ * numa tela com dez pessoas é desperdício.
+ *
+ * Devolve `undefined` para trabalhador sem ASO e `null` enquanto não carregou —
+ * distinção que o portão usa: sem ASO é impedimento, carregando não é.
+ */
+export function useSgsstAsoVigente(colaboradorIds: readonly string[]) {
+  const { profile } = useAuth();
+  const empresaId = profile?.empresa_id;
+  const ids = [...new Set(colaboradorIds.filter(Boolean))].sort();
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["sgsst_asos", "vigente", empresaId, ids.join(",")],
+    enabled: !!empresaId && ids.length > 0,
+    queryFn: async () => {
+      const { data, error } = (await (supabase
+        .from("sgsst_asos" as never)
+        .select(
+          "id, colaborador_id, aptidao, apto_altura, apto_espaco_confinado, apto_maquinas, validade, status, data_emissao"
+        )
+        .in("colaborador_id", ids)
+        .eq("status", "ATIVO")
+        .order("data_emissao", { ascending: false }) as never as Promise<{
+        data: SgsstAso[] | null;
+        error: { message?: string } | null;
+      }>));
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  /**
+   * `null` enquanto carrega; `undefined` quando o trabalhador não tem ASO ativo.
+   *
+   * Vence o mais RECENTE por data de emissão — a consulta já vem ordenada, então
+   * o primeiro de cada trabalhador é o vigente.
+   */
+  const asoDe = (colaboradorId: string): SgsstAso | null | undefined => {
+    if (!data) return null;
+    return data.find((a) => a.colaborador_id === colaboradorId);
+  };
+
+  return { asoDe, isLoading, temErro: !!error };
+}

@@ -23,6 +23,8 @@ import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { useAuth } from "@/contexts/AuthContext";
 import { gerarPdfPt, pendenciasPt } from "@/lib/ptDocumento";
+import { useSgsstAsoVigente } from "@/hooks/sgsst/useSgsstAsosAndExames";
+import { autorizacaoNaPt } from "@/utils/sgsstAptidaoAso";
 import { useSgsstPtMedidasDaPt } from "@/hooks/sgsst/useSgsstArvoreRiscos";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -108,6 +110,14 @@ export default function SgsstPtDetailPage() {
   const [isAddParticipanteOpen, setIsAddParticipanteOpen] = useState(false);
   const [selectedColaboradorId, setSelectedColaboradorId] = useState("");
   const [responsabilidadeTexto, setResponsabilidadeTexto] = useState("Executante");
+
+  // ASO vigente da equipe MAIS o candidato: a tela precisa conferir quem está
+  // sendo autorizado agora e também sinalizar quem já foi autorizado sem aptidão.
+  // Declarado depois dos estados porque depende do trabalhador selecionado.
+  const { asoDe } = useSgsstAsoVigente([
+    ...participantes.map((p) => p.colaborador_dados_id),
+    ...(selectedColaboradorId ? [selectedColaboradorId] : []),
+  ]);
 
   if (loadingDetail) {
     return (
@@ -252,9 +262,37 @@ export default function SgsstPtDetailPage() {
     setNewItemTexto("");
   };
 
+  /**
+   * O ASO autoriza este trabalhador nesta PT?
+   *
+   * Recalculado a cada render porque depende do trabalhador escolhido no diálogo.
+   * `null` de `asoDe` é "ainda carregando"; nesse caso não decide nada — decidir
+   * com o dado ausente seria bloquear quem tem ASO só porque a consulta demorou.
+   */
+  const asoDoSelecionado = selectedColaboradorId ? asoDe(selectedColaboradorId) : null;
+  const carregandoAso = selectedColaboradorId ? asoDoSelecionado === null : false;
+  const portaoDoSelecionado = selectedColaboradorId && !carregandoAso
+    ? autorizacaoNaPt({
+        tipoPt: currentPt.tipo,
+        aso: asoDoSelecionado ?? null,
+      })
+    : null;
+
   const handleAddParticipanteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedColaboradorId) return;
+
+    // NR-35 e NR-33 exigem aptidão médica para altura e espaço confinado. As
+    // colunas do ASO existiam e ninguém as consultava: dava para marcar INAPTO e
+    // autorizar o mesmo trabalhador na PT. Autorizar quem está inapto é o tipo de
+    // falha que só aparece no acidente, então aqui impede.
+    if (portaoDoSelecionado && portaoDoSelecionado.autoriza === false) {
+      toast.error(portaoDoSelecionado.motivo, {
+        description: portaoDoSelecionado.comoResolver,
+        duration: 10000,
+      });
+      return;
+    }
 
     const colab = colaboradores.find((c) => c.id === selectedColaboradorId);
     await addParticipante.mutateAsync({
@@ -643,9 +681,35 @@ export default function SgsstPtDetailPage() {
                           <TableCell className="text-xs">{p.funcao?.nome || "—"}</TableCell>
                           <TableCell className="text-xs">{p.responsabilidade || "Executante"}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                              <CheckCircle2 className="h-3 w-3 mr-1" /> Autorizado
-                            </Badge>
+                            {/* Marca quem JÁ está autorizado e cujo ASO não sustenta
+                                a autorização. O impedimento novo só alcança quem for
+                                autorizado de agora em diante, e são justamente as
+                                linhas antigas que ninguém revisaria. */}
+                            {(() => {
+                              const aso = asoDe(p.colaborador_dados_id);
+                              const portao =
+                                aso === null
+                                  ? null
+                                  : autorizacaoNaPt({ tipoPt: currentPt.tipo, aso: aso ?? null });
+
+                              if (portao && portao.autoriza === false) {
+                                return (
+                                  <span
+                                    className="flex items-start gap-1 text-xs text-destructive"
+                                    title={portao.comoResolver}
+                                  >
+                                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    {portao.motivo}
+                                  </span>
+                                );
+                              }
+
+                              return (
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> Autorizado
+                                </Badge>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="text-right">
                             {allowEdit && !isReadOnly && (
@@ -808,6 +872,17 @@ export default function SgsstPtDetailPage() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* O impedimento aparece ANTES do clique. Deixar o usuário preencher
+                  a responsabilidade e só then recusar é fazê-lo trabalhar para
+                  descobrir que não podia. */}
+              {portaoDoSelecionado && portaoDoSelecionado.autoriza === false && (
+                <div className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
+                  <strong>{portaoDoSelecionado.motivo}</strong>
+                  <br />
+                  {portaoDoSelecionado.comoResolver}
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
