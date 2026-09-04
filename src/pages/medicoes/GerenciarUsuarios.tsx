@@ -99,11 +99,17 @@ export default function GerenciarUsuariosPage() {
       .select("user_id, role");
     setRoles((rolesData as RoleRow[]) || []);
 
-    const { data: deletionData } = await supabase
-      .from("solicitacoes_exclusao_conta" as any)
+    // `as never` e Promise tipada, e não `as any`: a tabela é nova e ainda não
+    // está nos tipos gerados do Supabase, mas o formato da linha é conhecido —
+    // `DeletionRequestRow`. Com `any` o retorno perdia o tipo e um campo
+    // renomeado no SELECT passaria batido pelo compilador.
+    const { data: deletionData } = (await (supabase
+      .from("solicitacoes_exclusao_conta" as never)
       .select("id, user_id, created_at, profiles(nome, avatar_url, cargo)")
-      .eq("status", "pendente");
-    setDeletionRequests((deletionData as any) || []);
+      .eq("status", "pendente") as never as Promise<{
+      data: DeletionRequestRow[] | null;
+    }>));
+    setDeletionRequests(deletionData || []);
 
     setLoading(false);
   };
@@ -136,14 +142,14 @@ export default function GerenciarUsuariosPage() {
 
   const handleResolveDeletionRequest = async (requestId: string, userId: string) => {
     await handleReject(userId);
-    await supabase
-      .from("solicitacoes_exclusao_conta" as any)
+    await (supabase
+      .from("solicitacoes_exclusao_conta" as never)
       .update({
         status: "concluida",
         concluida_em: new Date().toISOString(),
         concluida_por: currentUser?.id,
-      } as any)
-      .eq("id", requestId);
+      } as never)
+      .eq("id", requestId) as never as Promise<{ error: { message?: string } | null }>);
     toast({ title: "Solicitação de exclusão processada." });
     fetchUsers();
   };
