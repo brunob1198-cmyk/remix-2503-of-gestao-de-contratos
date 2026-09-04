@@ -24,6 +24,12 @@ import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { useAuth } from "@/contexts/AuthContext";
 import { gerarPdfPt, pendenciasPt } from "@/lib/ptDocumento";
 import { useSgsstAsoVigente } from "@/hooks/sgsst/useSgsstAsosAndExames";
+import { useSgsstAprArvore } from "@/hooks/sgsst/useSgsstArvoreRiscos";
+import {
+  importacaoDaApr,
+  textoDaImportacao,
+  validarRiscoDaPt,
+} from "@/utils/sgsstPtRiscos";
 import { autorizacaoNaPt } from "@/utils/sgsstAptidaoAso";
 import { useSgsstPtMedidasDaPt } from "@/hooks/sgsst/useSgsstArvoreRiscos";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -80,7 +86,7 @@ export default function SgsstPtDetailPage() {
 
   const { colaboradores } = useSgsstColaboradoresResumo();
   const { checklist, isLoading: loadingChecklist, updateRespostaItem, addChecklistItem, removeChecklistItem } = useSgsstPtChecklist(ptId);
-  const { riscos, isLoading: loadingRiscos } = useSgsstPtRiscos(ptId);
+  const { riscos, isLoading: loadingRiscos, addRisco, removeRisco } = useSgsstPtRiscos(ptId);
   const { participantes, addParticipante, removeParticipante } = useSgsstPtParticipantes(ptId);
   const { medicoes: medicoesAtmosfera } = useSgsstPtAtmosfera(ptId);
   const { historico } = useSgsstPtHistorico(ptId);
@@ -118,6 +124,21 @@ export default function SgsstPtDetailPage() {
     ...participantes.map((p) => p.colaborador_dados_id),
     ...(selectedColaboradorId ? [selectedColaboradorId] : []),
   ]);
+
+  // Risco específico da PT
+  const [isAddRiscoOpen, setIsAddRiscoOpen] = useState(false);
+  const [riscoPerigo, setRiscoPerigo] = useState("");
+  const [riscoDescricao, setRiscoDescricao] = useState("");
+  const [riscoConsequencia, setRiscoConsequencia] = useState("");
+  const [riscoProbabilidade, setRiscoProbabilidade] = useState(3);
+  const [riscoSeveridade, setRiscoSeveridade] = useState(3);
+  const [importandoRiscos, setImportandoRiscos] = useState(false);
+
+  // Riscos da APR vinculada, para a importação. A consulta fica desligada quando
+  // não há APR — buscar por um id nulo é requisição garantida a voltar vazia.
+  const { riscos: riscosDaApr } = useSgsstAprArvore(currentPt?.apr_id ?? undefined, {
+    enabled: !!currentPt?.apr_id,
+  });
 
   if (loadingDetail) {
     return (
@@ -277,6 +298,91 @@ export default function SgsstPtDetailPage() {
         aso: asoDoSelecionado ?? null,
       })
     : null;
+
+  /**
+   * O que há para importar da APR vinculada.
+   *
+   * A árvore da APR só é consultada quando existe APR vinculada — sem ela a query
+   * fica desligada em vez de buscar por um id nulo.
+   */
+  const importacao = importacaoDaApr({
+    riscosDaApr: riscosDaApr.map((r) => ({
+      id: r.id,
+      perigo: r.perigo,
+      risco: r.risco,
+      consequencia: r.consequencia,
+      probabilidade: r.probabilidade,
+      severidade: r.severidade,
+      risco_catalogo_id: r.risco_catalogo_id,
+    })),
+    riscosDaPt: riscos.map((r) => ({ id: r.id, perigo: r.perigo, risco: r.risco })),
+  });
+
+  /**
+   * Traz para a PT os riscos da APR que ainda não estão nela.
+   *
+   * Um a um e sequencial, e não em paralelo: são poucas linhas, e um `Promise.all`
+   * que falha no meio deixaria metade importada sem o usuário saber quais.
+   */
+  const importarRiscosDaApr = async () => {
+    setImportandoRiscos(true);
+    let importados = 0;
+    try {
+      for (const r of importacao.aImportar) {
+        await addRisco.mutateAsync({
+          pt_id: currentPt.id,
+          risco_catalogo_id: r.risco_catalogo_id ?? null,
+          perigo: r.perigo,
+          risco: r.risco,
+          consequencia: r.consequencia ?? null,
+          probabilidade: r.probabilidade,
+          severidade: r.severidade,
+        });
+        importados++;
+      }
+      toast.success(`${importados} risco(s) importado(s) da APR.`);
+    } catch {
+      // A mutation já mostrou o erro. Aqui só se informa o que entrou antes de
+      // parar, para o usuário não precisar conferir linha por linha.
+      if (importados > 0) {
+        toast.warning(`${importados} risco(s) importado(s) antes da falha.`);
+      }
+    } finally {
+      setImportandoRiscos(false);
+    }
+  };
+
+  const handleAddRiscoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const validacao = validarRiscoDaPt({
+      perigo: riscoPerigo,
+      risco: riscoDescricao,
+      probabilidade: riscoProbabilidade,
+      severidade: riscoSeveridade,
+    });
+    if (validacao.ok !== true) {
+      toast.error(validacao.erro);
+      return;
+    }
+
+    await addRisco.mutateAsync({
+      pt_id: currentPt.id,
+      risco_catalogo_id: null,
+      perigo: riscoPerigo.trim(),
+      risco: riscoDescricao.trim(),
+      consequencia: riscoConsequencia.trim() || null,
+      probabilidade: riscoProbabilidade,
+      severidade: riscoSeveridade,
+    });
+
+    setIsAddRiscoOpen(false);
+    setRiscoPerigo("");
+    setRiscoDescricao("");
+    setRiscoConsequencia("");
+    setRiscoProbabilidade(3);
+    setRiscoSeveridade(3);
+  };
 
   const handleAddParticipanteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -602,7 +708,43 @@ export default function SgsstPtDetailPage() {
 
           <Card>
             <CardHeader className="py-3">
-              <CardTitle className="text-sm font-semibold">Riscos Específicos Mapeados na PT</CardTitle>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <CardTitle className="text-sm font-semibold">
+                    Riscos Específicos Mapeados na PT
+                  </CardTitle>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    A APR é a análise da atividade; a PT é o momento. Importe os riscos já
+                    mapeados na APR e acrescente o que só aparece na hora — chuva, trabalho
+                    vizinho, equipamento diferente do previsto.
+                  </p>
+                </div>
+
+                {allowEdit && !isReadOnly && (
+                  <div className="flex shrink-0 items-center gap-2">
+                    {currentPt.apr_id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        disabled={importacao.aImportar.length === 0 || importandoRiscos}
+                        onClick={importarRiscosDaApr}
+                        title={textoDaImportacao(importacao)}
+                      >
+                        {importandoRiscos ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <FileCheck className="h-3.5 w-3.5" />
+                        )}
+                        {textoDaImportacao(importacao)}
+                      </Button>
+                    )}
+                    <Button size="sm" className="gap-1.5" onClick={() => setIsAddRiscoOpen(true)}>
+                      <Plus className="h-3.5 w-3.5" /> Adicionar Risco
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -612,13 +754,19 @@ export default function SgsstPtDetailPage() {
                     <TableHead>Risco</TableHead>
                     <TableHead>Consequência</TableHead>
                     <TableHead>Nível P × S</TableHead>
+                    {allowEdit && !isReadOnly && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingRiscos ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-4 text-xs">Carregando riscos...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-4 text-xs">Carregando riscos...</TableCell></TableRow>
                   ) : riscos.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-4 text-xs text-muted-foreground">Nenhum risco específico cadastrado na PT.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-4 text-xs text-muted-foreground">
+                      Nenhum risco específico cadastrado na PT.
+                      {currentPt.apr_id && importacao.aImportar.length > 0
+                        ? " A APR vinculada tem riscos mapeados — use o botão de importar."
+                        : ""}
+                    </TableCell></TableRow>
                   ) : (
                     riscos.map((r) => (
                       <TableRow key={r.id}>
@@ -626,6 +774,15 @@ export default function SgsstPtDetailPage() {
                         <TableCell className="text-xs">{r.risco}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{r.consequencia || "—"}</TableCell>
                         <TableCell className="text-xs font-mono">{r.probabilidade}×{r.severidade} = {r.nivel_risco}</TableCell>
+                        {allowEdit && !isReadOnly && (
+                          <TableCell className="text-right">
+                            <SgsstConfirmDelete
+                              alvo={`o risco "${r.perigo}"`}
+                              consequencia="As medidas de controle vinculadas a este risco são excluídas junto, e ele deixa de sair na folha da PT."
+                              onConfirm={() => removeRisco.mutate(r.id)}
+                            />
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   )}
@@ -845,6 +1002,94 @@ export default function SgsstPtDetailPage() {
               </Button>
               <Button type="submit" disabled={!newItemTexto.trim()}>
                 Adicionar Item
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Adicionar Risco Específico da PT */}
+      <Dialog open={isAddRiscoOpen} onOpenChange={setIsAddRiscoOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Risco específico desta PT
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleAddRiscoSubmit} className="space-y-4 py-2 text-xs sm:text-sm">
+            <p className="rounded-md border bg-muted/40 p-2.5 text-xs text-muted-foreground">
+              Para risco que a APR não previu e que a condição do dia trouxe. O que já
+              está na APR entra pelo botão de importar, sem redigitar.
+            </p>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="riscoPerigo">Perigo / Fator de risco *</Label>
+              <Input
+                id="riscoPerigo"
+                placeholder="Ex.: Piso molhado por chuva na área de montagem"
+                value={riscoPerigo}
+                onChange={(e) => setRiscoPerigo(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="riscoDesc">Risco associado *</Label>
+              <Input
+                id="riscoDesc"
+                placeholder="Ex.: Queda por escorregamento durante a subida"
+                value={riscoDescricao}
+                onChange={(e) => setRiscoDescricao(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="riscoCons">Consequência / lesão possível</Label>
+              <Input
+                id="riscoCons"
+                placeholder="Ex.: Fratura, entorse"
+                value={riscoConsequencia}
+                onChange={(e) => setRiscoConsequencia(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="riscoProb">Probabilidade (1 a 5) *</Label>
+                <Input
+                  id="riscoProb"
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={riscoProbabilidade}
+                  onChange={(e) => setRiscoProbabilidade(Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="riscoSev">Severidade (1 a 5) *</Label>
+                <Input
+                  id="riscoSev"
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={riscoSeveridade}
+                  onChange={(e) => setRiscoSeveridade(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Nível do risco: <strong>{riscoProbabilidade} × {riscoSeveridade} = {riscoProbabilidade * riscoSeveridade}</strong>.
+              A classificação é calculada pelo banco a partir desses dois números.
+            </p>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddRiscoOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={addRisco.isPending}>
+                Adicionar Risco
               </Button>
             </DialogFooter>
           </form>
