@@ -1,3 +1,8 @@
+import {
+  classificarFalhaDaFoto,
+  mensagemDaFalhaDaFoto,
+  hostDaUrl,
+} from "@/utils/sgsstFalhaDaFoto";
 import { escDoc as esc, CORES_DOC } from "@/lib/sgsstDocumentoEstilos";
 import { seloDaFoto, type OrigemFoto } from "@/utils/fotoGeolocalizada";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
@@ -103,15 +108,75 @@ export function dimensoesReduzidas(
  * `toDataURL` passa a lançar exceção de segurança. Com o blob a imagem é de mesma
  * origem e o canvas fica limpo.
  */
+/**
+ * A URL carrega numa `<img>` sem `crossOrigin`?
+ *
+ * Exibir imagem de outro domínio nunca precisou de CORS; LER os pixels precisa.
+ * Então uma `<img>` que carrega depois de um `fetch` que falhou é a prova de que o
+ * arquivo existe e o host apenas não libera a leitura.
+ *
+ * Tem prazo próprio: sem ele, host que engole a conexão deixaria a emissão do PDF
+ * pendurada esperando um `onerror` que nunca vem.
+ */
+function imagemCarrega(url: string, prazoMs = 6000): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const encerrar = (r: boolean) => {
+      img.onload = null;
+      img.onerror = null;
+      resolve(r);
+    };
+    const timer = setTimeout(() => encerrar(false), prazoMs);
+    img.onload = () => {
+      clearTimeout(timer);
+      encerrar(true);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      encerrar(false);
+    };
+    img.src = url;
+  });
+}
+
 async function baixarEReduzir(
   url: string
 ): Promise<{ dataUri: string | null; falha: string | null }> {
   let objectUrl: string | null = null;
 
   try {
-    const resposta = await fetch(url);
+    let resposta: Response;
+    try {
+      resposta = await fetch(url);
+    } catch (e) {
+      // Fetch que nem recebeu resposta. Sondar com `<img>` é o que separa "o host
+      // não me deixa LER" de "o host não respondeu": se a imagem carrega, o
+      // arquivo está lá e o bloqueio é de CORS. Sem esta sonda as duas situações
+      // saíam no PDF com a mesma frase inútil ("Failed to fetch").
+      const carrega = await imagemCarrega(url);
+      const causa = classificarFalhaDaFoto({ fetchRespondeu: false, imagemCarrega: carrega });
+      return {
+        dataUri: null,
+        falha: mensagemDaFalhaDaFoto(causa, {
+          host: hostDaUrl(url),
+          bruto: (e as Error)?.message,
+        }),
+      };
+    }
+
     if (!resposta.ok) {
-      return { dataUri: null, falha: `o arquivo respondeu HTTP ${resposta.status}` };
+      const causa = classificarFalhaDaFoto({
+        fetchRespondeu: true,
+        status: resposta.status,
+      });
+      return {
+        dataUri: null,
+        falha: mensagemDaFalhaDaFoto(causa, {
+          host: hostDaUrl(url),
+          status: resposta.status,
+          bruto: `o arquivo respondeu HTTP ${resposta.status}`,
+        }),
+      };
     }
 
     const blob = await resposta.blob();
