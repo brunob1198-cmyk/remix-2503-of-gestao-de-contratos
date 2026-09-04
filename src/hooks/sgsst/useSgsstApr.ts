@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tansta
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { mensagemDeErroSupabase } from "@/utils/mensagemErroSupabase";
 import { calcularClassificacaoRisco } from "@/utils/sgsstRiscoMatrix";
 
 export type StatusApr = "RASCUNHO" | "EM_ANALISE" | "APROVADA" | "REJEITADA" | "CANCELADA" | "ENCERRADA";
@@ -77,6 +78,21 @@ export interface SgsstAprMedida {
   responsavel_id?: string | null;
   prazo?: string | null;
   status: "pendente" | "em_andamento" | "implementado" | "cancelado";
+  /**
+   * Acompanhamento e aferição, os mesmos campos de `sgsst_pgr_medidas_controle`.
+   *
+   * A tela da APR reaproveita o formulário de medidas do PGR, que ganhou estes
+   * campos quando o PGR foi ajustado à NR-01 1.5.5.2 — e a tabela da APR ficou
+   * sem eles, o que fazia toda gravação de medida na APR falhar. Nomes e tipos
+   * são iguais aos do PGR de propósito: mesmo significado com nome diferente nas
+   * duas tabelas é como uma consulta que soma as duas passa a mentir.
+   */
+  data_implementacao?: string | null;
+  forma_acompanhamento?: string | null;
+  verificador_id?: string | null;
+  data_verificacao?: string | null;
+  resultado_verificacao?: "EFICAZ" | "PARCIALMENTE_EFICAZ" | "INEFICAZ" | null;
+  observacao_verificacao?: string | null;
   created_at?: string;
   updated_at?: string;
   responsavel?: { id: string; nome: string | null } | null;
@@ -586,7 +602,7 @@ export function useSgsstAprMedidas(aprRiscoId?: string) {
       toast.success("Medida de controle adicionada!");
     },
     onError: (err: any) => {
-      toast.error(`Erro ao adicionar medida: ${err.message || err}`);
+      toast.error(`Erro ao adicionar medida: ${mensagemDeErroSupabase(err)}`);
     },
   });
 
@@ -611,7 +627,7 @@ export function useSgsstAprMedidas(aprRiscoId?: string) {
       toast.success("Medida de controle atualizada!");
     },
     onError: (err: any) => {
-      toast.error(`Erro ao atualizar medida: ${err.message || err}`);
+      toast.error(`Erro ao atualizar medida: ${mensagemDeErroSupabase(err)}`);
     },
   });
 
@@ -630,7 +646,7 @@ export function useSgsstAprMedidas(aprRiscoId?: string) {
       toast.success("Medida de controle removida!");
     },
     onError: (err: any) => {
-      toast.error(`Erro ao remover medida: ${err.message || err}`);
+      toast.error(`Erro ao remover medida: ${mensagemDeErroSupabase(err)}`);
     },
   });
 

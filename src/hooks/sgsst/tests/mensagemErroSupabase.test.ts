@@ -87,3 +87,25 @@ describe("quando não há causa reconhecida", () => {
     expect(mensagemDeErroSupabase(undefined)).toBeTruthy();
   });
 });
+
+/**
+ * A mensagem exata que apareceu na tela da APR.
+ *
+ * O formulário de medidas do PGR é reaproveitado na APR, e a tabela da APR não
+ * tinha as colunas de acompanhamento. O usuário viu o texto cru do PostgREST —
+ * "Could not find the 'data_implementacao' column of 'sgsst_apr_medidas' in the
+ * schema cache" — que não diz o que fazer. As mutações de medida da APR passaram
+ * a usar este tradutor.
+ */
+describe("erro real da APR: coluna ausente", () => {
+  it("traduz nomeando tabela e coluna", () => {
+    const m = mensagemDeErroSupabase({
+      message:
+        "Could not find the 'data_implementacao' column of 'sgsst_apr_medidas' in the schema cache",
+    });
+
+    expect(m).toContain("sgsst_apr_medidas.data_implementacao");
+    // E diz o que fazer, que é o que faltava na mensagem original.
+    expect(m.toLowerCase()).toContain("migration");
+  });
+});
