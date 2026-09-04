@@ -143,17 +143,26 @@ export default function MeuPerfilPage() {
     if (!user) return;
     setDeletingAccount(true);
     try {
-      const { error } = await supabase
-        .from("solicitacoes_exclusao_conta" as any)
-        .insert({ user_id: user.id } as any);
+      // `as never` e Promise tipada em vez de `as any`: a tabela é nova e ainda
+      // não está nos tipos gerados do Supabase, mas o erro precisa continuar
+      // tipado — é dele que sai a mensagem mostrada ao usuário abaixo.
+      const { error } = (await (supabase
+        .from("solicitacoes_exclusao_conta" as never)
+        .insert({ user_id: user.id } as never) as never as Promise<{
+        error: { message?: string } | null;
+      }>));
       if (error) throw error;
       toast({
         title: "Solicitação registrada",
         description: "Sua conta será removida em até 30 dias, conforme a política de privacidade. Você será desconectado agora.",
       });
       await signOut();
-    } catch (err: any) {
-      toast({ title: "Erro ao solicitar exclusão", description: err.message, variant: "destructive" });
+    } catch (err) {
+      // `unknown` em vez de `any`: o `catch` pega qualquer coisa que seja
+      // lançada, inclusive o que não é Error. Sem a checagem, `err.message` num
+      // throw de string mostraria "undefined" ao usuário.
+      const detalhe = err instanceof Error ? err.message : String(err);
+      toast({ title: "Erro ao solicitar exclusão", description: detalhe, variant: "destructive" });
       setDeletingAccount(false);
     }
   };

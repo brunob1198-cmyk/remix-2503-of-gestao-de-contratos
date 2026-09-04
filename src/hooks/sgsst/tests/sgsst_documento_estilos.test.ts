@@ -174,58 +174,97 @@ describe("contraste do documento impresso", () => {
   });
 });
 
+
 /**
  * A caixinha de marcação do ASO.
  *
- * O "X" saía FORA do quadrado no PDF. A causa: a centralização era feita com
- * `display: inline-flex` + `align-items: center`, e o html2canvas — que rasteriza
- * o PDF — não reproduz a centralização de item de flex. Ele desenha o texto a
- * partir do retângulo do NÓ DE TEXTO, e com flex esse retângulo é mais alto que a
- * caixa: medido no navegador, sobrava 1,5px acima e 1,5px abaixo (a 3× de zoom).
- * Com layout de linha, a sobra é zero nos dois lados.
+ * Duas tentativas com "X" de TEXTO saíram erradas no PDF, por motivos
+ * diferentes. Medido no raster real, contando pixel de tinta dentro e fora do
+ * quadrado de 9px:
+ *
+ *   inline-flex + align-items:center ... o glifo vazava do quadrado
+ *   inline-block + line-height 7px .... tinta DENTRO = 0 (o X desaparecia)
+ *   inline-block + line-height 8..9px . vazava por BAIXO (118 a 196 px)
+ *
+ * A raiz é a mesma: o html2canvas posiciona texto por métrica própria, e num
+ * quadrado de 9px um erro de 1px já joga o glifo para fora. Não há line-height
+ * que acerte, porque o erro é de baseline, não de layout.
+ *
+ * Com o X desenhado por gradiente: 460 px de tinta dentro, ZERO vazando.
  */
 describe("caixinha de marcação (.doc-marca)", () => {
-  const regra = (() => {
+  const regraBase = (() => {
     const m = estilosDocumentoSgsst.match(/\.doc-marca\s*\{[^}]*\}/);
     if (!m) throw new Error("regra .doc-marca não encontrada");
     return m[0];
   })();
 
-  it("NÃO usa flex para centralizar", () => {
-    // É a regressão a evitar: na tela flex fica certo, e no PDF o X escapa.
-    expect(regra).not.toContain("inline-flex");
-    expect(regra).not.toContain("align-items");
-    expect(regra).not.toContain("justify-content");
+  const regraMarcada = (() => {
+    const m = estilosDocumentoSgsst.match(/\.doc-marca\.marcada\s*\{[^}]*\}/);
+    if (!m) throw new Error("regra .doc-marca.marcada não encontrada");
+    return m[0];
+  })();
+
+  it("a marca é DESENHO, não texto", () => {
+    // É a regressão a evitar. Glifo de texto num quadrado de 9px não é
+    // posicionável pelo rasterizador — foi testado duas vezes e falhou duas.
+    expect(regraMarcada).toContain("linear-gradient");
+    expect(regraBase).not.toContain("font-size");
+    expect(regraBase).not.toContain("line-height");
+    expect(regraBase).not.toContain("text-align");
   });
 
-  it("centraliza por layout de linha, que o html2canvas reproduz", () => {
-    expect(regra).toContain("display: inline-block");
-    expect(regra).toContain("text-align: center");
+  it("não depende de flex, que o html2canvas não reproduz", () => {
+    expect(regraBase).not.toContain("inline-flex");
+    expect(regraBase).not.toContain("align-items");
   });
 
-  it("a altura da linha é a da caixa DESCONTANDO as bordas", () => {
-    // Com box-sizing: border-box, 9px de caixa e 1px de borda de cada lado deixam
-    // 7px de conteúdo. line-height maior que isso faz o glifo sobrar para fora.
-    const altura = /height:\s*(\d+(?:\.\d+)?)px/.exec(regra);
-    const borda = /border:\s*(\d+(?:\.\d+)?)px/.exec(regra);
-    const lh = /line-height:\s*(\d+(?:\.\d+)?)px/.exec(regra);
-
-    expect(altura, "altura da caixa declarada em px").not.toBeNull();
-    expect(borda, "borda declarada em px").not.toBeNull();
-    expect(lh, "line-height declarado em px, não em número").not.toBeNull();
-
-    const conteudo = Number(altura![1]) - 2 * Number(borda![1]);
-    expect(Number(lh![1])).toBe(conteudo);
+  it("são DUAS diagonais, uma em cada sentido — senão é um traço, não um X", () => {
+    expect(regraMarcada).toContain("linear-gradient(45deg");
+    expect(regraMarcada).toContain("linear-gradient(-45deg");
   });
 
-  it("o tipo não é maior que a linha", () => {
-    // Fonte maior que a linha volta a fazer o glifo transbordar.
-    const fs = Number(/font-size:\s*(\d+(?:\.\d+)?)px/.exec(regra)![1]);
-    const lh = Number(/line-height:\s*(\d+(?:\.\d+)?)px/.exec(regra)![1]);
-    expect(fs).toBeLessThanOrEqual(lh);
+  it("a marca é escura, para sobreviver à fotocópia em preto e branco", () => {
+    // Marcação que depende de cor clara desaparece na cópia — e o ASO é o
+    // documento que mais circula fotocopiado.
+    expect(regraMarcada).toContain(CORES_DOC.tinta);
   });
 
-  it("recorta o que exceder, como última linha de defesa", () => {
-    expect(regra).toContain("overflow: hidden");
+  it("o quadrado tem fundo branco declarado", () => {
+    // `background-color` e não `background`: o atalho zeraria a background-image
+    // da regra .marcada se a ordem das regras mudasse.
+    expect(regraBase).toContain("background-color: #fff");
+  });
+
+  it("o quadrado vazio não desenha diagonal nenhuma", () => {
+    expect(regraBase).not.toContain("linear-gradient");
+  });
+});
+
+/**
+ * O ASO emite o quadrado VAZIO.
+ *
+ * Se voltar a emitir um "X" de texto, ele reaparece por cima do gradiente e
+ * volta a ser posicionado pela métrica de fonte — o defeito de novo.
+ */
+describe("opcao() do ASO não emite caractere de marcação", () => {
+  it("o span da marca vem sem conteúdo", async () => {
+    const { montarHtmlAso } = await import("@/lib/asoDocumento");
+    const html = montarHtmlAso(
+      {
+        id: "a1",
+        empresa_id: "e1",
+        colaborador_id: "c1",
+        data_emissao: "2026-09-01",
+        tipo: "Periódico",
+        aptidao: "APTO",
+        riscos_marcados: ["FIS_RUIDO"],
+      } as never,
+      null
+    );
+
+    expect(html).toContain('<span class="doc-marca marcada"></span>');
+    expect(html).not.toContain(">X</span>");
+    expect(html).not.toContain("&nbsp;</span>");
   });
 });
