@@ -384,3 +384,5 @@
 .lp .foot-col a:hover{color:var(--brand-strong);}
 .lp .foot-col p{font-size:13px;color:var(--ink-faint);line-height:1.7;}
 .lp .foot-bottom{margin-top:48px;padding-top:24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink-faint);font-family:var(--font-mono);}
+.lp .foot-bottom a{text-decoration:none;}
+.lp .foot-bottom a:hover{color:var(--brand-strong);}
