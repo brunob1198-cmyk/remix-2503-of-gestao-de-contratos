@@ -94,7 +94,7 @@ export default function Landing() {
           </nav>
           <div className="nav-cta">
             <a className="btn btn-ghost" href="#faq">Ver módulos</a>
-            <a className="btn btn-primary" href="mailto:aivx@aivxtech.com?subject=Quero%20conhecer%20o%20Gest%C3%A3o%20de%20Contratos%20Inteligente&body=Ol%C3%A1%2C%20equipe%20AIVX.%0D%0A%0D%0AGostaria%20de%20conhecer%20o%20sistema%20de%20gest%C3%A3o%20de%20contratos%2C%20obras%20e%20seguran%C3%A7a%20do%20trabalho.%0D%0A%0D%0AEmpresa%3A%20%0D%0AN%C2%BA%20de%20contratos%2Fobras%20ativos%3A%20%0D%0A">Falar com um especialista</a>
+            <a className="btn btn-primary" href="/auth?mode=signup">Comece agora</a>
           </div>
           <button type="button" className="nav-toggle" aria-label="Abrir menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -105,7 +105,7 @@ export default function Landing() {
           <a href="#modulos">Módulos</a>
           <a href="#sst">Segurança do Trabalho</a>
           <a href="#faq">Perguntas</a>
-          <a href="mailto:aivx@aivxtech.com">Falar com um especialista</a>
+          <a href="/auth?mode=signup">Comece agora</a>
         </div>
       </header>
 
@@ -118,7 +118,7 @@ export default function Landing() {
             <h1>Toda obra tem uma<br />versão dos fatos.<br /><em>A sua fica registrada.</em></h1>
             <p className="hero-sub">Contratos, medições, RDO e segurança do trabalho num único sistema — com foto geolocalizada, saldo de contrato em tempo real e ASO, PGR e PCMSO com vencimento monitorado.</p>
             <div className="hero-cta">
-              <a className="btn btn-primary" href="mailto:aivx@aivxtech.com?subject=Quero%20conhecer%20o%20Gest%C3%A3o%20de%20Contratos%20Inteligente&body=Ol%C3%A1%2C%20equipe%20AIVX.%0D%0A%0D%0AGostaria%20de%20conhecer%20o%20sistema%20de%20gest%C3%A3o%20de%20contratos%2C%20obras%20e%20seguran%C3%A7a%20do%20trabalho.%0D%0A%0D%0AEmpresa%3A%20%0D%0AN%C2%BA%20de%20contratos%2Fobras%20ativos%3A%20%0D%0A">Falar com um especialista</a>
+              <a className="btn btn-primary" href="/auth?mode=signup">Comece agora</a>
               <a className="btn btn-ghost" href="#modulos">Ver os módulos ↓</a>
             </div>
             <div className="hero-meta">
@@ -419,8 +419,8 @@ export default function Landing() {
           <div className="final-cta reveal">
             <h2>Pare de brigar com planilha e caderno de obra.</h2>
             <div className="side">
-              <a className="btn btn-primary" href="mailto:aivx@aivxtech.com?subject=Quero%20conhecer%20o%20Gest%C3%A3o%20de%20Contratos%20Inteligente&body=Ol%C3%A1%2C%20equipe%20AIVX.%0D%0A%0D%0AGostaria%20de%20conhecer%20o%20sistema%20de%20gest%C3%A3o%20de%20contratos%2C%20obras%20e%20seguran%C3%A7a%20do%20trabalho.%0D%0A%0D%0AEmpresa%3A%20%0D%0AN%C2%BA%20de%20contratos%2Fobras%20ativos%3A%20%0D%0A">Falar com um especialista</a>
-              <p>aivx@aivxtech.com · resposta em até 1 dia útil</p>
+              <a className="btn btn-primary" href="/auth?mode=signup">Comece agora</a>
+              <p>Crie sua conta em poucos minutos · <a href="mailto:aivx@aivxtech.com">aivx@aivxtech.com</a></p>
             </div>
           </div>
         </div>
@@ -462,7 +462,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="foot-bottom">
-            <span>© <span>{new Date().getFullYear()}</span> AIVX Tecnologia. Todos os direitos reservados.</span>
+            <span>© <span>{new Date().getFullYear()}</span> AIVX Tecnologia. Todos os direitos reservados. · <a href="/politica-de-privacidade.html" target="_blank" rel="noopener noreferrer">Política de Privacidade</a></span>
             <span>INTELIGÊNCIA QUE MOVE</span>
           </div>
         </div>

@@ -11,14 +11,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Camera, Save, Lock } from "lucide-react";
+import { Camera, Save, Lock, Trash2 } from "lucide-react";
 import { uploadImage, deleteImage } from "@/services/uploadImage";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
+import { ConfirmDeleteDialog } from "@/components/medicoes/ConfirmDeleteDialog";
 
 
 
 export default function MeuPerfilPage() {
-  const { user, profile, role, refreshProfile } = useAuth();
+  const { user, profile, role, refreshProfile, signOut } = useAuth();
   const { toast } = useToast();
 
   const [nome, setNome] = useState("");
@@ -34,6 +35,10 @@ export default function MeuPerfilPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // Account deletion
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -131,6 +136,25 @@ export default function MeuPerfilPage() {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handleRequestAccountDeletion = async () => {
+    if (!user) return;
+    setDeletingAccount(true);
+    try {
+      const { error } = await supabase
+        .from("solicitacoes_exclusao_conta" as any)
+        .insert({ user_id: user.id } as any);
+      if (error) throw error;
+      toast({
+        title: "Solicitação registrada",
+        description: "Sua conta será removida em até 30 dias, conforme a política de privacidade. Você será desconectado agora.",
+      });
+      await signOut();
+    } catch (err: any) {
+      toast({ title: "Erro ao solicitar exclusão", description: err.message, variant: "destructive" });
+      setDeletingAccount(false);
     }
   };
 
@@ -266,6 +290,37 @@ export default function MeuPerfilPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Danger Zone */}
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" /> Zona de Perigo
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Ao excluir sua conta, você será desconectado imediatamente e sua conta será removida em
+            até 30 dias, conforme a{" "}
+            <a href="/politica-de-privacidade.html" target="_blank" rel="noopener noreferrer" className="underline">
+              política de privacidade
+            </a>.
+          </p>
+          <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)} className="gap-2">
+            <Trash2 className="h-4 w-4" />
+            Excluir minha conta
+          </Button>
+        </CardContent>
+      </Card>
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleRequestAccountDeletion}
+        title="Excluir minha conta"
+        description="Sua conta será removida em até 30 dias, conforme a política de privacidade. Você será desconectado agora, e só um administrador da sua empresa pode reverter esta solicitação antes da exclusão."
+        loading={deletingAccount}
+      />
     </div>
   );
 }

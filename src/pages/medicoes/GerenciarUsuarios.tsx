@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle, XCircle, Clock, Shield, Eye, Pencil, Users, History, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Shield, Eye, Pencil, Users, History, Loader2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { SmartImage } from "@/components/ui/SmartImage";
@@ -55,6 +55,13 @@ interface WorkflowPerms {
   pode_criar_pedido: boolean;
 }
 
+interface DeletionRequestRow {
+  id: string;
+  user_id: string;
+  created_at: string;
+  profiles: { nome: string | null; avatar_url: string | null; cargo: string | null } | null;
+}
+
 export default function GerenciarUsuariosPage() {
   const { user: currentUser, empresaId, role: myRole } = useAuth();
   const { toast } = useToast();
@@ -64,6 +71,7 @@ export default function GerenciarUsuariosPage() {
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
   const [userPerms, setUserPerms] = useState<PermRow[]>([]);
   const [permDialogOpen, setPermDialogOpen] = useState(false);
+  const [deletionRequests, setDeletionRequests] = useState<DeletionRequestRow[]>([]);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = usePersistedState<string>("usuarios:activeTab", "usuarios");
@@ -90,6 +98,13 @@ export default function GerenciarUsuariosPage() {
       .from("user_roles")
       .select("user_id, role");
     setRoles((rolesData as RoleRow[]) || []);
+
+    const { data: deletionData } = await supabase
+      .from("solicitacoes_exclusao_conta" as any)
+      .select("id, user_id, created_at, profiles(nome, avatar_url, cargo)")
+      .eq("status", "pendente");
+    setDeletionRequests((deletionData as any) || []);
+
     setLoading(false);
   };
 
@@ -116,6 +131,20 @@ export default function GerenciarUsuariosPage() {
     await supabase.from("user_roles").delete().eq("user_id", userId);
     await supabase.from("user_permissions").delete().eq("user_id", userId);
     toast({ title: "Acesso revogado." });
+    fetchUsers();
+  };
+
+  const handleResolveDeletionRequest = async (requestId: string, userId: string) => {
+    await handleReject(userId);
+    await supabase
+      .from("solicitacoes_exclusao_conta" as any)
+      .update({
+        status: "concluida",
+        concluida_em: new Date().toISOString(),
+        concluida_por: currentUser?.id,
+      } as any)
+      .eq("id", requestId);
+    toast({ title: "Solicitação de exclusão processada." });
     fetchUsers();
   };
 
@@ -246,6 +275,47 @@ export default function GerenciarUsuariosPage() {
                     <XCircle className="h-4 w-4" /> Rejeitar
                   </Button>
                 </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Deletion Requests */}
+      {deletionRequests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Solicitações de Exclusão de Conta ({deletionRequests.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {deletionRequests.map((r) => (
+              <div key={r.id} className="flex items-center justify-between p-3 rounded-lg border bg-destructive/5">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    {r.profiles?.avatar_url ? (
+                      <SmartImage
+                        src={r.profiles.avatar_url}
+                        context="profiles"
+                        containerClassName="absolute inset-0 h-full w-full"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback>{getInitials(r.profiles?.nome || null)}</AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{r.profiles?.nome || "Sem nome"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Solicitado em {new Date(r.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" variant="destructive" onClick={() => handleResolveDeletionRequest(r.id, r.user_id)} className="gap-1">
+                  <Trash2 className="h-4 w-4" /> Revogar acesso e concluir
+                </Button>
               </div>
             ))}
           </CardContent>
