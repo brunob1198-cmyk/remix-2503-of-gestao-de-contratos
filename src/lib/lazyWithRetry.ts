@@ -46,6 +46,30 @@ function clearReloadFlag() {
   }
 }
 
+async function clearLegacyAppCache(): Promise<void> {
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(
+        registrations
+          .filter((registration) => registration.active?.scriptURL.includes("/sw-checklists.js"))
+          .map((registration) => registration.unregister()),
+      );
+    }
+
+    if ("caches" in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames
+          .filter((cacheName) => cacheName.startsWith("checklists-pwa-"))
+          .map((cacheName) => caches.delete(cacheName)),
+      );
+    }
+  } catch {
+    // A recarga com cache-busting ainda é válida sem acesso a essas APIs.
+  }
+}
+
 export function lazyWithRetry<T extends React.ComponentType<unknown>>(
   factory: () => Promise<{ default: T }>,
 ): React.LazyExoticComponent<T> {
@@ -57,24 +81,19 @@ export function lazyWithRetry<T extends React.ComponentType<unknown>>(
     } catch (error) {
       if (!isChunkLoadError(error)) throw error;
 
-      // Segunda tentativa: pode ter sido apenas instabilidade de rede.
-      try {
-        const mod = await factory();
-        clearReloadFlag();
-        return mod;
-      } catch (retryError) {
-        if (!reloadedRecently()) {
-          markReload();
-          // `reload(true)` não é padrão; trocar a URL força o browser a buscar
-          // um index.html novo com o manifesto atualizado.
-          const url = new URL(window.location.href);
-          url.searchParams.set("_r", String(Date.now()));
-          window.location.replace(url.toString());
-          // Evita renderizar enquanto a página recarrega.
-          return new Promise<{ default: T }>(() => {});
-        }
-        throw retryError;
+      // Um import() que falhou pode permanecer rejeitado no mapa de módulos do
+      // navegador; chamar a mesma factory novamente não garante nova requisição.
+      // Limpamos o cache legado e carregamos um index.html atual uma única vez.
+      if (!reloadedRecently()) {
+        markReload();
+        await clearLegacyAppCache();
+        const url = new URL(window.location.href);
+        url.searchParams.set("_r", String(Date.now()));
+        window.location.replace(url.toString());
+        return new Promise<{ default: T }>(() => {});
       }
+
+      throw error;
     }
   });
 }
