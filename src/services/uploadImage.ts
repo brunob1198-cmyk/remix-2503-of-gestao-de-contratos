@@ -71,7 +71,7 @@ function comDetalhe(mensagem: string, corpo: string): string {
 }
 
 /**
- * Envia um arquivo para o R2 pelo Worker.
+ * Faz o `POST` autenticado no Worker de upload.
  *
  * O `Authorization` vai em toda chamada: é ele que fecha o endpoint, que antes
  * aceitava `POST` de qualquer origem sem identificar ninguém.
@@ -81,15 +81,19 @@ function comDetalhe(mensagem: string, corpo: string): string {
  * Sem ela, o token vencendo durante a subida de uma foto — minutos, num sinal ruim
  * de obra — devolveria 401 e a evidência se perderia. Ver `uploadAutenticacao.ts`
  * para o raciocínio das duas regras (renovar antes; renovar e repetir uma vez).
+ *
+ * POR QUE ISTO É EXPORTADO, E POR QUE RECEBE UMA FUNÇÃO
+ *
+ * Havia DOIS lugares mandando arquivo para o Worker: aqui e a Migração de Storage.
+ * Quando o Worker passou a exigir token, a Migração parou de funcionar porque
+ * montava o próprio `fetch` sem o cabeçalho. Um endpoint autenticado com duas
+ * portas de entrada é uma porta que vai ser esquecida — então existe só esta.
+ *
+ * O corpo entra como função, e não como `FormData` pronto, porque cada tentativa
+ * monta o seu: reaproveitar um corpo já enviado é a forma silenciosa de a segunda
+ * tentativa subir vazia.
  */
-export async function uploadImage(file: File, folder?: "thumb" | "medium" | "original"): Promise<string> {
-  let fileToUpload = file;
-
-  if (!folder && file.type.startsWith('image/')) {
-    const { compressImage } = await import("@/lib/imageCompression");
-    fileToUpload = await compressImage(file);
-  }
-
+export async function enviarAoWorkerDeUpload(montarCorpo: () => FormData): Promise<Response> {
   const { token, expiraEm } = await sessaoAtual();
   const decisao = decisaoDoUpload({ token, expiraEm, agora: Math.floor(Date.now() / 1000) });
 
@@ -110,20 +114,12 @@ export async function uploadImage(file: File, folder?: "thumb" | "medium" | "ori
     // segundos de vida, e uma tentativa é melhor que desistir sem tentar.
   }
 
-  console.log("UPLOAD ATTEMPT:", file.name, (file.size / 1024).toFixed(2), "KB", folder ? `FOLDER: ${folder}` : "");
-
   // No máximo duas voltas: a segunda só acontece com token renovado.
   for (;;) {
-    const formData = new FormData();
-    formData.append("file", fileToUpload);
-    if (folder) {
-      formData.append("folder", folder);
-    }
-
     const response = await fetch(WORKER_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${tokenAtual}` },
-      body: formData,
+      body: montarCorpo(),
     });
 
     const proximoPasso = aposRespostaDoUpload({ status: response.status, jaRenovou });
@@ -146,15 +142,38 @@ export async function uploadImage(file: File, folder?: "thumb" | "medium" | "ori
       );
     }
 
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.error || "Falha upload");
-    }
-
-    // O worker retorna o path relativo (ex: "arquivo.pdf"). resolveFileUrl gera a URL final para novos arquivos (R2).
-    return resolveFileUrl(data.url);
+    return response;
   }
+}
+
+/** Envia um arquivo para o R2 pelo Worker e devolve a URL final. */
+export async function uploadImage(file: File, folder?: "thumb" | "medium" | "original"): Promise<string> {
+  let fileToUpload = file;
+
+  if (!folder && file.type.startsWith('image/')) {
+    const { compressImage } = await import("@/lib/imageCompression");
+    fileToUpload = await compressImage(file);
+  }
+
+  console.log("UPLOAD ATTEMPT:", file.name, (file.size / 1024).toFixed(2), "KB", folder ? `FOLDER: ${folder}` : "");
+
+  const response = await enviarAoWorkerDeUpload(() => {
+    const formData = new FormData();
+    formData.append("file", fileToUpload);
+    if (folder) {
+      formData.append("folder", folder);
+    }
+    return formData;
+  });
+
+  const data = await response.json();
+
+  if (!data.success) {
+    throw new Error(data.error || "Falha upload");
+  }
+
+  // O worker retorna o path relativo (ex: "arquivo.pdf"). resolveFileUrl gera a URL final para novos arquivos (R2).
+  return resolveFileUrl(data.url);
 }
 
 export interface UploadedVariants {

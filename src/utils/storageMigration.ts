@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { resolveFileUrl, normalizeLegacyStoragePath } from "./fileUrlResolver";
+import { enviarAoWorkerDeUpload } from "@/services/uploadImage";
 
-const R2_WORKER_URL = "https://obras-upload-api.brunob1198.workers.dev/";
 const SUPABASE_STORAGE_BASE = "https://xqdhyukmeklfczwiipen.supabase.co/storage/v1/object/public";
 
 export interface MigrationLog {
@@ -321,26 +321,20 @@ export async function migrateFileToR2(pathOrUrl: string | null | undefined, cont
         continue;
       }
 
-      const formData = new FormData();
       const fileName = filePath.split("/").pop() || "file";
       const file = new File([data], fileName, { type: data.type });
-      formData.append("file", file);
-      formData.append("path", `${bucket}/${filePath}`);
 
-      const response = await fetch(R2_WORKER_URL, {
-        method: "POST",
-        body: formData,
+      // Passa pelo envio autenticado de `uploadImage`, e não por um `fetch` próprio.
+      // O Worker exige o token da sessão desde setembro de 2026; o POST solto que
+      // havia aqui recebia 401 e a migração parava sem dizer o motivo real.
+      // Ele já cuida de renovar o token e repetir, então o `!response.ok` de antes
+      // saiu: quando chega resposta, ela é boa; o resto vem como exceção.
+      const response = await enviarAoWorkerDeUpload(() => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("path", `${bucket}/${filePath}`);
+        return formData;
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (attempt === maxAttempts - 1) {
-          return { url: pathOrUrl, status: 'error', message: `Erro R2: ${errorText}` };
-        }
-        attempt++;
-        await new Promise(r => setTimeout(r, 1000));
-        continue;
-      }
 
       const result = await response.json();
       if (!result.success) {
