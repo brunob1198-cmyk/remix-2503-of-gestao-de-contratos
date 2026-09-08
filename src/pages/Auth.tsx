@@ -130,6 +130,17 @@ export default function AuthPage() {
               </p>
             )}
           </div>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Ao continuar, você declara estar ciente da{" "}
+            <a href="/politica-de-privacidade.html" className="underline hover:text-primary">
+              Política de Privacidade
+            </a>{" "}
+            e pode solicitar a{" "}
+            <a href="/exclusao-de-conta.html" className="underline hover:text-primary">
+              exclusão da sua conta
+            </a>
+            .
+          </p>
         </CardContent>
       </Card>
     </div>
