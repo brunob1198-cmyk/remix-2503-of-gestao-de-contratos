@@ -111,7 +111,17 @@ function ProducaoSection({
             {producoes.map(p => (
               <TableRow key={p.id}>
                 <TableCell>
-                  {p.item_lpu?.codigo ? `${p.item_lpu.codigo} — ` : ""}{p.item_lpu?.descricao}
+                  {/* Sem limite de largura, a descrição mais longa da LPU empurrava a
+                      tabela inteira para além da tela — e o que sobrava visível era o
+                      fim do texto, não o começo. `max-w-md truncate` prende a largura e
+                      corta com "..." no fim, que é a parte menos importante; o texto
+                      inteiro continua acessível no title (tooltip ao passar o mouse). */}
+                  <div
+                    className="max-w-md truncate"
+                    title={`${p.item_lpu?.codigo ? p.item_lpu.codigo + " — " : ""}${p.item_lpu?.descricao || ""}`}
+                  >
+                    {p.item_lpu?.codigo ? `${p.item_lpu.codigo} — ` : ""}{p.item_lpu?.descricao}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   {editingProducaoId === p.id ? (
