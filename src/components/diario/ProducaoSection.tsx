@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Camera, Check, Pencil, Trash2, X, MoveHorizontal } from "lucide-react";
+import { Camera, Check, Pencil, Trash2, X, MoveHorizontal, ChevronsUpDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 
 const formatCurrency = (v: number) =>
@@ -69,8 +69,11 @@ function ProducaoSection({
 }: ProducaoSectionProps) {
 
   const [prodItemId, setProdItemId] = useState("");
+  const [itemPopoverOpen, setItemPopoverOpen] = useState(false);
   const [prodQtd, setProdQtd] = useState("");
   const [pendingProdFiles, setPendingProdFiles] = useState<File[]>([]);
+
+  const itemSelecionado = itensDisponiveis.find(i => (i.item_lpu_id || i.id) === prodItemId);
   const [editingProducaoId, setEditingProducaoId] = useState<string | null>(null);
   const [editProducaoQtd, setEditProducaoQtd] = useState("");
 
@@ -86,12 +89,42 @@ function ProducaoSection({
       <CardHeader><CardTitle>Produção</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
-          <Select value={prodItemId} onValueChange={setProdItemId}>
-            <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione item" /></SelectTrigger>
-            <SelectContent>
-              {itensDisponiveis.map(i => <SelectItem key={i.id} value={i.item_lpu_id || i.id}>{i.nome}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Popover open={itemPopoverOpen} onOpenChange={setItemPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" aria-expanded={itemPopoverOpen} className="flex-1 justify-between font-normal">
+                <span className="truncate">{itemSelecionado?.nome || "Selecione item"}</span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
+              </Button>
+            </PopoverTrigger>
+            {/* `w-[min(34rem,90vw)]` trava a largura do menu — sem isso, a descrição
+                mais longa de um item de LPU esticaria o popover além da tela. O texto
+                de cada opção quebra linha (items-start + whitespace-normal) em vez de
+                truncar, porque cortar com "..." deixava a descrição ilegível. */}
+            <PopoverContent className="w-[min(34rem,90vw)] p-0">
+              <Command>
+                <CommandInput placeholder="Buscar por código ou descrição..." />
+                <CommandList>
+                  <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
+                  <CommandGroup>
+                    {itensDisponiveis.map(i => (
+                      <CommandItem
+                        key={i.id}
+                        value={i.nome}
+                        onSelect={() => {
+                          setProdItemId(i.item_lpu_id || i.id);
+                          setItemPopoverOpen(false);
+                        }}
+                        className="items-start whitespace-normal break-words"
+                      >
+                        <Check className={`mr-2 h-4 w-4 shrink-0 mt-0.5 ${(i.item_lpu_id || i.id) === prodItemId ? "opacity-100" : "opacity-0"}`} />
+                        {i.nome}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
           <Input type="number" value={prodQtd} onChange={e => setProdQtd(e.target.value)} placeholder="Qtd" className={LARGURA_QTD} />
           <Button onClick={handleAdd}>Adicionar</Button>
         </div>
