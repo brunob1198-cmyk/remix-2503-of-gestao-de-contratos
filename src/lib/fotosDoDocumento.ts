@@ -147,7 +147,36 @@ async function baixarEReduzir(
   try {
     let resposta: Response;
     try {
-      resposta = await fetch(url);
+      // `cache: "reload"` NÃO é para pegar versão mais nova da foto. É para não
+      // reaproveitar a resposta que a TELA já guardou no cache.
+      //
+      // O DEFEITO QUE ISTO CORRIGE — medido em produção
+      //
+      // A tela da APR mostra a evidência num `<img>` comum. Essa resposta entra no
+      // cache SEM o cabeçalho de CORS, porque `<img>` sem `crossOrigin` não pede
+      // permissão de leitura. Quando a emissão do PDF depois faz `fetch` na mesma
+      // URL, o navegador reaproveita aquela resposta guardada — e ela não passa na
+      // verificação de CORS. Resultado: "Failed to fetch" numa foto que estava ali,
+      // visível, na tela ao lado.
+      //
+      // O que deixa o defeito passar é o bucket não mandar `Vary: Origin` (medido:
+      // ausente). Com esse cabeçalho o navegador guardaria as duas respostas
+      // separadas e não haveria conflito. Como ele não vem, o conserto tem de ser
+      // deste lado.
+      //
+      // Sequência reproduzida, com a política de CORS já correta:
+      //   <img src=url>  ....... carrega
+      //   fetch(url)     ....... Failed to fetch      <- o que o usuário via
+      //   fetch(url, {cache:"reload"}) .......... 200 <- o que passou a ser feito
+      //
+      // Isto também explica por que a verificação anterior passou: eu fiz o `fetch`
+      // ANTES do `<img>`, e nessa ordem o cache ainda estava limpo. A ordem decidia
+      // o resultado, e a ordem real do app é a inversa.
+      //
+      // O download extra é aceitável: são poucas fotos por documento, e a resposta
+      // que o `reload` grava JÁ TEM o cabeçalho — então ela conserta o cache para
+      // as próximas emissões em vez de só contornar o problema.
+      resposta = await fetch(url, { cache: "reload" });
     } catch (e) {
       // Fetch que nem recebeu resposta. Sondar com `<img>` é o que separa "o host
       // não me deixa LER" de "o host não respondeu": se a imagem carrega, o
