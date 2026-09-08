@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { aposRespostaDoUpload, decisaoDoUpload } from "@/utils/uploadAutenticacao";
+import { arquivoDoBucket } from "@/utils/arquivoDoBucket";
 
 const R2_PUBLIC_BASE_URL = "https://pub-8e0d5fd80efd4a7499610aa072d8f5f4.r2.dev";
 
@@ -201,31 +202,75 @@ export async function verifyImageUrl(url: string): Promise<boolean> {
 }
 
 /**
- * Pede ao Worker que apague o arquivo.
+ * Apaga o arquivo do bucket.
  *
- * MEDIDO NO NAVEGADOR: NÃO FUNCIONA, E NÃO É POR CAUSA DESTA MUDANÇA.
+ * O QUE ESTAVA ERRADO
  *
- * O Worker responde apenas a `POST` e `OPTIONS`. O `DELETE` daqui é barrado pelo
- * navegador na verificação de permissão entre origens e nem chega ao servidor
- * ("Failed to fetch"). A função cai no `catch` e devolve `false` desde sempre — ou
- * seja, apagar imagem em Contratos, Clientes e Meu Perfil remove a referência no
- * banco e deixa o arquivo no bucket para sempre.
+ * O Worker só respondia a `POST` e `OPTIONS`, então este `DELETE` era barrado pelo
+ * navegador na verificação de permissão e nem chegava ao servidor. A função caía no
+ * `catch` e devolvia `false` desde sempre: apagar imagem em Contratos, Clientes e
+ * Meu Perfil removia a referência no banco e deixava o arquivo no bucket para
+ * sempre. E como nenhum dos cinco chamadores olha o retorno, o vazamento não
+ * aparecia em lugar nenhum.
  *
- * Fica registrado aqui em vez de "corrigido de passagem": abrir exclusão remota é
- * decisão de projeto, não detalhe de implementação — um endpoint que apaga arquivo
- * precisa de mais cuidado de autorização que um que grava.
+ * CONTINUA SENDO MELHOR ESFORÇO, DE PROPÓSITO
+ *
+ * O retorno segue `boolean` e os chamadores seguem podendo ignorá-lo. Travar "tirar
+ * a logo" porque o bucket teve um soluço seria pior para quem usa do que deixar um
+ * arquivo órfão. O que muda é que agora existe motivo escrito no console, em vez de
+ * um `false` calado.
+ *
+ * LIMITE CONHECIDO DE AUTORIZAÇÃO — DELIBERADO, NÃO ESQUECIMENTO
+ *
+ * O Worker exige sessão válida, então o endpoint não está aberto ao mundo. Mas o
+ * bucket é plano (`<timestamp>-<nome>`, sem pasta por empresa), então ele não tem
+ * como saber de quem é o arquivo: qualquer usuário autenticado que conheça a chave
+ * consegue apagá-la. Na prática a chave só circula pelo app, que já filtra por
+ * empresa, mas isso é obstáculo, não autorização.
+ *
+ * O conserto de verdade é gravar novos arquivos sob um prefixo por empresa e o
+ * Worker recusar chave fora do prefixo de quem pede. Isso muda o caminho de
+ * gravação e não alcança os arquivos que já existem, então é mudança à parte.
  */
 export async function deleteImage(url: string): Promise<boolean> {
-  if (!url) return false;
+  const arquivo = arquivoDoBucket(url);
+
+  if (arquivo.ehDoBucket !== true) {
+    // Não é falha: não havia arquivo no R2 para apagar. Distinguir os dois casos é
+    // o que permite dizer se sobrou lixo no bucket ou não.
+    console.info(`Nada a apagar no R2 (${arquivo.motivo}):`, url);
+    return false;
+  }
+
   try {
+    const { token, expiraEm } = await sessaoAtual();
+    const decisao = decisaoDoUpload({ token, expiraEm, agora: Math.floor(Date.now() / 1000) });
+
+    if (decisao.enviar !== true) {
+      console.warn(`Não foi possível apagar ${arquivo.chave} do R2: ${decisao.motivo}`);
+      return false;
+    }
+
+    // Sem repetição com token renovado, ao contrário do upload: aqui não há foto
+    // recém-tirada em risco, e o pior caso é um arquivo órfão — que a próxima
+    // exclusão da mesma tela resolve.
     const response = await fetch(
       `${WORKER_URL}?url=${encodeURIComponent(url)}`,
-      { method: "DELETE" }
+      { method: "DELETE", headers: { Authorization: `Bearer ${decisao.token}` } }
     );
-    const data = await response.json();
-    return data.success;
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.success) {
+      console.warn(
+        `O R2 não apagou ${arquivo.chave} (HTTP ${response.status}): ${data.error || "sem detalhe"}`
+      );
+      return false;
+    }
+
+    return true;
   } catch (error) {
-    console.error("Erro ao deletar imagem do R2:", error);
+    console.error(`Erro ao apagar ${arquivo.chave} do R2:`, error);
     return false;
   }
 }
