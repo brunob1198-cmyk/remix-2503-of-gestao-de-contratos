@@ -109,21 +109,24 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground",
+      "relative flex w-full cursor-default select-none items-start rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground",
       className,
     )}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span className="absolute left-2 top-1.5 flex h-3.5 w-3.5 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
         <Check className="h-4 w-4" />
       </SelectPrimitive.ItemIndicator>
     </span>
 
-    {/* `min-w-0` é o que permite este item (filho de um flex row) encolher
-        abaixo da largura do próprio texto — sem ele, `truncate` não tem
-        efeito nenhum e o texto longo continua empurrando o menu inteiro. */}
-    <SelectPrimitive.ItemText className="block min-w-0 truncate">{children}</SelectPrimitive.ItemText>
+    {/* Cortar com "..." deixava a descrição inteira ilegível quando ela era
+        longa — pra ler, tinha que abrir a opção. Igual planilha: o texto
+        quebra em várias linhas dentro do item, e é o menu (max-h-96 no
+        Content) que rola, não a linha que soma reticências. `min-w-0` é o
+        que permite este item (filho de um flex row) respeitar a largura
+        travada do menu em vez de crescer pelo texto mais longo. */}
+    <SelectPrimitive.ItemText className="block min-w-0 whitespace-normal break-words">{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;
