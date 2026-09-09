@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FileSpreadsheet, Trash2, Loader2, Pencil, Check, X, FilterX, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { FileSpreadsheet, Trash2, Loader2, Pencil, Check, X, FilterX, Download, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useTableFilters } from "@/hooks/useTableFilters";
 import { ColumnHeader } from "@/components/medicoes/ColumnHeader";
@@ -23,7 +24,7 @@ type ColKey = typeof columns[number];
 
 export default function LpuPage() {
   const [projetoFilter, setProjetoFilter] = useState<string>("");
-  const { itensLpu, isLoading, deleteItemLpu, updateItemLpu } = useItensLpu();
+  const { itensLpu, isLoading, deleteItemLpu, updateItemLpu, createItemLpu } = useItensLpu();
   const { projetos } = useProjetos();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBdi, setEditBdi] = useState<string>("");
@@ -34,6 +35,51 @@ export default function LpuPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  // Novo item manual — até aqui só era possível lançar item de LPU via
+  // upload de planilha (LpuImporter abaixo). Ver handleCreateItem.
+  const [isNewItemOpen, setIsNewItemOpen] = useState(false);
+  const [newCodigo, setNewCodigo] = useState("");
+  const [newDescricao, setNewDescricao] = useState("");
+  const [newUnidade, setNewUnidade] = useState("");
+  const [newPreco, setNewPreco] = useState("");
+  const [newBdi, setNewBdi] = useState("1");
+  const [newCategoria, setNewCategoria] = useState("");
+  const [newProjetoId, setNewProjetoId] = useState("");
+
+  const resetNewItemForm = () => {
+    setNewCodigo("");
+    setNewDescricao("");
+    setNewUnidade("");
+    setNewPreco("");
+    setNewBdi("1");
+    setNewCategoria("");
+    setNewProjetoId("");
+  };
+
+  const handleCreateItem = () => {
+    if (!newCodigo.trim() || !newDescricao.trim()) {
+      toast.error("Código e Descrição são obrigatórios");
+      return;
+    }
+    createItemLpu.mutate(
+      {
+        codigo: newCodigo.trim(),
+        descricao: newDescricao.trim(),
+        unidade: newUnidade.trim() || undefined,
+        preco_unitario: newPreco ? parseFloat(newPreco) : undefined,
+        bdi: newBdi ? parseFloat(newBdi) : undefined,
+        categoria: newCategoria.trim() || undefined,
+        projeto_id: newProjetoId || undefined,
+      },
+      {
+        onSuccess: () => {
+          setIsNewItemOpen(false);
+          resetNewItemForm();
+        },
+      }
+    );
+  };
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -254,15 +300,82 @@ export default function LpuPage() {
                 <FileSpreadsheet className="h-5 w-5" />
                 Itens Cadastrados ({processedItems.length})
               </CardTitle>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={exportToExcel}
                 className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Exportar Excel
               </Button>
+              <Dialog open={isNewItemOpen} onOpenChange={(open) => { setIsNewItemOpen(open); if (!open) resetNewItemForm(); }}>
+                <DialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    onClick={() => setNewProjetoId(projetoFilter === "geral" ? "" : projetoFilter)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Item
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Novo item da LPU</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Código *</Label>
+                        <Input value={newCodigo} onChange={(e) => setNewCodigo(e.target.value)} placeholder="Ex: 1.12" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Unidade</Label>
+                        <Input value={newUnidade} onChange={(e) => setNewUnidade(e.target.value.toUpperCase())} placeholder="Ex: UND, PÇ, M" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Descrição *</Label>
+                      <Input value={newDescricao} onChange={(e) => setNewDescricao(e.target.value)} placeholder="Descrição do item" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Preço Unitário</Label>
+                        <Input type="number" step="0.01" value={newPreco} onChange={(e) => setNewPreco(e.target.value)} placeholder="0,00" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>BDI</Label>
+                        <Input type="number" step="0.01" value={newBdi} onChange={(e) => setNewBdi(e.target.value)} placeholder="1,00" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>Categoria</Label>
+                        <Input value={newCategoria} onChange={(e) => setNewCategoria(e.target.value)} placeholder="Opcional" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Projeto</Label>
+                        <Select value={newProjetoId || "geral"} onValueChange={(v) => setNewProjetoId(v === "geral" ? "" : v)}>
+                          <SelectTrigger><SelectValue placeholder="Geral (sem projeto)" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="geral">Geral (sem projeto)</SelectItem>
+                            {projetos.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>{p.codigo} - {p.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsNewItemOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleCreateItem} disabled={createItemLpu.isPending}>
+                      {createItemLpu.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Criar item
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               {hasActiveFilters && (
                 <Button variant="ghost" size="sm" onClick={clearAllFilters}>
                   <FilterX className="h-4 w-4 mr-1" /> Limpar filtros de coluna
@@ -297,7 +410,7 @@ export default function LpuPage() {
         <CardContent>
           {filteredItems.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              Nenhum item cadastrado. Importe uma planilha Excel acima.
+              Nenhum item cadastrado. Importe uma planilha Excel acima ou clique em "Novo Item".
             </p>
           ) : (
             <div className="overflow-x-auto max-h-[500px]">
