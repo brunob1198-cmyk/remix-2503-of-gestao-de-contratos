@@ -35,6 +35,8 @@ export default function EscopoPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [addItemOpen, setAddItemOpen] = useState(false);
+  const [novoItemId, setNovoItemId] = useState("");
+  const [novoItemQtd, setNovoItemQtd] = useState("");
 
   const handleImportedItens = (imported: EscopoItem[]) => {
     setLocalItens((prev) => [...prev, ...imported]);
@@ -52,24 +54,35 @@ export default function EscopoPage() {
   // Available LPU items for selection (exclude already added)
   const usedItemIds = new Set(localItens.map(i => i.item_lpu_id).filter(Boolean));
   const availableLpuItems = itensLpu.filter(i => i.ativo && !usedItemIds.has(i.id));
+  const itemSelecionado = availableLpuItems.find(i => i.id === novoItemId);
 
-  const handleAddItem = (itemLpuId: string) => {
+  // Item novo entra no INÍCIO da lista, não no fim — com escopo de muitos itens,
+  // ele saía de vista e era preciso navegar página por página pra achar o que
+  // acabou de ser adicionado (só pra digitar a quantidade).
+  const handleAddItem = (itemLpuId: string, quantidade: number) => {
     const lpuItem = itensLpu.find(i => i.id === itemLpuId);
     if (!lpuItem) return;
 
     setLocalItens([
-      ...localItens,
       {
         id: `temp-${Date.now()}-${Math.random()}`,
         site_id: siteId,
         item_lpu_id: lpuItem.id,
         nome: `${lpuItem.codigo} - ${lpuItem.descricao}`,
         unidade: lpuItem.unidade,
-        quantidade: 0,
+        quantidade,
         valor_unitario: Number(lpuItem.preco_unitario),
         custo_unitario: Number(lpuItem.preco_unitario) / Number(lpuItem.bdi || 1),
       },
+      ...localItens,
     ]);
+  };
+
+  const handleAdd = () => {
+    if (!novoItemId) return;
+    handleAddItem(novoItemId, parseFloat(novoItemQtd) || 0);
+    setNovoItemId("");
+    setNovoItemQtd("");
   };
 
   const handleRemoveRow = (id: string) => {
@@ -285,48 +298,61 @@ export default function EscopoPage() {
           {/* Add item selector */}
           <div className="mt-4">
             {availableLpuItems.length > 0 ? (
-              <Popover open={addItemOpen} onOpenChange={setAddItemOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" aria-expanded={addItemOpen} className="w-full justify-between border-dashed font-normal">
-                    <span className="flex items-center gap-2 text-muted-foreground">
-                      <Plus className="h-4 w-4" />
-                      Adicionar item da LPU ao escopo...
-                    </span>
-                    <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
-                  </Button>
-                </PopoverTrigger>
-                {/* Largura travada + quebra de linha (não trunca com "...") pelo
-                    mesmo motivo do seletor de item no Diário de Obra: descrição de
-                    LPU pode ser um parágrafo inteiro. */}
-                <PopoverContent className="w-[min(40rem,90vw)] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Buscar por código ou descrição..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
-                      <CommandGroup>
-                        {availableLpuItems.map((item) => (
-                          <CommandItem
-                            key={item.id}
-                            value={`${item.codigo} ${item.descricao}`}
-                            onSelect={() => {
-                              handleAddItem(item.id);
-                              setAddItemOpen(false);
-                            }}
-                            className="items-start whitespace-normal break-words"
-                          >
-                            <span>
-                              <span className="font-medium">{item.codigo} - {item.descricao}</span>
-                              <span className="block text-xs text-muted-foreground">
-                                {item.unidade} · {formatCurrency(Number(item.preco_unitario))}
+              <div className="flex gap-2">
+                <Popover open={addItemOpen} onOpenChange={setAddItemOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={addItemOpen} className="flex-1 justify-between border-dashed font-normal">
+                      <span className="flex items-center gap-2 text-muted-foreground min-w-0">
+                        <Plus className="h-4 w-4 shrink-0" />
+                        <span className="truncate">
+                          {itemSelecionado ? `${itemSelecionado.codigo} - ${itemSelecionado.descricao}` : "Adicionar item da LPU ao escopo..."}
+                        </span>
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
+                    </Button>
+                  </PopoverTrigger>
+                  {/* Largura travada + quebra de linha (não trunca com "...") pelo
+                      mesmo motivo do seletor de item no Diário de Obra: descrição de
+                      LPU pode ser um parágrafo inteiro. */}
+                  <PopoverContent className="w-[min(40rem,90vw)] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar por código ou descrição..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          {availableLpuItems.map((item) => (
+                            <CommandItem
+                              key={item.id}
+                              value={`${item.codigo} ${item.descricao}`}
+                              onSelect={() => {
+                                setNovoItemId(item.id);
+                                setAddItemOpen(false);
+                              }}
+                              className="items-start whitespace-normal break-words"
+                            >
+                              <span>
+                                <span className="font-medium">{item.codigo} - {item.descricao}</span>
+                                <span className="block text-xs text-muted-foreground">
+                                  {item.unidade} · {formatCurrency(Number(item.preco_unitario))}
+                                </span>
                               </span>
-                            </span>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={novoItemQtd}
+                  onChange={(e) => setNovoItemQtd(e.target.value)}
+                  placeholder="Qtd"
+                  className="w-28"
+                />
+                <Button onClick={handleAdd} disabled={!novoItemId}>Adicionar</Button>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-2">
                 {itensLpu.length === 0
