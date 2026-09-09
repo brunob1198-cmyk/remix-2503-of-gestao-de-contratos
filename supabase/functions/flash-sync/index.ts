@@ -49,6 +49,33 @@ interface FlashApiResponse {
   [key: string]: unknown;
 }
 
+/**
+ * O Postgres rejeita o caractere NUL dentro de jsonb com o erro
+ * "unsupported Unicode escape sequence" — e a Flash às vezes devolve isso
+ * dentro de campo de texto (ex: OCR de nota fiscal malformada, descrição
+ * corrompida). Uma ÚNICA transação assim no lote de 500 derruba o upsert
+ * inteiro, sem apontar qual das 500 linhas era a culpada — por isso limpa
+ * antes de qualquer coisa vinda da Flash ir para uma coluna jsonb.
+ */
+const NUL_CHAR = String.fromCharCode(0);
+
+function stripNulChars<T>(value: T): T {
+  if (typeof value === "string") {
+    return (value.indexOf(NUL_CHAR) === -1 ? value : value.split(NUL_CHAR).join("")) as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => stripNulChars(v)) as unknown as T;
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = stripNulChars(v);
+    }
+    return out as unknown as T;
+  }
+  return value;
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -942,7 +969,7 @@ Deno.serve(async (req) => {
           external_id: extId,
           transaction_date: txDate,
           amount: txAmount,
-          payload_json: tx,
+          payload_json: stripNulChars(tx),
         });
       });
 
@@ -1161,7 +1188,7 @@ Deno.serve(async (req) => {
           transactions_received: transactions.length, 
           transactions_persisted: inserted, 
           pages_fetched: pagesFetched,
-          raw_response: lastResponse
+          raw_response: stripNulChars(lastResponse)
         },
       }).eq("id", logId);
     }
