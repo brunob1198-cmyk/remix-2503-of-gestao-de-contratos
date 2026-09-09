@@ -331,7 +331,9 @@ export default function EscopoPage() {
               <p className="text-sm text-muted-foreground text-center py-2">
                 {itensLpu.length === 0
                   ? "Nenhum item de LPU cadastrado para este projeto. Cadastre itens na tela de LPU primeiro."
-                  : "Todos os itens da LPU já foram adicionados ao escopo."}
+                  : itensLpu.every(i => !i.ativo)
+                    ? "Todos os itens da LPU deste projeto estão inativos. Ative algum item na tela de LPU para adicioná-lo ao escopo."
+                    : "Todos os itens da LPU já foram adicionados ao escopo."}
               </p>
             )}
           </div>

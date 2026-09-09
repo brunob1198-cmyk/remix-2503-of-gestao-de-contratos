@@ -15,7 +15,7 @@ export function useItensLpu(projetoId?: string) {
       let query = supabase
         .from("itens_lpu")
         .select(`
-          id, codigo, descricao, unidade, preco_unitario, bdi, categoria, projeto_id, created_at, updated_at, 
+          id, codigo, descricao, unidade, preco_unitario, bdi, categoria, ativo, projeto_id, created_at, updated_at,
           projeto:projetos(id, codigo, nome),
           item_lpu_bdi_mensal(id, mes_referencia, bdi)
         `)
