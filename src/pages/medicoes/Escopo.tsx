@@ -7,11 +7,12 @@ import { EscopoItem } from "@/types/medicoes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { TablePagination } from "@/components/medicoes/TablePagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, SaveAll, Plus, Trash2, Loader2, FileSpreadsheet, FilterX } from "lucide-react";
+import { ArrowLeft, SaveAll, Plus, Trash2, Loader2, FileSpreadsheet, FilterX, ChevronsUpDown } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { EscopoImporter } from "@/components/medicoes/EscopoImporter";
 import { useTableFilters } from "@/hooks/useTableFilters";
@@ -33,6 +34,7 @@ export default function EscopoPage() {
   const [localItens, setLocalItens] = useState<EscopoItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [addItemOpen, setAddItemOpen] = useState(false);
 
   const handleImportedItens = (imported: EscopoItem[]) => {
     setLocalItens((prev) => [...prev, ...imported]);
@@ -75,8 +77,24 @@ export default function EscopoPage() {
   };
 
   const handleQuantidadeChange = (id: string, value: string) => {
-    setLocalItens(prev => prev.map(item => 
+    setLocalItens(prev => prev.map(item =>
       item.id === id ? { ...item, quantidade: parseFloat(value) || 0 } : item
+    ));
+  };
+
+  // Preço e custo unitário vêm da LPU só na hora de adicionar o item (linha 67-68
+  // abaixo) — depois disso são valores próprios do escopo, editáveis igual à
+  // quantidade, porque o preço negociado com o cliente neste site pode divergir
+  // do catálogo (e não deve seguir uma edição posterior na LPU).
+  const handleValorUnitarioChange = (id: string, value: string) => {
+    setLocalItens(prev => prev.map(item =>
+      item.id === id ? { ...item, valor_unitario: parseFloat(value) || 0 } : item
+    ));
+  };
+
+  const handleCustoUnitarioChange = (id: string, value: string) => {
+    setLocalItens(prev => prev.map(item =>
+      item.id === id ? { ...item, custo_unitario: parseFloat(value) || 0 } : item
     ));
   };
 
@@ -241,9 +259,27 @@ export default function EscopoPage() {
                             className="w-24"
                           />
                         </TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(item.valor_unitario)}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.valor_unitario || ""}
+                            onChange={(e) => handleValorUnitarioChange(item.id!, e.target.value)}
+                            placeholder="0,00"
+                            className="w-28 text-right"
+                          />
+                        </TableCell>
                         <TableCell className="text-right font-mono">{bdi.toFixed(2)}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(item.custo_unitario)}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.custo_unitario || ""}
+                            onChange={(e) => handleCustoUnitarioChange(item.id!, e.target.value)}
+                            placeholder="0,00"
+                            className="w-28 text-right"
+                          />
+                        </TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(valorTotal)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(custoTotal)}</TableCell>
                         <TableCell>
@@ -283,18 +319,48 @@ export default function EscopoPage() {
           {/* Add item selector */}
           <div className="mt-4">
             {availableLpuItems.length > 0 ? (
-              <Select onValueChange={handleAddItem}>
-                <SelectTrigger className="w-full border-dashed">
-                  <SelectValue placeholder="➕ Adicionar item da LPU ao escopo..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableLpuItems.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.codigo} - {item.descricao} ({item.unidade}) - {formatCurrency(Number(item.preco_unitario))}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={addItemOpen} onOpenChange={setAddItemOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={addItemOpen} className="w-full justify-between border-dashed font-normal">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Plus className="h-4 w-4" />
+                      Adicionar item da LPU ao escopo...
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                {/* Largura travada + quebra de linha (não trunca com "...") pelo
+                    mesmo motivo do seletor de item no Diário de Obra: descrição de
+                    LPU pode ser um parágrafo inteiro. */}
+                <PopoverContent className="w-[min(40rem,90vw)] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Buscar por código ou descrição..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum item encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {availableLpuItems.map((item) => (
+                          <CommandItem
+                            key={item.id}
+                            value={`${item.codigo} ${item.descricao}`}
+                            onSelect={() => {
+                              handleAddItem(item.id);
+                              setAddItemOpen(false);
+                            }}
+                            className="items-start whitespace-normal break-words"
+                          >
+                            <span>
+                              <span className="font-medium">{item.codigo} - {item.descricao}</span>
+                              <span className="block text-xs text-muted-foreground">
+                                {item.unidade} · {formatCurrency(Number(item.preco_unitario))}
+                              </span>
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-2">
                 {itensLpu.length === 0
