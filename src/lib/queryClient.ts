@@ -19,6 +19,17 @@ export const QUERY_DEFAULTS = {
 };
 
 /**
+ * Buster do cache persistido: muda a cada build (carimbo de horário injetado
+ * por `define` em vite.config.ts). Sem isso, o React Query restaura do
+ * IndexedDB o resultado de uma consulta ANTIGA — de antes do deploy mais
+ * recente — e o navegador de quem já estava com a tela aberta continua vendo
+ * dado desatualizado (ex: uma coluna nova que passou a ser buscada) por até
+ * `maxAge`, mesmo que o servidor já esteja correto.
+ */
+export const CACHE_BUSTER =
+  typeof __APP_BUILD_TIME__ !== "undefined" ? __APP_BUILD_TIME__ : "dev";
+
+/**
  * Persister customizado usando IndexedDB para maior capacidade e performance
  */
 export const indexedDBPersister: Persister = {

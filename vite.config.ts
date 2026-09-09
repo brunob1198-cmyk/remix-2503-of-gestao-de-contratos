@@ -10,6 +10,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    // Carimbo de build, só pra invalidar o cache do React Query persistido em
+    // IndexedDB (ver src/lib/queryClient.ts) a cada deploy. Sem isso, uma
+    // mudança de schema/consulta pode continuar servindo o resultado ANTIGO
+    // do navegador de quem já tinha a tela aberta, por até 24h — mesmo depois
+    // do deploy corrigir o problema no servidor.
+    __APP_BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   server: {
     host: "::",
     // 8080 continua o padrão. A variável existe porque a porta às vezes já está

@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import { createConfiguredQueryClient, indexedDBPersister } from "@/lib/queryClient";
+import { createConfiguredQueryClient, indexedDBPersister, CACHE_BUSTER } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -105,9 +105,9 @@ const App = () => {
   }, []);
 
   return (
-  <PersistQueryClientProvider 
-    client={queryClient} 
-    persistOptions={{ persister: indexedDBPersister }}
+  <PersistQueryClientProvider
+    client={queryClient}
+    persistOptions={{ persister: indexedDBPersister, buster: CACHE_BUSTER }}
   >
     <ThemeProvider>
     <TooltipProvider>
