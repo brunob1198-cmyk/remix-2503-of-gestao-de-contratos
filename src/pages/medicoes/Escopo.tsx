@@ -82,22 +82,6 @@ export default function EscopoPage() {
     ));
   };
 
-  // Preço e custo unitário vêm da LPU só na hora de adicionar o item (linha 67-68
-  // abaixo) — depois disso são valores próprios do escopo, editáveis igual à
-  // quantidade, porque o preço negociado com o cliente neste site pode divergir
-  // do catálogo (e não deve seguir uma edição posterior na LPU).
-  const handleValorUnitarioChange = (id: string, value: string) => {
-    setLocalItens(prev => prev.map(item =>
-      item.id === id ? { ...item, valor_unitario: parseFloat(value) || 0 } : item
-    ));
-  };
-
-  const handleCustoUnitarioChange = (id: string, value: string) => {
-    setLocalItens(prev => prev.map(item =>
-      item.id === id ? { ...item, custo_unitario: parseFloat(value) || 0 } : item
-    ));
-  };
-
   const getColValue = (item: EscopoItem, col: ColKey): string => {
     if (col === "valor_total") return (item.quantidade * item.valor_unitario).toString();
     if (col === "custo_total") return (item.quantidade * item.custo_unitario).toString();
@@ -259,27 +243,9 @@ export default function EscopoPage() {
                             className="w-24"
                           />
                         </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={item.valor_unitario || ""}
-                            onChange={(e) => handleValorUnitarioChange(item.id!, e.target.value)}
-                            placeholder="0,00"
-                            className="w-28 text-right"
-                          />
-                        </TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(item.valor_unitario)}</TableCell>
                         <TableCell className="text-right font-mono">{bdi.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={item.custo_unitario || ""}
-                            onChange={(e) => handleCustoUnitarioChange(item.id!, e.target.value)}
-                            placeholder="0,00"
-                            className="w-28 text-right"
-                          />
-                        </TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(item.custo_unitario)}</TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(valorTotal)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(custoTotal)}</TableCell>
                         <TableCell>
