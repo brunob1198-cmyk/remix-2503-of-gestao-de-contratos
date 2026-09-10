@@ -358,7 +358,31 @@ export function GerarMedicaoDialog({
               <div className="space-y-4">
                 <h3 className="font-semibold text-sm flex items-center gap-2"><Camera className="h-4 w-4" /> Layout</h3>
                 <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                  <div className="space-y-2"><Label>Fotos por página</Label><RadioGroup value={fotosPorPagina.toString()} onValueChange={(v) => setFotosPorPagina(parseInt(v))} className="flex gap-4">{[2, 4, 6].map(n => <div key={n} className="flex items-center space-x-2"><RadioGroupItem value={n.toString()} id={`f-${n}`} /><Label htmlFor={`f-${n}`}>{n}</Label></div>)}</RadioGroup></div>
+                  {/*
+                    O rótulo era "Fotos por página" e os números eram o total por folha.
+                    O layout deixou de forçar N por folha: as fotos agora fluem e
+                    preenchem o espaço, porque forçar o total era a origem do branco no
+                    PDF (medido: 27,5mm perdidos dentro de CADA foto no modo "4").
+                    Os valores gravados seguem 2/4/6 para não invalidar os templates já
+                    salvos; o que mudou é o que eles controlam — o tamanho da foto.
+                  */}
+                  <div className="space-y-2">
+                    <Label>Tamanho das fotos</Label>
+                    <RadioGroup value={fotosPorPagina.toString()} onValueChange={(v) => setFotosPorPagina(parseInt(v))} className="flex gap-4">
+                      {[
+                        { valor: 2, nome: "Grande", porPagina: "~2 por página" },
+                        { valor: 4, nome: "Média", porPagina: "~6 por página" },
+                        { valor: 6, nome: "Pequena", porPagina: "~12 por página" },
+                      ].map(op => (
+                        <div key={op.valor} className="flex items-center space-x-2">
+                          <RadioGroupItem value={op.valor.toString()} id={`f-${op.valor}`} />
+                          <Label htmlFor={`f-${op.valor}`} className="font-normal">
+                            {op.nome} <span className="text-muted-foreground text-xs">({op.porPagina})</span>
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
                   <div className="space-y-2"><Label>Legenda padrão</Label><Input value={legendaPadraoFotos} onChange={(e) => setLegendaPadraoFotos(e.target.value)} /></div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">

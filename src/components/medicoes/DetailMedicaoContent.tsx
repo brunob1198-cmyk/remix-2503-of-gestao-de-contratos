@@ -1554,19 +1554,47 @@ export function DetailMedicaoContent({
     .item-group { margin-top: 18px; }
     .item-group-header { font-size: 12px; font-weight: 700; color: var(--primary); background: #f1f5f9; border-left: 4px solid var(--primary); padding: 6px 12px; margin: 10px 0 8px; border-radius: 0 4px 4px 0; }
     .photo-grid { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-    /* Cada .photo-page comporta exatamente N fotos em uma folha A4 */
-    .photo-page { display: grid; gap: 8px; width: 100%; margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; page-break-after: always; break-after: page; }
-    .photo-page:last-child { page-break-after: auto; break-after: auto; }
-    .photo-page.ppp-2 { grid-template-columns: 1fr; }
+    /*
+      O BLOCO DE FOTOS FLUI; A FOTO INDIVIDUAL E QUE E INDIVISIVEL.
+      Antes o bloco inteiro era atomico (page-break-inside: avoid) e ainda forcava
+      quebra depois de si. Medido em A4 util de 277mm: um bloco de 3 fotos em
+      "4 por pagina" tem 249,7mm de altura. Ou seja, so cabia em pagina vazia --
+      qualquer conteudo antes dele o empurrava inteiro para a folha seguinte e
+      deixava o resto da pagina em branco.
+      Trocando a regra para o cartao, as fotos preenchem o espaco que sobra e
+      nenhuma foto e cortada ao meio, que era o motivo real de existir a regra.
+    */
+    .photo-page { display: grid; gap: 8px; width: 100%; margin-bottom: 8px; align-items: start; }
+    /*
+      A DENSIDADE VEM DO NUMERO DE COLUNAS, NAO DE ALTURA FIXA.
+      "4" e "6" usavam as duas o mesmo par de colunas e se distinguiam apenas pela
+      altura fixa da caixa -- que era a origem do branco. Sem ela, as duas ficariam
+      iguais, entao a diferenca passa a ser a coluna.
+      O "2" nao vai a largura toda de proposito: uma foto 4:3 ocupando os 190mm
+      uteis tem 136,5mm de altura, e duas dessas somam 333mm -- mais que a folha,
+      o que fazia caber UMA por pagina no modo chamado "2 por pagina". Com 150mm de
+      largura a foto fica com 112mm e o par cabe com folga.
+    */
+    .photo-page.ppp-2 { grid-template-columns: 150mm; justify-content: center; }
     .photo-page.ppp-4 { grid-template-columns: 1fr 1fr; }
-    .photo-page.ppp-6 { grid-template-columns: 1fr 1fr; }
+    .photo-page.ppp-6 { grid-template-columns: 1fr 1fr 1fr; }
     .photo-grid-row { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; }
-    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
-    .photo-img-wrap { width: 100%; aspect-ratio: 4/3; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
-    .ppp-2 .photo-img-wrap { height: 105mm; aspect-ratio: auto; }
-    .ppp-4 .photo-img-wrap { height: 95mm; aspect-ratio: auto; }
-    .ppp-6 .photo-img-wrap { height: 60mm; aspect-ratio: auto; }
-    .photo-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
+    .photo-card { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+    /*
+      A CAIXA SE AJUSTA A FOTO, EM VEZ DE A FOTO NADAR NUMA CAIXA FIXA.
+      Antes: altura fixa (95mm em "4 por pagina") com object-fit: contain. Medido,
+      uma foto 4:3 com 89,7mm de largura desenha 67,3mm de altura -- sobravam
+      27,5mm de branco DENTRO de cada foto, 55mm por par de linhas.
+      Agora a altura vem da propria imagem (height: auto), e o max-height por
+      densidade existe so para foto em retrato nao ocupar a folha inteira. Nesse
+      caso -- e so nele -- o object-fit: contain volta a valer e sobra branco,
+      agora limitado.
+    */
+    .photo-img-wrap { width: 100%; background: #f8fafc; overflow: hidden; border-bottom: 1px solid #f1f5f9; }
+    .photo-img-wrap img { width: 100%; height: auto; object-fit: contain; display: block; opacity: 1 !important; visibility: visible !important; }
+    .ppp-2 .photo-img-wrap img { max-height: 115mm; }
+    .ppp-4 .photo-img-wrap img { max-height: 105mm; }
+    .ppp-6 .photo-img-wrap img { max-height: 70mm; }
     .photo-info { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; background: #fdfdfd; }
 
     .photo-title { font-size: 10px; font-weight: 700; margin: 0 0 4px 0; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
