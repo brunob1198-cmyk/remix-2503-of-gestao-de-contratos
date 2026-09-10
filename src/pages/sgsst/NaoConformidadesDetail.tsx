@@ -50,7 +50,7 @@ import {
   Loader2,
   Camera,
 } from "lucide-react";
-import { acoesPendentes, mensagemBloqueioEncerramento } from "@/utils/sgsstWorkflow";
+import { acoesPendentes, cicloDaNc, mensagemBloqueioEncerramento, mensagemDoCiclo } from "@/utils/sgsstWorkflow";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { NcFormDialog } from "@/components/sgsst/NcFormDialog";
 import { NcAcaoFormDialog } from "@/components/sgsst/NcAcaoFormDialog";
@@ -74,6 +74,53 @@ export default function SgsstNaoConformidadesDetailPage() {
 
   const { acoes, addAcao, updateAcao, removeAcao, isLoading: loadingAcoes } = useSgsstNaoConformidadeAcoes(ncId);
   const { historico } = useSgsstNaoConformidadeHistorico(ncId);
+
+  // Onde a NC está de fato, derivado das ações — não do status declarado. Ver
+  // `cicloDaNc` em sgsstWorkflow.ts para o porquê de derivar em vez de gravar.
+  const ciclo = cicloDaNc({
+    statusNc: currentNc?.status ?? "",
+    acoes: acoes ?? [],
+    resultadoVerificacao: currentNc?.resultado_verificacao,
+  });
+  const avisoDoCiclo = mensagemDoCiclo(ciclo);
+
+  // Só as ações que têm algo escrito. Listar as vazias encheria a aba de cartões
+  // com nome de ação e nada dentro.
+  const observacoesDasAcoes = (acoes ?? []).filter(
+    (a) => (a.observacao ?? "").trim() || (a.evidencia ?? "").trim()
+  );
+
+  // Edição da análise: rascunho separado do valor gravado, para "Cancelar" não
+  // precisar recarregar nada e para o texto não piscar enquanto salva.
+  const [editandoAnalise, setEditandoAnalise] = useState(false);
+  const [salvandoAnalise, setSalvandoAnalise] = useState(false);
+  const [rascunhoCausa, setRascunhoCausa] = useState("");
+  const [rascunhoObservacoes, setRascunhoObservacoes] = useState("");
+
+  const iniciarEdicaoDaAnalise = () => {
+    setRascunhoCausa(currentNc?.causa ?? "");
+    setRascunhoObservacoes(currentNc?.observacoes ?? "");
+    setEditandoAnalise(true);
+  };
+
+  const salvarAnalise = async () => {
+    if (!ncId) return;
+    setSalvandoAnalise(true);
+    try {
+      await updateNaoConformidade.mutateAsync({
+        id: ncId,
+        // `null` e não `""`: string vazia gravada faria o campo parecer preenchido
+        // para qualquer consulta que só checa se há valor.
+        causa: rascunhoCausa.trim() || null,
+        observacoes: rascunhoObservacoes.trim() || null,
+      });
+      setEditandoAnalise(false);
+    } catch (e) {
+      toast.error(`Não foi possível salvar a análise: ${(e as Error)?.message ?? "erro desconhecido"}`);
+    } finally {
+      setSalvandoAnalise(false);
+    }
+  };
 
   // Dialog States
   // As sub-entidades vivem em linha de tabela: o dialogo e o lugar da foto, sem
@@ -319,6 +366,39 @@ export default function SgsstNaoConformidadesDetailPage() {
         </CardContent>
       </Card>
 
+      {/*
+        AVISO DO CICLO — o que faltava para o roteiro 10.5.
+
+        Concluir todas as ações não produzia sinal algum: a NC seguia mostrando
+        "ABERTA" e o cabeçalho dizia "Verificador: Pendente", a mesma frase de uma NC
+        recém-criada sem plano nenhum.
+
+        Pior, era um beco sem saída: o botão "Solicitar Verificação" só aparece com
+        status EM_TRATAMENTO, então quem concluiu as ações com a NC em ABERTA não
+        tinha nenhum caminho oferecido. O botão daqui resolve isso, porque a condição
+        é o estado real das ações e não o status declarado.
+      */}
+      {avisoDoCiclo && (
+        <Card className="border-amber-300 bg-amber-50/60">
+          <CardContent className="py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+            <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0" />
+            <div className="flex-1 space-y-0.5">
+              <p className="text-sm font-semibold text-amber-900">{avisoDoCiclo.titulo}</p>
+              <p className="text-xs text-amber-800">{avisoDoCiclo.comoResolver}</p>
+            </div>
+            {ciclo === "AGUARDANDO_VERIFICACAO" && !isReadOnly && (
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
+                onClick={() => setIsVerificacaoDialogOpen(true)}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Registrar Verificação
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main Tabs */}
       <Tabs defaultValue="acoes" className="w-full">
         <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:grid-cols-5">
@@ -444,19 +524,103 @@ export default function SgsstNaoConformidadesDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-xs sm:text-sm">
+              {/*
+                OS DOIS CAMPOS PASSARAM A SER EDITÁVEIS AQUI.
+                A causa já era editável, mas só dentro de "Editar Dados" — mostrada
+                num lugar e alterada em outro, sem link entre os dois, o que a fazia
+                parecer somente-leitura.
+                As observações eram PIOR que isso: o formulário tinha o estado e
+                gravava o campo, mas não existia nenhum `<textarea>` para ele em lugar
+                algum do app. Era um campo que ninguém conseguia preencher — por isso
+                dizia sempre "Sem observações adicionais".
+              */}
               <div className="space-y-1.5">
-                <Label>Causa Identificada:</Label>
-                <div className="p-3 rounded bg-muted/40 text-xs border min-h-[80px]">
-                  {currentNc.causa || "Nenhuma análise de causa cadastrada para este desvio."}
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="nc-causa">Causa Identificada:</Label>
+                  {!isReadOnly && !editandoAnalise && (
+                    <Button size="sm" variant="outline" className="h-7" onClick={iniciarEdicaoDaAnalise}>
+                      <Edit2 className="h-3 w-3 mr-1" /> Editar
+                    </Button>
+                  )}
                 </div>
+                {editandoAnalise ? (
+                  <Textarea
+                    id="nc-causa"
+                    rows={3}
+                    value={rascunhoCausa}
+                    onChange={(e) => setRascunhoCausa(e.target.value)}
+                    placeholder="Fator desencadeador da não conformidade..."
+                  />
+                ) : (
+                  <div className="p-3 rounded bg-muted/40 text-xs border min-h-[80px] whitespace-pre-wrap">
+                    {currentNc.causa || "Nenhuma análise de causa cadastrada para este desvio."}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
-                <Label>Observações de Campo / Recomendações:</Label>
-                <div className="p-3 rounded bg-muted/40 text-xs border min-h-[60px]">
-                  {currentNc.observacoes || "Sem observações adicionais."}
-                </div>
+                <Label htmlFor="nc-observacoes">Observações de Campo / Recomendações:</Label>
+                {editandoAnalise ? (
+                  <Textarea
+                    id="nc-observacoes"
+                    rows={3}
+                    value={rascunhoObservacoes}
+                    onChange={(e) => setRascunhoObservacoes(e.target.value)}
+                    placeholder="Recomendações, contexto de campo, o que observar na próxima inspeção..."
+                  />
+                ) : (
+                  <div className="p-3 rounded bg-muted/40 text-xs border min-h-[60px] whitespace-pre-wrap">
+                    {currentNc.observacoes || "Sem observações adicionais."}
+                  </div>
+                )}
               </div>
+
+              {editandoAnalise && (
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setEditandoAnalise(false)} disabled={salvandoAnalise}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={salvarAnalise} disabled={salvandoAnalise}>
+                    {salvandoAnalise ? "Salvando..." : "Salvar análise"}
+                  </Button>
+                </div>
+              )}
+
+              {/*
+                OBSERVAÇÕES DAS AÇÕES, EM BLOCO SEPARADO E SOMENTE-LEITURA.
+                Elas ficavam só dentro do diálogo de cada ação, uma por vez, e por isso
+                pareciam ter desaparecido.
+                NÃO são copiadas para o campo de observações da NC de propósito: um
+                campo que é ao mesmo tempo editável à mão e preenchido automaticamente
+                apaga o que a pessoa escreveu na próxima atualização, e ninguém
+                consegue saber depois qual das duas origens produziu o texto. Aqui as
+                duas coisas convivem, cada uma com sua autoria.
+              */}
+              {observacoesDasAcoes.length > 0 && (
+                <div className="space-y-1.5 pt-2 border-t">
+                  <Label className="text-muted-foreground">
+                    Registrado nas ações do plano ({observacoesDasAcoes.length}):
+                  </Label>
+                  <div className="space-y-2">
+                    {observacoesDasAcoes.map((o) => (
+                      <div key={o.id} className="p-2.5 rounded bg-muted/25 border text-xs space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-[10px]">{o.tipo}</Badge>
+                          <span className="font-medium">{o.descricao}</span>
+                        </div>
+                        {o.observacao && (
+                          <p className="whitespace-pre-wrap text-muted-foreground">{o.observacao}</p>
+                        )}
+                        {o.evidencia && (
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Evidência:</span> {o.evidencia}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
