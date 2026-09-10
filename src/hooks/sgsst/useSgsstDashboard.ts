@@ -18,6 +18,8 @@ export interface SgsstDashboardMetrics {
   aprEmAndamento: number;
   ptEmExecucao: number;
   inspecoesPendentes: number;
+  /** Planejadas cuja data ja passou e ninguem executou. Ver sgsstInspecaoAtraso.ts. */
+  inspecoesAtrasadas: number;
   inspecoesConcluidas: number;
   incidentesAbertos: number;
   incidentesEmInvestigacao: number;
@@ -82,6 +84,7 @@ export function useSgsstDashboard(projetoId?: string, dataInicial?: string, data
         aprEmAndamento: Number(rawMetrics.aprEmAndamento || 0),
         ptEmExecucao: Number(rawMetrics.ptEmExecucao || 0),
         inspecoesPendentes: Number(rawMetrics.inspecoesPendentes || 0),
+        inspecoesAtrasadas: Number(rawMetrics.inspecoesAtrasadas || 0),
         inspecoesConcluidas: Number(rawMetrics.inspecoesConcluidas || 0),
         incidentesAbertos: Number(rawMetrics.incidentesAbertos || 0),
         incidentesEmInvestigacao: Number(rawMetrics.incidentesEmInvestigacao || 0),
