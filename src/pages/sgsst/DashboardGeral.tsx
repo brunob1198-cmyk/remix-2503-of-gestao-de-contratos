@@ -245,14 +245,29 @@ export default function SgsstDashboardGeralPage() {
             </CardContent>
           </Card>
 
+          {/*
+            O cartão passa a distinguir pendente de ATRASADA.
+            Antes mostrava só o total de pendentes, e em verde — cor que diz "está
+            tudo bem" sobre um número que pode conter auditorias de campo vencidas há
+            semanas. Quando há atraso, o cartão inteiro muda de cor e diz quantas,
+            porque é isso que pede ação.
+          */}
           <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate("/medicoes/sgsst/inspecoes")}>
             <CardHeader className="py-2 px-3">
               <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <SearchCheck className="h-3.5 w-3.5 text-emerald-600" /> Insp. Pendentes
+                <SearchCheck className={`h-3.5 w-3.5 ${(metrics?.inspecoesAtrasadas || 0) > 0 ? "text-red-600" : "text-emerald-600"}`} />
+                Insp. Pendentes
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
-              <div className="text-2xl font-bold text-emerald-600">{metrics?.inspecoesPendentes || 0}</div>
+              <div className={`text-2xl font-bold ${(metrics?.inspecoesAtrasadas || 0) > 0 ? "text-red-600" : "text-emerald-600"}`}>
+                {metrics?.inspecoesPendentes || 0}
+              </div>
+              {(metrics?.inspecoesAtrasadas || 0) > 0 && (
+                <p className="text-[11px] font-semibold text-red-600 mt-0.5">
+                  {metrics?.inspecoesAtrasadas === 1 ? "1 atrasada" : `${metrics?.inspecoesAtrasadas} atrasadas`}
+                </p>
+              )}
             </CardContent>
           </Card>
 

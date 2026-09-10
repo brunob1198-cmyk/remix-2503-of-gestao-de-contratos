@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSgsstInspecoes, SgsstInspecao, StatusInspecao, TipoInspecao } from "@/hooks/sgsst/useSgsstInspecoes";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -12,13 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SgsstFilterBar } from "@/components/sgsst/SgsstFilterBar";
 import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
-import { Plus, Search, Edit2, Trash2, SearchCheck, Eye, CheckCircle2, XCircle, PlayCircle, Lock, Calendar } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, SearchCheck, Eye, CheckCircle2, XCircle, PlayCircle, Lock, Calendar, AlertTriangle } from "lucide-react";
 import { InspecaoFormDialog } from "@/components/sgsst/InspecaoFormDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 
 import { SgsstSegurancaHeaderNav } from "@/components/sgsst/SgsstSegurancaHeaderNav";
+import { diasDeAtraso, situacaoDoPrazo } from "@/utils/sgsstInspecaoAtraso";
 
 export default function SgsstInspecoesListPage() {
   const navigate = useNavigate();
@@ -32,13 +33,27 @@ export default function SgsstInspecoesListPage() {
   const [selectedTipo, setSelectedTipo] = useState<string>("todos");
   const [selectedStatus, setSelectedStatus] = useState<string>("todos");
 
+  // Hoje em ISO, calculado no fuso local. `toISOString()` converteria para UTC e
+  // no Brasil devolveria o dia anterior à noite, marcando como atrasada uma
+  // inspeção planejada para hoje.
+  const hoje = useMemo(() => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }, []);
+
   // Indicadores sobre a base inteira: derivar da página corrente fazia os
   // cartões medirem apenas as linhas visíveis.
+  //
+  // "Atrasadas" e "Planejadas" são DISJUNTAS de propósito: se a planejada
+  // continuasse contando as vencidas, o cartão que deveria denunciar o atraso
+  // ficaria escondido dentro do que parece normal.
   const { count: countInsp } = useSgsstCounts("sgsst_inspecoes", [
     { key: "total" },
     { key: "concluidas", build: (q) => q.eq("status", "CONCLUIDA") },
     { key: "emExecucao", build: (q) => q.eq("status", "EM_EXECUCAO") },
-    { key: "planejadas", build: (q) => q.eq("status", "PLANEJADA") },
+    { key: "planejadas", build: (q) => q.eq("status", "PLANEJADA").gte("data_planejada", hoje) },
+    { key: "atrasadas", build: (q) => q.eq("status", "PLANEJADA").lt("data_planejada", hoje) },
   ]);
 
   const { inspecoes, total, isLoading, error, refetch, createInspecao, updateInspecao, removeInspecao } = useSgsstInspecoes({
@@ -85,8 +100,41 @@ export default function SgsstInspecoesListPage() {
     }
   };
 
-  const getStatusBadge = (status: StatusInspecao) => {
-    switch (status) {
+  /**
+   * O selo da linha, considerando o prazo e não só o status.
+   *
+   * Recebe a inspeção inteira, e não o status: uma planejada cuja data já passou
+   * aparecia idêntica a uma planejada para semana que vem. É a diferença entre
+   * "está no plano" e "o plano não foi cumprido", e ela não estava em lugar nenhum
+   * da tela. Ver `sgsstInspecaoAtraso.ts` para o porquê de execução além do prazo
+   * ser um selo diferente de atrasada.
+   */
+  const getStatusBadge = (insp: Pick<SgsstInspecao, "status" | "data_planejada">) => {
+    const situacao = situacaoDoPrazo({
+      status: insp.status,
+      dataPlanejada: insp.data_planejada,
+      hoje,
+    });
+
+    if (situacao === "ATRASADA") {
+      const dias = diasDeAtraso({ dataPlanejada: insp.data_planejada, hoje });
+      return (
+        <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 flex items-center gap-1 w-fit">
+          <AlertTriangle className="h-3 w-3" />
+          ATRASADA {dias === 1 ? "há 1 dia" : `há ${dias} dias`}
+        </Badge>
+      );
+    }
+
+    if (situacao === "EM_EXECUCAO_ALEM_DO_PRAZO") {
+      return (
+        <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300 flex items-center gap-1 w-fit">
+          <PlayCircle className="h-3 w-3" /> EM EXECUÇÃO — ALÉM DO PRAZO
+        </Badge>
+      );
+    }
+
+    switch (insp.status) {
       case "PLANEJADA":
         return (
           <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1 w-fit">
@@ -112,7 +160,10 @@ export default function SgsstInspecoesListPage() {
           </Badge>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        // `insp.status`, e não `status`: sem o objeto isto resolvia para o global
+        // `window.status` — uma string vazia que o TypeScript aceita sem reclamar,
+        // e o selo sairia em branco para qualquer status novo.
+        return <Badge variant="outline">{insp.status}</Badge>;
     }
   };
 
@@ -172,13 +223,33 @@ export default function SgsstInspecoesListPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="py-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total de Inspeções</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{countInsp("total")}</div>
+          </CardContent>
+        </Card>
+        {/*
+          Cartão de atrasadas: inspeção planejada cuja data passou e que ninguém
+          executou. Antes desta mudança a palavra "atrasada" não existia em lugar
+          nenhum do módulo — a inspeção vencida ficava entre as planejadas e o
+          painel dava a entender que estava tudo em ordem.
+          Fica logo depois do total, e não no fim, porque é o número que pede ação.
+        */}
+        <Card className={countInsp("atrasadas") > 0 ? "border-red-300 bg-red-50/50" : undefined}>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              {countInsp("atrasadas") > 0 && <AlertTriangle className="h-3.5 w-3.5 text-red-600" />}
+              Atrasadas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${countInsp("atrasadas") > 0 ? "text-red-600" : "text-muted-foreground"}`}>
+              {countInsp("atrasadas")}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -209,6 +280,9 @@ export default function SgsstInspecoesListPage() {
             <div className="text-2xl font-bold text-amber-600">
               {countInsp("planejadas")}
             </div>
+            {/* Diz o recorte, porque um número de "planejadas" que exclui as
+                vencidas surpreende quem soma os cartões e não fecha com o total. */}
+            <p className="text-xs text-muted-foreground mt-0.5">dentro do prazo</p>
           </CardContent>
         </Card>
       </div>
@@ -307,7 +381,7 @@ export default function SgsstInspecoesListPage() {
                     <TableCell className="text-xs font-mono">
                       {formatDateStr(i.data_planejada)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(i.status)}</TableCell>
+                    <TableCell>{getStatusBadge(i)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
