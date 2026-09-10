@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { SgsstEvidenciasPanel } from "@/components/sgsst/SgsstEvidenciasPanel";
+import { fotosDoRegistroParaDocumento } from "@/hooks/sgsst/useSgsstEvidencias";
+import { gerarPdfIncidente, pendenciasIncidente } from "@/lib/incidenteDocumento";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
+import { useAuth } from "@/contexts/AuthContext";
 import { SgsstBreadcrumb } from "@/components/sgsst/SgsstBreadcrumb";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -46,6 +50,8 @@ import {
   History,
   AlertTriangle,
   Camera,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import { acoesPendentes, mensagemBloqueioEncerramento } from "@/utils/sgsstWorkflow";
 import { CatFormDialog } from "@/components/sgsst/CatFormDialog";
@@ -69,6 +75,8 @@ export default function SgsstIncidentesDetailPage() {
   const { updateIncidente, updateStatusIncidente } = useSgsstIncidentes();
   const { data: currentIncidente, isLoading: loadingDetail } = useSgsstIncidentesDetail(incidenteId);
 
+  const { empresa } = useEmpresaAtual();
+  const { profile } = useAuth();
   const { colaboradores } = useSgsstColaboradoresResumo();
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { envolvidos, addEnvolvido, removeEnvolvido } = useSgsstIncidenteEnvolvidos(incidenteId);
@@ -86,6 +94,7 @@ export default function SgsstIncidentesDetailPage() {
     pageSize: 50,
   });
   const [isCatFormOpen, setIsCatFormOpen] = useState(false);
+  const [emitindo, setEmitindo] = useState(false);
 
   const situacaoCat = situacaoDaCat({
     catEmitida: currentIncidente?.cat_emitida,
@@ -161,6 +170,45 @@ export default function SgsstIncidentesDetailPage() {
       return format(parseISO(dateStr), "dd/MM/yyyy");
     } catch {
       return dateStr;
+    }
+  };
+
+  /**
+   * Emite o relatório de investigação.
+   *
+   * As pendências são avisadas ANTES de emitir, e a emissão segue: o documento sai
+   * com as lacunas marcadas em vez de ser bloqueado. Bloquear faria o usuário
+   * perder o relatório justamente quando ele serve para mostrar o que falta.
+   */
+  const emitirPdf = async () => {
+    const dadosDoDocumento = {
+      incidente: currentIncidente,
+      envolvidos,
+      investigacao: investigacao ?? null,
+      acoes,
+      cats: catsDoIncidente,
+      empresa: empresa ?? null,
+      geradoPor: profile?.nome ?? null,
+    };
+
+    const pendencias = pendenciasIncidente(dadosDoDocumento);
+    if (pendencias.length > 0) {
+      toast.warning(`Ocorrência com ${pendencias.length} pendência(s)`, {
+        description: pendencias.slice(0, 3).join(" · "),
+      });
+    }
+
+    setEmitindo(true);
+    try {
+      // Só as fotos do local. O tipo EntidadeEvidencia não tem "INCIDENTE_ACAO",
+      // então ação de incidente não aceita foto — a da NC aceita, via "NC_ACAO".
+      const fotos = await fotosDoRegistroParaDocumento("INCIDENTE", currentIncidente.id);
+
+      await gerarPdfIncidente({ ...dadosDoDocumento, fotos });
+    } catch (e) {
+      toast.error(`Erro ao emitir o relatório: ${(e as Error).message}`);
+    } finally {
+      setEmitindo(false);
     }
   };
 
@@ -270,6 +318,21 @@ export default function SgsstIncidentesDetailPage() {
             {/* Workflow Action Buttons */}
             {allowEdit && (
               <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {/*
+                  Emissão do relatório: era o único módulo do SGSST sem gerador de
+                  documento, e é o documento que a fiscalização pede primeiro.
+                  Fica disponível mesmo com a ocorrência encerrada — relatório de
+                  acidente é lido depois do encerramento, não antes.
+                */}
+                <Button variant="outline" size="sm" onClick={emitirPdf} disabled={emitindo}>
+                  {emitindo ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <FileDown className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  {emitindo ? "Emitindo..." : "Emitir relatório"}
+                </Button>
+
                 {!isReadOnly && (
                   <Button variant="outline" size="sm" onClick={() => setIsEditIncOpen(true)}>
                     <Edit2 className="h-3.5 w-3.5 mr-1" /> Editar Ocorrência
