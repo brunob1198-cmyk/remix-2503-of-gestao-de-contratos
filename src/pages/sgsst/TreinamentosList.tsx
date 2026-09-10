@@ -17,6 +17,7 @@ import {
   pendenciasCertificado,
   type CertificadoDados,
 } from "@/lib/certificadoDocumento";
+import { emissaoDoCertificado, loteDeCertificados } from "@/utils/sgsstCertificadoEmissao";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
@@ -164,6 +165,16 @@ export default function SgsstTreinamentosListPage() {
   const { profile } = useAuth();
   const [emitindoId, setEmitindoId] = useState<string | null>(null);
 
+  // Data de hoje em ISO pelo fuso LOCAL. A tela ja tem um `hojeIso` mais abaixo,
+  // mas ele vem de `toISOString()`, que e UTC: no Brasil, das 21h em diante ele
+  // devolve o dia seguinte, e uma conclusao lancada para hoje passaria a parecer
+  // futura. Para filtro de consulta aquilo serve; para julgar data, nao.
+  const hojeLocalIso = () => {
+    const d = new Date();
+    const dois = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}`;
+  };
+
   const nomeDoParticipante = (p: SgsstTreinamentoParticipante) =>
     p.colaborador?.profile?.nome || p.colaborador?.recurso?.nome || p.colaborador?.nome || "Sem Nome";
 
@@ -186,6 +197,24 @@ export default function SgsstTreinamentosListPage() {
     const turmaDoCertificado = turma ?? p.turma;
     if (!turmaDoCertificado) {
       toast.error("Não foi possível identificar a turma deste aluno.");
+      return;
+    }
+
+    // A TRAVA DE STATUS VEM ANTES, E ELA IMPEDE.
+    //
+    // Falta de informação avisa e deixa passar (regra abaixo). Turma não concluída é
+    // outra coisa: o certificado atesta que o trabalhador CONCLUIU o treinamento, e
+    // emiti-lo para turma planejada não produz documento incompleto — produz
+    // documento que afirma um fato que não aconteceu. Não há lacuna a marcar,
+    // porque a lacuna é a afirmação central. Ver `sgsstCertificadoEmissao.ts`.
+    const decisao = emissaoDoCertificado({
+      statusDaTurma: turmaDoCertificado.status,
+      dataConclusao: p.data_conclusao,
+      hoje: hojeLocalIso(),
+    });
+
+    if (decisao.emite !== true) {
+      toast.error(decisao.motivo, { description: decisao.comoResolver });
       return;
     }
 
@@ -225,13 +254,37 @@ export default function SgsstTreinamentosListPage() {
       return;
     }
 
+    // Mesma trava do individual. Sem ela, o lote de uma turma planejada saía com
+    // uma folha por aprovado, cada uma atestando conclusão que não houve.
+    const { emitir, bloqueados } = loteDeCertificados({
+      aprovados,
+      statusDaTurma: turma.status,
+      hoje: hojeLocalIso(),
+    });
+
+    if (emitir.length === 0) {
+      toast.error(bloqueados[0]?.motivo ?? "Nenhum certificado pode ser emitido.", {
+        description:
+          "O certificado atesta conclusão do treinamento. Conclua a turma antes de emitir.",
+      });
+      return;
+    }
+
+    // Lote menor que a lista de aprovados sem dizer por quê faz o usuário achar que
+    // perdeu arquivo. Diz quantos ficaram de fora e o motivo do primeiro.
+    if (bloqueados.length > 0) {
+      toast.warning(`${bloqueados.length} certificado(s) não puderam ser emitidos`, {
+        description: bloqueados[0].motivo,
+      });
+    }
+
     setEmitindoId(`lote-${turma.id}`);
     try {
       await gerarPdfCertificadosEmLote(
-        aprovados.map((p) => dadosDoCertificado(p, turma)),
+        emitir.map((p) => dadosDoCertificado(p, turma)),
         turma.codigo_turma || turma.treinamento?.nome || "turma"
       );
-      toast.success(`${aprovados.length} certificado(s) emitido(s).`);
+      toast.success(`${emitir.length} certificado(s) emitido(s).`);
     } catch (e) {
       toast.error(`Erro ao emitir os certificados: ${(e as Error).message}`);
     } finally {
