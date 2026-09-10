@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  cicloDaNc,
+  cicloExigeAcao,
+  mensagemDoCiclo,
   acoesPendentes,
   podeEncerrar,
   mensagemBloqueioEncerramento,
@@ -115,5 +118,96 @@ describe("transições de status de incidente", () => {
         expect(conhecidos.has(para), `${de} -> ${para} não é um status declarado`).toBe(true);
       }
     }
+  });
+});
+
+describe("cicloDaNc — em que ponto a NC realmente esta", () => {
+  const acao = (status: string) => ({ status });
+
+  it("todas as acoes concluidas e sem verificacao: AGUARDANDO_VERIFICACAO", () => {
+    // O caso do roteiro 10.5. Antes disto a NC continuava mostrando so "ABERTA",
+    // igual a uma recem-criada sem plano nenhum.
+    expect(
+      cicloDaNc({
+        statusNc: "ABERTA",
+        acoes: [acao("CONCLUIDA"), acao("CONCLUIDA")],
+        resultadoVerificacao: null,
+      })
+    ).toBe("AGUARDANDO_VERIFICACAO");
+  });
+
+  it("acao concluida junto com acao cancelada ainda aguarda verificacao", () => {
+    // Cancelada nao bloqueia, e houve execucao de verdade na outra.
+    expect(
+      cicloDaNc({ statusNc: "ABERTA", acoes: [acao("CONCLUIDA"), acao("CANCELADA")] })
+    ).toBe("AGUARDANDO_VERIFICACAO");
+  });
+
+  it("TODAS canceladas nao e aguardando verificacao", () => {
+    // `acoesPendentes` nao considera cancelada como pendente, entao sem uma
+    // checagem propria isto diria "tudo executado" quando nada foi feito.
+    expect(
+      cicloDaNc({ statusNc: "ABERTA", acoes: [acao("CANCELADA"), acao("CANCELADA")] })
+    ).toBe("PLANO_SEM_EXECUCAO");
+  });
+
+  it.each(["ABERTA", "EM_ANDAMENTO"])("acao %s mantem o plano em andamento", (s) => {
+    expect(
+      cicloDaNc({ statusNc: "ABERTA", acoes: [acao("CONCLUIDA"), acao(s)] })
+    ).toBe("ACOES_EM_ANDAMENTO");
+  });
+
+  it("sem acao cadastrada nao ha plano", () => {
+    expect(cicloDaNc({ statusNc: "ABERTA", acoes: [] })).toBe("SEM_PLANO");
+  });
+
+  it.each([
+    ["ACEITA", "VERIFICADA_ACEITA"],
+    ["REJEITADA", "VERIFICADA_REJEITADA"],
+  ])("verificacao %s encerra a espera", (resultado, esperado) => {
+    expect(
+      cicloDaNc({
+        statusNc: "ABERTA",
+        acoes: [acao("CONCLUIDA")],
+        resultadoVerificacao: resultado,
+      })
+    ).toBe(esperado);
+  });
+
+  it.each(["CONCLUIDA", "CANCELADA"])("NC %s tem ciclo encerrado", (status) => {
+    // Vence tudo: nem verificacao nem estado das acoes importam depois do fim.
+    expect(
+      cicloDaNc({ statusNc: status, acoes: [acao("ABERTA")], resultadoVerificacao: null })
+    ).toBe("ENCERRADA");
+  });
+});
+
+describe("cicloExigeAcao", () => {
+  it("cobra o que depende de alguem", () => {
+    expect(cicloExigeAcao("AGUARDANDO_VERIFICACAO")).toBe(true);
+    expect(cicloExigeAcao("VERIFICADA_REJEITADA")).toBe(true);
+    expect(cicloExigeAcao("PLANO_SEM_EXECUCAO")).toBe(true);
+  });
+
+  it("nao cobra o que esta em curso normal ou encerrado", () => {
+    for (const c of ["SEM_PLANO", "ACOES_EM_ANDAMENTO", "VERIFICADA_ACEITA", "ENCERRADA"] as const) {
+      expect(cicloExigeAcao(c)).toBe(false);
+    }
+  });
+});
+
+describe("mensagemDoCiclo", () => {
+  it("diz explicitamente que concluir a acao nao fecha a NC", () => {
+    // E a confusao exata que o roteiro 10.5 aponta.
+    const m = mensagemDoCiclo("AGUARDANDO_VERIFICACAO");
+    expect(m).not.toBeNull();
+    expect(m!.comoResolver).toContain("não fecha");
+    expect(m!.comoResolver).toContain("Verificação");
+  });
+
+  it("cala quando nao ha nada a cobrar", () => {
+    expect(mensagemDoCiclo("ACOES_EM_ANDAMENTO")).toBeNull();
+    expect(mensagemDoCiclo("VERIFICADA_ACEITA")).toBeNull();
+    expect(mensagemDoCiclo("ENCERRADA")).toBeNull();
   });
 });
