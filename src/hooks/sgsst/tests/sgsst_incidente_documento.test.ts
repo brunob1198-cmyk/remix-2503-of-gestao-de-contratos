@@ -67,7 +67,7 @@ const acao = (over: Partial<SgsstIncidenteAcao> = {}): SgsstIncidenteAcao => ({
   empresa_id: "e1",
   incidente_id: "inc1",
   descricao: "Instalar guarda-corpo em todos os vaos",
-  tipo: "CORRETIVA",
+  tipo: "Corretiva",
   prioridade: "ALTA",
   status: "ABERTA",
   prazo: "2026-09-20",
@@ -383,5 +383,64 @@ describe("montarHtmlIncidente — coerencia com pendenciasIncidente", () => {
   it("nao imprime esse aviso quando ha CAT vinculada", () => {
     const html = montarHtmlIncidente(dados({ cats: [{ id: "c1" } as never] }));
     expect(html).not.toContain("sem CAT registrada no sistema");
+  });
+});
+
+describe("montarHtmlIncidente — acoplamento entre classe e elemento", () => {
+  /**
+   * O DEFEITO QUE ESTES TESTES IMPEDEM DE VOLTAR
+   *
+   * O CSS do documento usa seletores QUALIFICADOS PELO TIPO do elemento:
+   * `h2.doc-sec`, `div.doc-assin-centro`, `table.doc-tabela`, `td.rot`. A primeira
+   * versao deste relatorio escreveu `<div class="doc-sec">`, e o resultado foi que
+   * NENHUMA regra se aplicou -- sem tamanho de fonte, sem caixa alta, sem borda, e
+   * fora da lista de "page-break-inside: avoid". No PDF real os titulos de secao
+   * sairam cortados ao meio.
+   *
+   * Nenhum teste pegava porque o HTML era valido e o texto estava lah. Typecheck
+   * tambem nao pega: e string. So o PDF emitido mostrava.
+   *
+   * Os mesmos testes cobrem a estrutura interna dos componentes: `.doc-card` espera
+   * `.rot` e `.val` como filhos, e a versao anterior inventou `.doc-num` com um
+   * `<p>` solto -- o numero saia pequeno no canto e o rotulo embaixo.
+   */
+  it("titulo de secao e h2, nunca div", () => {
+    const html = montarHtmlIncidente(dados());
+    expect(html).not.toContain('<div class="doc-sec"');
+    expect(html.match(/<h2 class="doc-sec">/g)?.length ?? 0).toBeGreaterThanOrEqual(5);
+  });
+
+  it("cada abertura de doc-sec fecha em </h2>", () => {
+    const html = montarHtmlIncidente(dados());
+    // Uma abertura seguida de </div> significa h2 aberto e div fechado: o navegador
+    // conserta silenciosamente e o estilo se perde de novo.
+    expect(html).not.toMatch(/<h2 class="doc-sec">[^<]*<\/div>/);
+  });
+
+  it("cartao usa .rot e .val, e nao classe inventada", () => {
+    const html = montarHtmlIncidente(dados());
+    expect(html).toContain('<div class="rot">Dias perdidos</div>');
+    expect(html).toContain('<div class="val">7</div>');
+    // `class="doc-num"` e não `doc-num` solto: a folha de estilo embutida no HTML
+    // define `.doc-num` legitimamente (alinha número à direita em tabela), então a
+    // busca pelo nome cru acusaria o próprio CSS. O que não pode voltar é o
+    // ELEMENTO usando a classe no lugar de `.val`.
+    expect(html).not.toContain('class="doc-num"');
+  });
+
+  it("coluna de rotulo da identificacao e td.rot", () => {
+    const html = montarHtmlIncidente(dados());
+    expect(html).toContain('<td class="rot">');
+  });
+
+  it("assinatura usa div, como o seletor div.doc-assin-centro exige", () => {
+    const html = montarHtmlIncidente(dados());
+    expect(html).toContain('<div class="doc-assin-centro">');
+  });
+
+  it("tipo da acao sai direto, sem mapa de rotulo", () => {
+    // `TipoAcao` do incidente ja e legivel ("Contenção"), ao contrario do da NC.
+    const html = montarHtmlIncidente(dados({ acoes: [acao({ tipo: "Contenção" })] }));
+    expect(html).toContain("Contenção");
   });
 });

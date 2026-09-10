@@ -88,12 +88,18 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELADO: "Cancelado",
 };
 
-const TIPO_ACAO_LABEL: Record<string, string> = {
-  CORRETIVA: "Corretiva",
-  PREVENTIVA: "Preventiva",
-  CONTENCAO: "Contenção",
-  MELHORIA: "Melhoria",
-};
+/*
+  NÃO existe TIPO_ACAO_LABEL aqui, e a ausência é deliberada.
+
+  `TipoAcao` do incidente já é texto legível — "Corretiva", "Preventiva",
+  "Contenção", "Melhoria" — ao contrário do `TipoAcaoNC`, que é CORRETIVA e
+  companhia. A primeira versão deste arquivo trouxe o mapa copiado da NC, com
+  chaves em maiúscula que nunca casavam: a busca falhava sempre e o valor caía no
+  fallback, que por sorte já estava escrito certo.
+
+  Ficava funcionando e era armadilha: quem quisesse ajustar um rótulo mexeria no
+  mapa e não veria efeito nenhum. Melhor não ter mapa.
+*/
 
 const STATUS_ACAO_LABEL: Record<string, string> = {
   ABERTA: "Aberta",
@@ -343,7 +349,7 @@ export function montarHtmlIncidente(
 
       return `<tr>
         <td><strong>${indice + 1}.</strong> ${esc(a.descricao)}</td>
-        <td>${esc(TIPO_ACAO_LABEL[a.tipo] ?? a.tipo)}</td>
+        <td>${esc(a.tipo)}</td>
         <td>${esc(a.responsavel?.nome) || faltando("não designado")}</td>
         <td>${
           a.prazo
@@ -471,13 +477,13 @@ export function montarHtmlIncidente(
         </table>
       </div>
 
-      <div class="doc-sec">Descrição do fato</div>
+      <h2 class="doc-sec">Descrição do fato</h2>
       <div class="doc-bloco">
         <div class="tit">${esc(incidente.titulo)}</div>
         <div class="corpo"><p>${esc(incidente.descricao) || faltando("sem descrição")}</p></div>
       </div>
 
-      <div class="doc-sec">Pessoas envolvidas</div>
+      <h2 class="doc-sec">Pessoas envolvidas</h2>
       ${
         envolvidos.length > 0
           ? `<table class="doc-tabela">
@@ -495,23 +501,26 @@ export function montarHtmlIncidente(
              </div>`
       }
 
-      <div class="doc-sec">Afastamento e dias computados</div>
-      <div class="doc-cards">
-        <div class="doc-card">
-          <div class="doc-num">${perdidos}</div>
-          <p>Dias perdidos</p>
-        </div>
-        <div class="doc-card">
-          <div class="doc-num">${debitados}</div>
-          <p>Dias debitados</p>
-        </div>
-        <div class="doc-card">
-          <div class="doc-num">${total}</div>
-          <p>Total computado</p>
-        </div>
-      </div>
+      <h2 class="doc-sec">Afastamento e dias computados</h2>
       <div class="doc-bloco">
         <div class="corpo">
+          <div class="doc-cards">
+            <div class="doc-card">
+              <div class="rot">Dias perdidos</div>
+              <div class="val">${perdidos}</div>
+              <div class="sub">afastamento efetivo</div>
+            </div>
+            <div class="doc-card">
+              <div class="rot">Dias debitados</div>
+              <div class="val">${debitados}</div>
+              <div class="sub">perda permanente</div>
+            </div>
+            <div class="doc-card">
+              <div class="rot">Total computado</div>
+              <div class="val">${total}</div>
+              <div class="sub">base da taxa de gravidade</div>
+            </div>
+          </div>
           <p>
             Início do afastamento: <strong>${
               incidente.data_afastamento ? dataBr(incidente.data_afastamento) : faltando("não informado")
@@ -529,7 +538,7 @@ export function montarHtmlIncidente(
         </div>
       </div>
 
-      <div class="doc-sec">Investigação e cadeia de causas</div>
+      <h2 class="doc-sec">Investigação e cadeia de causas</h2>
       ${
         investigacao
           ? `
@@ -581,9 +590,13 @@ export function montarHtmlIncidente(
 
         ${
           investigacao.conclusao
-            ? `<div class="doc-conclusao">
+            ? // `.doc-bloco` e não `.doc-conclusao`: aquele componente é para veredito
+              // curto (APROVADO / REPROVADO), com valor em 19px centralizado. Conclusão
+              // de investigação é texto corrido, e sairia gigante e centralizado nele.
+              // O nome da classe combinava; o formato do conteúdo, não.
+              `<div class="doc-bloco">
                 <div class="tit">Conclusão da investigação</div>
-                <p>${esc(investigacao.conclusao)}</p>
+                <div class="corpo"><p>${esc(investigacao.conclusao)}</p></div>
                </div>`
             : `<div class="doc-vazio">Investigação sem conclusão registrada.</div>`
         }
@@ -598,7 +611,7 @@ export function montarHtmlIncidente(
              </div>`
       }
 
-      <div class="doc-sec">Plano de ação corretiva e preventiva</div>
+      <h2 class="doc-sec">Plano de ação corretiva e preventiva</h2>
       ${
         acoes.length > 0
           ? `<table class="doc-tabela">
@@ -617,7 +630,7 @@ export function montarHtmlIncidente(
 
       ${
         (dados.cats?.length ?? 0) > 0
-          ? `<div class="doc-sec">Comunicação de Acidente de Trabalho</div>
+          ? `<h2 class="doc-sec">Comunicação de Acidente de Trabalho</h2>
              <table class="doc-tabela">
                <thead>
                  <tr><th>Nº da CAT</th><th>Tipo</th><th>Data do acidente</th><th>Emissão</th><th>Afastamento</th></tr>
@@ -643,7 +656,7 @@ export function montarHtmlIncidente(
 
       ${
         origens.length > 0
-          ? `<div class="doc-sec">Origem mapeada</div>
+          ? `<h2 class="doc-sec">Origem mapeada</h2>
              <div class="doc-bloco">
                <div class="corpo"><p>${origens.join(" · ")}</p></div>
              </div>`
