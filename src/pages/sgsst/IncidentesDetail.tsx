@@ -48,6 +48,9 @@ import {
   Camera,
 } from "lucide-react";
 import { acoesPendentes, mensagemBloqueioEncerramento } from "@/utils/sgsstWorkflow";
+import { CatFormDialog } from "@/components/sgsst/CatFormDialog";
+import { TIPO_CAT_LABEL, useSgsstCats } from "@/hooks/sgsst/useSgsstCats";
+import { herancaParaCat, mensagemDaCat, situacaoDaCat } from "@/utils/sgsstCatDoIncidente";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { IncidenteFormDialog } from "@/components/sgsst/IncidenteFormDialog";
 import { IncidenteAcaoFormDialog } from "@/components/sgsst/IncidenteAcaoFormDialog";
@@ -72,6 +75,24 @@ export default function SgsstIncidentesDetailPage() {
   const { investigacao, saveInvestigacao, isLoading: loadingInv } = useSgsstIncidenteInvestigacao(incidenteId);
   const { acoes, addAcao, updateAcao, removeAcao, isLoading: loadingAcoes } = useSgsstIncidenteAcoes(incidenteId);
   const { historico } = useSgsstIncidenteHistorico(incidenteId);
+
+  // CATs vinculadas a ESTE incidente.
+  //
+  // A chave "CAT emitida" do formulário é declaração de quem digitou; a CAT é
+  // documento. Só consultando a tabela dá para saber se o documento existe — e até
+  // agora ninguém consultava, então marcar a chave não ligava a nada visível.
+  const { cats: catsDoIncidente, createCat, isLoading: loadingCats } = useSgsstCats({
+    incidenteId,
+    pageSize: 50,
+  });
+  const [isCatFormOpen, setIsCatFormOpen] = useState(false);
+
+  const situacaoCat = situacaoDaCat({
+    catEmitida: currentIncidente?.cat_emitida,
+    diasPerdidos: currentIncidente?.dias_perdidos,
+    catsVinculadas: catsDoIncidente?.length ?? 0,
+  });
+  const avisoDaCat = mensagemDaCat(situacaoCat);
 
   // State para Formulário de Investigação
   const [descInv, setDescInv] = useState("");
@@ -308,6 +329,66 @@ export default function SgsstIncidentesDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/*
+        A CAT DO INCIDENTE.
+        Antes disto, marcar "CAT emitida" no formulário não produzia nada visível: a
+        coluna `sgsst_cats.incidente_id` existia desde a criação da tabela, mas
+        `CatFormDialog` gravava `null` fixo e ninguém consultava por incidente.
+        Aqui o documento e a declaração aparecem lado a lado — e quando divergem, a
+        tela diz qual dos dois está faltando.
+      */}
+      {!loadingCats && (situacaoCat !== "NAO_EXIGIDA" || catsDoIncidente.length > 0) && (
+        <Card className={avisoDaCat ? "border-amber-300 bg-amber-50/60" : "border-emerald-200 bg-emerald-50/40"}>
+          <CardContent className="py-3 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <Siren className={`h-5 w-5 shrink-0 ${avisoDaCat ? "text-amber-600" : "text-emerald-600"}`} />
+              <div className="flex-1 space-y-0.5">
+                {avisoDaCat ? (
+                  <>
+                    <p className="text-sm font-semibold text-amber-900">{avisoDaCat.titulo}</p>
+                    <p className="text-xs text-amber-800">{avisoDaCat.comoResolver}</p>
+                  </>
+                ) : (
+                  <p className="text-sm font-semibold text-emerald-900">
+                    CAT registrada e vinculada a este incidente
+                  </p>
+                )}
+              </div>
+              {allowEdit && (
+                <Button
+                  size="sm"
+                  variant={avisoDaCat ? "default" : "outline"}
+                  className="shrink-0"
+                  onClick={() => setIsCatFormOpen(true)}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Registrar CAT
+                </Button>
+              )}
+            </div>
+
+            {catsDoIncidente.length > 0 && (
+              <div className="space-y-1.5 pt-1 border-t">
+                {catsDoIncidente.map((c) => (
+                  <div key={c.id} className="flex flex-wrap items-center gap-2 text-xs">
+                    <Badge variant="outline">{TIPO_CAT_LABEL[c.tipo_cat] ?? c.tipo_cat}</Badge>
+                    {/* Sem número, a CAT existe no sistema mas não tem protocolo do
+                        INSS — dizer "sem número" é mais honesto que deixar em branco. */}
+                    <span className="font-medium">{c.numero_cat || "sem número de protocolo"}</span>
+                    <span className="text-muted-foreground">
+                      acidente {formatDateStr(c.data_acidente)} · emitida {formatDateStr(c.data_emissao)}
+                    </span>
+                    {c.dias_afastamento > 0 && (
+                      <span className="text-muted-foreground">· {c.dias_afastamento} dia(s) de afastamento</span>
+                    )}
+                    {c.houve_obito && <Badge variant="destructive" className="text-[10px]">ÓBITO</Badge>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Tabs */}
       <Tabs defaultValue="envolvidos" className="w-full">
@@ -747,6 +828,40 @@ export default function SgsstIncidentesDetailPage() {
         incidente={currentIncidente}
         onSave={async (data) => {
           await updateIncidente.mutateAsync({ id: currentIncidente.id, ...data });
+        }}
+      />
+
+      {/*
+        A CAT já vem preenchida com o que o incidente sabe — data, projeto, primeiro
+        envolvido, dias de afastamento — e vinculada por `incidente_id`. Redigitar
+        esses dados é onde o incidente e a CAT começam a divergir, e divergência entre
+        os dois é justamente o que aparece numa fiscalização.
+      */}
+      <CatFormDialog
+        open={isCatFormOpen}
+        onOpenChange={setIsCatFormOpen}
+        isLoading={createCat.isPending}
+        heranca={herancaParaCat({
+          incidenteId: currentIncidente.id,
+          projetoId: currentIncidente.projeto_id,
+          // A vítima primeiro, e só depois o primeiro envolvido qualquer: a CAT é do
+          // acidentado, e pegar testemunha ou comunicante por acaso de ordenação
+          // colocaria a pessoa errada no documento que vai para o INSS.
+          colaboradorId:
+            (envolvidos.find((e) => e.tipo_envolvimento === "Vítima") ?? envolvidos[0])
+              ?.colaborador_dados_id ?? null,
+          dataOcorrencia: currentIncidente.data_ocorrencia,
+          titulo: currentIncidente.titulo,
+          descricao: currentIncidente.descricao,
+          diasPerdidos: currentIncidente.dias_perdidos,
+        })}
+        onSave={async (data) => {
+          await createCat.mutateAsync(data);
+          // Marca a chave junto: o documento existe, então a declaração passa a ser
+          // verdadeira. Sem isto os dois ficariam se contradizendo na própria tela.
+          if (currentIncidente.cat_emitida !== true) {
+            await updateIncidente.mutateAsync({ id: currentIncidente.id, cat_emitida: true });
+          }
         }}
       />
 

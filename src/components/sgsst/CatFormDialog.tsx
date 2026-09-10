@@ -14,6 +14,7 @@ import {
   type TipoCat,
 } from "@/hooks/sgsst/useSgsstCats";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
+import type { HerancaParaCat } from "@/utils/sgsstCatDoIncidente";
 
 interface CatFormDialogProps {
   open: boolean;
@@ -21,6 +22,18 @@ interface CatFormDialogProps {
   cat?: SgsstCat | null;
   onSave: (data: SgsstCatInput) => Promise<void>;
   isLoading?: boolean;
+  /**
+   * Incidente que originou esta CAT, quando o cadastro parte da tela dele.
+   *
+   * Sem isto o `incidente_id` era gravado como `null` FIXO no código — então toda
+   * CAT já criada tem o vínculo vazio, e a tela do incidente não tinha como saber
+   * que a CAT existia. Marcar "CAT emitida" no incidente não ligava a nada.
+   *
+   * Os campos herdados vêm preenchidos e permanecem editáveis: a CAT pode precisar
+   * de uma data ou descrição diferente da do registro interno, mas redigitar tudo é
+   * onde os dois documentos começam a divergir.
+   */
+  heranca?: HerancaParaCat | null;
 }
 
 /**
@@ -35,6 +48,7 @@ export function CatFormDialog({
   cat,
   onSave,
   isLoading = false,
+  heranca = null,
 }: CatFormDialogProps) {
   const { colaboradores } = useSgsstColaboradoresResumo();
 
@@ -64,18 +78,20 @@ export function CatFormDialog({
       setHouveObito(cat.houve_obito === true);
       setObservacoes(cat.observacoes || "");
     } else {
+      // CAT nova. Quando vem da tela de um incidente, herda o que já está lá em vez
+      // de exigir redigitação — ver a prop "heranca".
       setNumeroCat("");
       setTipoCat("INICIAL");
-      setColaboradorId("none");
-      setDataAcidente(hoje);
+      setColaboradorId(heranca?.colaborador_id || "none");
+      setDataAcidente(heranca?.data_acidente || hoje);
       setDataEmissao(hoje);
       setCid("");
-      setDescricao("");
-      setDiasAfastamento("0");
+      setDescricao(heranca?.descricao || "");
+      setDiasAfastamento(String(heranca?.dias_afastamento ?? 0));
       setHouveObito(false);
       setObservacoes("");
     }
-  }, [cat, open]);
+  }, [cat, open, heranca]);
 
   // O banco recusa CAT de óbito sem o óbito marcado. Manter a UI coerente evita
   // que o usuário só descubra a regra ao salvar.
@@ -93,8 +109,10 @@ export function CatFormDialog({
       numero_cat: numeroCat.trim() || null,
       tipo_cat: tipoCat,
       colaborador_id: colaboradorId === "none" ? null : colaboradorId,
-      incidente_id: null,
-      projeto_id: null,
+      // Era "null" fixo aqui: é por isso que nenhuma CAT tinha vínculo com o
+      // incidente que a originou, mesmo com a coluna existindo no banco.
+      incidente_id: cat?.incidente_id ?? heranca?.incidente_id ?? null,
+      projeto_id: cat?.projeto_id ?? heranca?.projeto_id ?? null,
       area_id: null,
       data_acidente: dataAcidente,
       data_emissao: dataEmissao,

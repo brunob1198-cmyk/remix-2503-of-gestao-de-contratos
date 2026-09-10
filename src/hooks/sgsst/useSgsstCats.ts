@@ -58,6 +58,14 @@ export interface SgsstCatsParams {
   tipo?: string;
   /** Ano do acidente. O relatório analítico é anual. */
   ano?: number;
+  /**
+   * Só as CATs deste incidente.
+   *
+   * A coluna `incidente_id` existe desde a criação da tabela, mas nada a
+   * preenchia nem a consultava — o join do incidente na query acima nunca teve
+   * nada para trazer. É por aqui que a tela do incidente descobre se existe CAT.
+   */
+  incidenteId?: string | null;
 }
 
 /**
@@ -84,6 +92,7 @@ export function useSgsstCats(params?: SgsstCatsParams) {
       params?.search ?? "",
       params?.tipo ?? "",
       params?.ano ?? "",
+      params?.incidenteId ?? "",
     ],
     enabled: !!empresaId,
     queryFn: async () => {
@@ -117,6 +126,10 @@ export function useSgsstCats(params?: SgsstCatsParams) {
 
       if (params?.tipo && params.tipo !== "todos") {
         query = query.eq("tipo_cat", params.tipo);
+      }
+
+      if (params?.incidenteId) {
+        query = query.eq("incidente_id", params.incidenteId);
       }
 
       if (params?.ano) {
