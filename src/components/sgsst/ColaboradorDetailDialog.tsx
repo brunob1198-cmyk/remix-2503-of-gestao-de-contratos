@@ -57,6 +57,17 @@ export function ColaboradorDetailDialog({
   // tem dezenas de linhas, e carregar quatro consultas por linha seria custo sem
   // uso nenhum.
   const dossie = useSgsstColaboradorDossie(colaborador?.id, { enabled: open });
+
+  // Data em dd/MM/yyyy, tolerante a valor invalido: a coluna e texto e o dossie
+  // nao pode estourar por causa de uma data mal gravada.
+  const dataBr = (valor?: string | null) => {
+    if (!valor) return '—';
+    try {
+      return format(parseISO(valor), 'dd/MM/yyyy');
+    } catch {
+      return valor;
+    }
+  };
   const [emitindo, setEmitindo] = useState(false);
 
   const emitirDossie = async () => {
@@ -337,6 +348,103 @@ export function ColaboradorDetailDialog({
                 </CardContent>
               </Card>
             </div>
+
+            {/*
+              EXIGÊNCIAS DA FUNÇÃO — o que faltava para o roteiro 12.3.
+
+              O treinamento vinculado à função JÁ era cobrado, mas só no PDF: o hook
+              `useSgsstColaboradorDossie` calculava `pendencias` a partir da matriz e a
+              tela usava esse dado apenas para montar o arquivo. Quem abria a aba
+              chamada "Dossiê Completo do Colaborador" via identificação, contrato, EPI
+              e endereço — e nada sobre o que a função exige.
+
+              Dado calculado e exibido em nenhum lugar é o mesmo que dado ausente para
+              quem usa: o usuário vinculou o treinamento, abriu o dossiê e concluiu que
+              não estava sendo cobrado.
+            */}
+            <Card>
+              <CardHeader className="py-2.5 px-4 bg-slate-50 border-b">
+                <CardTitle className="text-xs font-bold flex items-center gap-2 text-slate-800">
+                  <GraduationCap className="h-4 w-4 text-primary" /> Exigências da Função
+                  {colaborador.funcao?.nome && (
+                    <span className="font-normal text-muted-foreground">
+                      — {colaborador.funcao.nome}
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 text-xs space-y-3">
+                {dossie.isLoading ? (
+                  <p className="text-muted-foreground">Carregando exigências…</p>
+                ) : !colaborador.funcao_id ? (
+                  // Sem função não há o que exigir, e isso é a própria pendência —
+                  // dizer "nenhuma pendência" aqui afirmaria conformidade que ninguém
+                  // verificou.
+                  <p className="text-amber-700 font-medium">
+                    Colaborador sem função definida. Sem função, o sistema não tem
+                    contra o que conferir treinamentos e EPIs.
+                  </p>
+                ) : dossie.pendencias.length === 0 ? (
+                  <p className="text-emerald-700 font-medium">
+                    Nenhuma pendência de treinamento ou EPI para esta função.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {dossie.pendencias.map((p, i) => (
+                      <div
+                        key={`${p.tipo}-${p.itemNome}-${i}`}
+                        className="flex flex-wrap items-center gap-2 p-2 rounded border bg-amber-50/60"
+                      >
+                        <Badge variant="outline" className="text-[10px]">
+                          {p.tipo === "TREINAMENTO" ? "Treinamento" : "EPI"}
+                        </Badge>
+                        <span className="font-medium">{p.itemNome}</span>
+                        <span
+                          className={
+                            p.situacao === "VENCIDO"
+                              ? "text-red-700 font-semibold"
+                              : "text-amber-800 font-semibold"
+                          }
+                        >
+                          {p.situacao === "VENCIDO" ? "Vencido" : "Nunca realizado"}
+                        </span>
+                        {p.vencimento && (
+                          <span className="text-muted-foreground">
+                            venceu em {dataBr(p.vencimento)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/*
+                  As matrículas em turma aparecem aqui porque a aba "NRs & Certificados"
+                  conta APENAS `sgsst_colaborador_treinamentos`, o cadastro manual de
+                  certificado. Quem foi matriculado numa turma não entra naquela conta —
+                  e é a matrícula, não o cadastro manual, que a matriz usa para dar baixa
+                  na exigência da função. Sem este bloco, a mesma tela dizia "0" e
+                  cobrava um treinamento que o trabalhador tinha feito.
+                */}
+                {dossie.matriculas.length > 0 && (
+                  <div className="pt-2 border-t space-y-1.5">
+                    <p className="font-semibold text-slate-700">
+                      Turmas em que está matriculado ({dossie.matriculas.length})
+                    </p>
+                    {dossie.matriculas.map((m) => (
+                      <div key={m.id} className="flex flex-wrap items-center gap-2 text-muted-foreground">
+                        <span className="font-medium text-slate-700">
+                          {m.turma?.treinamento?.nome || m.turma?.codigo_turma || "Turma"}
+                        </span>
+                        {m.resultado && <Badge variant="outline" className="text-[10px]">{m.resultado}</Badge>}
+                        {m.data_conclusao && <span>concluído em {dataBr(m.data_conclusao)}</span>}
+                        {m.validade && <span>· válido até {dataBr(m.validade)}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* TAB 2: TREINAMENTOS & CERTIFICADOS */}
