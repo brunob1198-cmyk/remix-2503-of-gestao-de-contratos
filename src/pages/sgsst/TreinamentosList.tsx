@@ -18,7 +18,12 @@ import {
   type CertificadoDados,
 } from "@/lib/certificadoDocumento";
 import { emissaoDoCertificado, loteDeCertificados } from "@/utils/sgsstCertificadoEmissao";
-import { gerarPdfListaPresenca, pendenciasListaPresenca } from "@/lib/listaPresencaDocumento";
+import {
+  gerarArquivoListaPresenca,
+  gerarPdfListaPresenca,
+  pendenciasListaPresenca,
+} from "@/lib/listaPresencaDocumento";
+import { EnviarParaAssinaturaDialog } from "@/components/assinaturas/EnviarParaAssinaturaDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -52,6 +57,7 @@ import {
   Loader2,
   CalendarClock,
   ClipboardList,
+  Send,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { TreinamentoFormDialog } from "@/components/sgsst/TreinamentoFormDialog";
@@ -315,6 +321,12 @@ export default function SgsstTreinamentosListPage() {
       setEmitindoId(null);
     }
   };
+
+  // Turma cuja lista vai para a fila de assinatura. Estado próprio, e não reuso de
+  // `selectedTurmaForPart`: fechar o diálogo de assinatura não pode fechar o de
+  // alunos, que é de onde ele foi aberto.
+  const [turmaParaAssinatura, setTurmaParaAssinatura] =
+    useState<SgsstTreinamentoTurma | null>(null);
 
   const emitirCertificadosDaTurma = async (turma: SgsstTreinamentoTurma) => {
     // Só aprovados: certificado pressupõe aprovação, e um lote com reprovados
@@ -1066,6 +1078,23 @@ export default function SgsstTreinamentosListPage() {
                     Lista de presença
                   </Button>
 
+                  {/*
+                    A mesma folha, pela via eletrônica. Os participantes entram todos
+                    na posição 1 — assinam em paralelo, porque numa turma de trinta
+                    uma fila sequencial levaria semanas — e o instrutor na 2, depois
+                    deles: é ele quem atesta a frequência que acabou de coletar.
+                  */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    onClick={() => setTurmaParaAssinatura(selectedTurmaForPart)}
+                    title="Criar fila de assinatura eletrônica desta lista"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    Enviar para assinatura
+                  </Button>
+
                   {allowEdit && (
                     <Button size="sm" onClick={() => { setEditingPart(null); setIsPartFormOpen(true); }}>
                       <Plus className="h-3.5 w-3.5 mr-1" /> Matricular Aluno
@@ -1160,6 +1189,53 @@ export default function SgsstTreinamentosListPage() {
           }
         }}
       />
+
+      {turmaParaAssinatura && profile?.empresa_id && (
+        <EnviarParaAssinaturaDialog
+          open={!!turmaParaAssinatura}
+          onOpenChange={(aberto) => !aberto && setTurmaParaAssinatura(null)}
+          empresaId={profile.empresa_id}
+          moduloOrigem="TREINAMENTOS"
+          entidadeTipo="lista_presenca"
+          entidadeId={turmaParaAssinatura.id}
+          documentoId={`Lista de presença — ${
+            turmaParaAssinatura.treinamento?.nome || turmaParaAssinatura.codigo_turma || "turma"
+          }`}
+          // O PDF só é gerado ao confirmar: montar a folha aqui, na abertura do
+          // diálogo, gastaria a renderização inteira de quem só quis conferir a fila.
+          gerarArquivo={async () => {
+            const participantes =
+              selectedTurmaForPart?.id === turmaParaAssinatura.id
+                ? turmaParticipantes
+                : await buscarParticipantesDaTurma(turmaParaAssinatura.id);
+
+            return gerarArquivoListaPresenca({
+              turma: turmaParaAssinatura,
+              participantes,
+              empresa: null,
+              geradoPor: profile?.nome ?? null,
+            });
+          }}
+          signatariosSugeridos={[
+            // Participantes em paralelo, instrutor depois. Ver o comentário do botão.
+            ...turmaParticipantes.map((p) => ({
+              nome: nomeDoParticipante(p),
+              ordem: 1,
+              cpf: p.colaborador?.cpf ?? null,
+              cargo: p.colaborador?.funcao?.nome ?? null,
+            })),
+            ...(turmaParaAssinatura.instrutor
+              ? [
+                  {
+                    nome: turmaParaAssinatura.instrutor,
+                    ordem: 2,
+                    cargo: turmaParaAssinatura.instrutor_qualificacao || "Instrutor",
+                  },
+                ]
+              : []),
+          ]}
+        />
+      )}
 
       <TurmaFormDialog
         open={isTurmaFormOpen}

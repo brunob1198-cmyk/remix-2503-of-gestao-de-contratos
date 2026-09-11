@@ -443,6 +443,26 @@ export async function emitirPdfTimbrado(params: {
    */
   marcaDagua?: boolean;
 }): Promise<void> {
+  const timbrado = await gerarPdfTimbrado(params);
+  baixar(timbrado, params.nomeArquivo);
+}
+
+/**
+ * Gera o PDF timbrado e devolve os bytes, sem baixar.
+ *
+ * Existe porque o documento nem sempre vai para o disco do usuário: quando ele
+ * segue para a fila de assinatura, precisa ser enviado ao armazenamento e ficar
+ * anexado à solicitação para cada signatário ler antes de assinar.
+ *
+ * `emitirPdfTimbrado` passou a ser esta função mais o download — em vez de duas
+ * cópias do mesmo caminho, que divergiriam na primeira correção de layout.
+ */
+export async function gerarPdfTimbrado(params: {
+  html: string;
+  nomeArquivo: string;
+  identificacao?: string;
+  marcaDagua?: boolean;
+}): Promise<Uint8Array> {
   const { default: html2pdf } = await import("html2pdf.js");
 
   const { palco, container } = montarPalcoDeEmissao(
@@ -460,16 +480,25 @@ export async function emitirPdfTimbrado(params: {
       .from(container)
       .outputPdf("arraybuffer");
 
-    const timbrado = await aplicarPapelTimbrado(bytes, {
+    return await aplicarPapelTimbrado(bytes, {
       identificacao: params.identificacao,
     });
-
-    baixar(timbrado, params.nomeArquivo);
   } finally {
     // Sai do documento mesmo se a emissão falhar: um palco esquecido leva a folha
     // de estilo do documento junto, e ela vaza para a interface.
     palco.remove();
   }
+}
+
+/** O mesmo PDF, embrulhado como `File` para upload. */
+export async function gerarArquivoPdfTimbrado(params: {
+  html: string;
+  nomeArquivo: string;
+  identificacao?: string;
+  marcaDagua?: boolean;
+}): Promise<File> {
+  const bytes = await gerarPdfTimbrado(params);
+  return new File([bytes as BlobPart], params.nomeArquivo, { type: "application/pdf" });
 }
 
 /** Identificador único por emissão: o seletor que fixa a fonte precisa dele. */
