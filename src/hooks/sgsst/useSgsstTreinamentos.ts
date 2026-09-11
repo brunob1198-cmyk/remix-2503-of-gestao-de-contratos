@@ -365,6 +365,32 @@ export function useSgsstTreinamentosTurmas(params?: SgsstTurmasParams) {
 
   const turmas = data?.rows ?? [];
 
+  /**
+   * Invalida as consultas que EMBUTEM a turma dentro de outra entidade.
+   *
+   * O DEFEITO QUE ISTO CORRIGE
+   *
+   * As duas consultas de participante trazem a turma junto, com
+   * `turma:sgsst_treinamentos_turmas(*)`. Mudar o status da turma invalidava apenas
+   * a lista de turmas, então a aba de alunos seguia com a cópia antiga embutida —
+   * status PLANEJADA numa turma já concluída.
+   *
+   * Ficou invisível enquanto ninguém lia esse status. Quando a emissão do
+   * certificado passou a exigir turma concluída, o usuário concluiu a turma, viu
+   * CONCLUIDA na aba de Turmas, e a emissão recusou dizendo que ainda estava
+   * planejada — as duas telas liam cópias diferentes da mesma turma.
+   *
+   * A regra geral: consulta que embute outra entidade precisa ser invalidada quando
+   * aquela entidade muda. O caminho inverso já era feito — mexer em participante
+   * invalida as duas listas de participante; faltava este.
+   */
+  const invalidarQuemEmbuteATurma = () => {
+    queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_participantes"] });
+    queryClient.invalidateQueries({ queryKey: ["sgsst_todos_participantes"] });
+    // O dossiê do colaborador também embute a turma na lista de matrículas.
+    queryClient.invalidateQueries({ queryKey: ["sgsst_dossie_matriculas"] });
+  };
+
   const createTurma = useMutation({
     mutationFn: async (input: SgsstTreinamentoTurmaInput) => {
       if (!empresaId) throw new Error("Empresa não selecionada.");
@@ -398,6 +424,7 @@ export function useSgsstTreinamentosTurmas(params?: SgsstTurmasParams) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_turmas"] });
+      invalidarQuemEmbuteATurma();
       // Abrir turma grava uma linha no histórico; sem isto a aba de histórico da
       // turma continuaria mostrando o estado de antes da abertura.
       queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos", "historico"] });
@@ -425,6 +452,7 @@ export function useSgsstTreinamentosTurmas(params?: SgsstTurmasParams) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_turmas"] });
+      invalidarQuemEmbuteATurma();
       toast.success("Turma de treinamento atualizada!");
     },
     onError: (err: any) => {
@@ -443,6 +471,7 @@ export function useSgsstTreinamentosTurmas(params?: SgsstTurmasParams) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sgsst_treinamentos_turmas"] });
+      invalidarQuemEmbuteATurma();
       toast.success("Turma removida!");
     },
     onError: (err: any) => {
