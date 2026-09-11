@@ -73,6 +73,9 @@ const SgsstRelatoriosListPage = lazyWithRetry(() => import("./pages/sgsst/Relato
 const ChecklistsListPage = lazyWithRetry(() => import("./pages/checklists/ChecklistsList"));
 const VerificarAssinaturaPage = lazyWithRetry(() => import("./pages/VerificarAssinatura"));
 const IniciarChecklistQRPage = lazyWithRetry(() => import("./pages/checklists/IniciarChecklistQR"));
+// Rota publica: quem assina e o trabalhador, o instrutor, a testemunha -- gente
+// sem conta no sistema. Exigir login aqui inviabilizaria o fluxo inteiro.
+const AssinarDocumentoPage = lazyWithRetry(() => import("./pages/AssinarDocumento"));
 
 // Paginas de diagnostico: seguem acessiveis, mas fora do bundle principal.
 const UploadTestPage = lazyWithRetry(() => import("./pages/debug/UploadTest"));
@@ -193,6 +196,7 @@ const App = () => {
               {/* Extrator de PDF & Public Signature Verification & QR Code Mobile Start */}
               <Route path="/extrator" element={<Index />} />
               <Route path="/forecast-public" element={<ForecastPublicPage />} />
+              <Route path="/assinar/:token" element={<AssinarDocumentoPage />} />
               <Route path="/verificar-assinatura" element={<VerificarAssinaturaPage />} />
               <Route path="/verificar-assinatura/:id" element={<VerificarAssinaturaPage />} />
               <Route path="/checklists/iniciar/:token" element={<IniciarChecklistQRPage />} />

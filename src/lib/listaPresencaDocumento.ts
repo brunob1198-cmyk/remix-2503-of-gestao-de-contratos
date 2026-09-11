@@ -4,7 +4,7 @@ import {
   escDoc as esc,
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
-import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
+import { emitirPdfTimbrado, gerarArquivoPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import {
   diasDaTurma,
   linhasEmBranco,
@@ -284,6 +284,22 @@ function nomeArquivo(turma: SgsstTreinamentoTurma): string {
 
 export async function gerarPdfListaPresenca(dados: ListaPresencaDados): Promise<void> {
   await emitirPdfTimbrado({
+    html: montarHtmlListaPresenca(dados),
+    nomeArquivo: nomeArquivo(dados.turma),
+    identificacao: `Lista de presença — ${
+      dados.turma.codigo_turma || dados.turma.treinamento?.nome || ""
+    }`.slice(0, 88),
+  });
+}
+
+/**
+ * A mesma lista de presença, como arquivo para a fila de assinatura.
+ *
+ * Sem download: aqui o PDF vai para o armazenamento e fica anexado à
+ * solicitação, para cada signatário abrir e ler antes de assinar.
+ */
+export async function gerarArquivoListaPresenca(dados: ListaPresencaDados): Promise<File> {
+  return gerarArquivoPdfTimbrado({
     html: montarHtmlListaPresenca(dados),
     nomeArquivo: nomeArquivo(dados.turma),
     identificacao: `Lista de presença — ${
