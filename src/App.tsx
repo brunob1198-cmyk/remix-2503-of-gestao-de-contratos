@@ -76,6 +76,7 @@ const IniciarChecklistQRPage = lazyWithRetry(() => import("./pages/checklists/In
 // Rota publica: quem assina e o trabalhador, o instrutor, a testemunha -- gente
 // sem conta no sistema. Exigir login aqui inviabilizaria o fluxo inteiro.
 const AssinarDocumentoPage = lazyWithRetry(() => import("./pages/AssinarDocumento"));
+const CentralAssinaturasPage = lazyWithRetry(() => import("./pages/CentralAssinaturas"));
 
 // Paginas de diagnostico: seguem acessiveis, mas fora do bundle principal.
 const UploadTestPage = lazyWithRetry(() => import("./pages/debug/UploadTest"));
@@ -188,6 +189,7 @@ const App = () => {
                 <Route path="power-bi" element={<PowerBIPage />} />
                 <Route path="mkp-parametros" element={<Navigate to="/medicoes/cadastros?tab=mkp" replace />} />
                 <Route path="config-impostos" element={<Navigate to="/medicoes/cadastros?tab=impostos" replace />} />
+                <Route path="assinaturas" element={<CentralAssinaturasPage />} />
                 <Route path="perfil" element={<MeuPerfilPage />} />
                 <Route path="debug-upload" element={<UploadTestPage />} />
                 <Route path="migracao-storage" element={<StorageMigrationPage />} />

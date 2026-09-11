@@ -53,10 +53,18 @@ interface Props {
   entidadeId: string;
   /** Título que aparece para quem assina. */
   documentoId?: string | null;
-  /** Gera o PDF a ser assinado. Só é chamado ao confirmar o envio. */
-  gerarArquivo: () => Promise<File>;
+  /**
+   * Gera o PDF a ser assinado. Só é chamado ao confirmar o envio.
+   *
+   * Ausente, o diálogo pede o arquivo ao usuário — é o modo da central, onde a
+   * solicitação parte de um PDF que já existe e não de um documento que o sistema
+   * monta. Os dois modos compartilham tudo o mais: a fila, os links, o envio.
+   */
+  gerarArquivo?: () => Promise<File>;
   /** Fila pré-montada pelo módulo que abriu o diálogo. */
   signatariosSugeridos?: readonly NovoSignatario[];
+  /** Título editável quando a solicitação não vem de um módulo. */
+  permitirEditarTitulo?: boolean;
 }
 
 interface LinhaDeSignatario extends NovoSignatario {
@@ -82,7 +90,11 @@ export function EnviarParaAssinaturaDialog({
   documentoId,
   gerarArquivo,
   signatariosSugeridos,
+  permitirEditarTitulo = false,
 }: Props) {
+  // Arquivo escolhido à mão, no modo da central.
+  const [arquivoEscolhido, setArquivoEscolhido] = useState<File | null>(null);
+  const [titulo, setTitulo] = useState(documentoId ?? "");
   const [linhas, setLinhas] = useState<LinhaDeSignatario[]>(() =>
     (signatariosSugeridos ?? []).length > 0
       ? (signatariosSugeridos ?? []).map((s, i) => ({ ...s, chave: `sug-${i}` }))
@@ -123,15 +135,22 @@ export function EnviarParaAssinaturaDialog({
       return;
     }
 
+    if (!gerarArquivo && !arquivoEscolhido) {
+      toast.error("Escolha o documento em PDF que será assinado.");
+      return;
+    }
+
     setEnviando(true);
     try {
-      const arquivo = await gerarArquivo();
+      // O módulo gera; a central recebe. A checagem acima garante que um dos dois
+      // caminhos produziu arquivo antes de criar qualquer linha no banco.
+      const arquivo = gerarArquivo ? await gerarArquivo() : (arquivoEscolhido as File);
       const r = await criarSolicitacaoComFila({
         empresaId,
         moduloOrigem,
         entidadeTipo,
         entidadeId,
-        documentoId,
+        documentoId: titulo.trim() || documentoId,
         arquivo,
         signatarios: validas.map((l) => ({
           nome: l.nome.trim(),
@@ -239,6 +258,41 @@ export function EnviarParaAssinaturaDialog({
           </div>
         ) : (
           <div className="space-y-3 text-sm">
+            {/*
+              No modo da central o documento vem do disco: é a solicitação que parte
+              de um PDF pronto (contrato, ordem de serviço, ata) e não de um
+              documento que o sistema monta.
+            */}
+            {!gerarArquivo && (
+              <div className="space-y-2">
+                {permitirEditarTitulo && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="titulo-doc">Título do documento *</Label>
+                    <Input
+                      id="titulo-doc"
+                      value={titulo}
+                      onChange={(e) => setTitulo(e.target.value)}
+                      placeholder="Ex.: Ordem de Serviço 2026-014"
+                    />
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="arquivo-doc">Documento em PDF *</Label>
+                  <Input
+                    id="arquivo-doc"
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setArquivoEscolhido(e.target.files?.[0] ?? null)}
+                  />
+                  {arquivoEscolhido && (
+                    <p className="text-xs text-muted-foreground">
+                      {arquivoEscolhido.name} · {(arquivoEscolhido.size / 1024).toFixed(0)} KB
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <p className="text-muted-foreground">
               Defina quem assina e em que ordem. Signatários com a mesma posição
               assinam em paralelo — é o caso das duas testemunhas.

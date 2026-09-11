@@ -74,6 +74,7 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "power-bi", title: "Power BI", url: "/medicoes/power-bi", icon: BarChart3, telaId: "power-bi", group: "gestao" },
   { id: "integracao", title: "Integração", url: "/medicoes/integracao", icon: Webhook, adminOnly: true, group: "gestao" },
   { id: "usuarios", title: "Gerenciar Usuários", url: "/medicoes/usuarios", icon: Users, adminOnly: true, group: "gestao" },
+  { id: "assinaturas", title: "Central de Assinaturas", url: "/medicoes/assinaturas", icon: ShieldCheck, telaId: "assinaturas", group: "gestao" },
   { id: "perfil", title: "Meu Perfil", url: "/medicoes/perfil", icon: UserCircle, group: "gestao" },
 
   // SGSST PRO
