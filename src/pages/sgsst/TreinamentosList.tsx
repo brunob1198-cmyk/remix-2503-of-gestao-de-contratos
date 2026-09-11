@@ -18,6 +18,8 @@ import {
   type CertificadoDados,
 } from "@/lib/certificadoDocumento";
 import { emissaoDoCertificado, loteDeCertificados } from "@/utils/sgsstCertificadoEmissao";
+import { gerarPdfListaPresenca, pendenciasListaPresenca } from "@/lib/listaPresencaDocumento";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
 import { TablePagination } from "@/components/medicoes/TablePagination";
@@ -49,6 +51,7 @@ import {
   FileDown,
   Loader2,
   CalendarClock,
+  ClipboardList,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { TreinamentoFormDialog } from "@/components/sgsst/TreinamentoFormDialog";
@@ -234,6 +237,80 @@ export default function SgsstTreinamentosListPage() {
       await gerarPdfCertificado(dados);
     } catch (e) {
       toast.error(`Erro ao emitir o certificado: ${(e as Error).message}`);
+    } finally {
+      setEmitindoId(null);
+    }
+  };
+
+  /**
+   * Participantes de uma turma qualquer, fora do hook.
+   *
+   * O hook de participantes é atrelado à turma aberta no modal. O botão da lista
+   * também aparece na linha da tabela, onde nenhuma turma foi selecionada — e
+   * chamar hook condicionalmente não é possível.
+   */
+  const buscarParticipantesDaTurma = async (
+    turmaId: string
+  ): Promise<SgsstTreinamentoParticipante[]> => {
+    const { data, error } = await (supabase
+      .from("sgsst_treinamentos_participantes" as never)
+      .select(
+        `*, colaborador:sgsst_colaborador_dados(
+           id, cpf, nome,
+           profile:profiles(id, nome),
+           recurso:recursos(id, nome),
+           funcao:sgsst_funcoes(id, nome)
+         )`
+      )
+      .eq("turma_id", turmaId)
+      .order("created_at", { ascending: true }) as never as Promise<{
+      data: SgsstTreinamentoParticipante[] | null;
+      error: { message?: string } | null;
+    }>);
+
+    if (error) throw new Error(error.message ?? "falha ao ler os participantes");
+    return data ?? [];
+  };
+
+  /**
+   * Emite a folha de frequência da turma.
+   *
+   * Sem trava de status, ao contrário do certificado: a folha é impressa ANTES do
+   * treinamento, para circular na sala e ser assinada. Turma planejada é
+   * exatamente quando ela serve — bloquear aqui inverteria o propósito.
+   *
+   * Busca os participantes por conta própria porque `turmaParticipantes` só está
+   * carregado para a turma aberta no modal, e o botão também aparece na linha da
+   * tabela, onde nenhuma turma foi selecionada ainda.
+   */
+  const emitirListaDePresenca = async (turma: SgsstTreinamentoTurma) => {
+    setEmitindoId(`presenca-${turma.id}`);
+    try {
+      const participantes =
+        selectedTurmaForPart?.id === turma.id
+          ? turmaParticipantes
+          : await buscarParticipantesDaTurma(turma.id);
+
+      const dados = {
+        turma,
+        participantes,
+        // A turma congela nome e CNPJ da organização, e o documento lê de lá — ler
+        // da empresa atual faria uma folha de dois anos atrás sair com o nome novo.
+        // Mesmo caminho que o certificado usa.
+        empresa: null,
+        geradoPor: profile?.nome ?? null,
+      };
+
+      const pendencias = pendenciasListaPresenca(dados);
+      if (pendencias.length > 0) {
+        toast.warning(`Lista com ${pendencias.length} pendência(s)`, {
+          description: pendencias.slice(0, 3).join(" · "),
+        });
+      }
+
+      await gerarPdfListaPresenca(dados);
+    } catch (e) {
+      toast.error(`Erro ao emitir a lista de presença: ${(e as Error).message}`);
     } finally {
       setEmitindoId(null);
     }
@@ -705,6 +782,23 @@ export default function SgsstTreinamentosListPage() {
                               <Users className="h-3.5 w-3.5" /> Gerenciar Alunos
                             </Button>
 
+                            {/* Na linha da turma também: é onde o usuário procurou. */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs gap-1"
+                              disabled={emitindoId === `presenca-${turma.id}`}
+                              onClick={() => emitirListaDePresenca(turma)}
+                              title="Folha de frequência para assinatura"
+                            >
+                              {emitindoId === `presenca-${turma.id}` ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <ClipboardList className="h-3.5 w-3.5" />
+                              )}
+                              Lista de presença
+                            </Button>
+
                             {allowEdit && (
                               <>
                                 <Button
@@ -948,6 +1042,28 @@ export default function SgsstTreinamentosListPage() {
                       <FileDown className="h-3.5 w-3.5" />
                     )}
                     Certificados da turma
+                  </Button>
+
+                  {/*
+                    A lista de presença fica ao lado dos certificados, mas serve ao
+                    momento oposto: é impressa ANTES do treinamento, para circular na
+                    sala. Por isso não tem trava de status — turma planejada é
+                    justamente quando ela é necessária.
+                  */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                    disabled={emitindoId === `presenca-${selectedTurmaForPart.id}`}
+                    onClick={() => emitirListaDePresenca(selectedTurmaForPart)}
+                    title="Folha de frequência para assinatura, com uma coluna por dia de turma"
+                  >
+                    {emitindoId === `presenca-${selectedTurmaForPart.id}` ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ClipboardList className="h-3.5 w-3.5" />
+                    )}
+                    Lista de presença
                   </Button>
 
                   {allowEdit && (
