@@ -3,6 +3,9 @@ import {
   calcularMatriz,
   situacaoEpi,
   situacaoTreinamento,
+  numeroDaNr,
+  certificadoCasaComExigencia,
+  type CertificadoManual,
   ordenarPendencias,
   estadoDaContagem,
   SITUACAO_ITEM_LABEL,
@@ -553,5 +556,169 @@ describe("estadoDaContagem", () => {
     expect(estadoDaContagem({ isLoading: false, temErro: false, resumo: zerado }).tipo).toBe(
       "CONTAGEM"
     );
+  });
+});
+
+describe("numeroDaNr", () => {
+  it.each([
+    ["NR10", "10"],
+    ["NR-10", "10"],
+    ["nr 10", "10"],
+    ["NR-10 Segurança em Instalações Elétricas", "10"],
+    ["NR-01", "1"],
+    ["NR1", "1"],
+    ["nr-35 trabalho em altura", "35"],
+  ])("%s tem numero %s", (nome, esperado) => {
+    expect(numeroDaNr(nome)).toBe(esperado);
+  });
+
+  it("nao inventa NR onde nao ha", () => {
+    expect(numeroDaNr("Integração de Segurança")).toBeNull();
+    expect(numeroDaNr("Primeiros Socorros")).toBeNull();
+    expect(numeroDaNr("")).toBeNull();
+  });
+});
+
+describe("certificadoCasaComExigencia", () => {
+  const cert = (over: Partial<CertificadoManual> = {}): CertificadoManual => ({
+    colaboradorId: "c1",
+    nomeTreinamento: "NR10",
+    ...over,
+  });
+
+  it("vinculo explicito vence, mesmo com nome diferente", () => {
+    expect(
+      certificadoCasaComExigencia(cert({ treinamentoId: "t1", nomeTreinamento: "qualquer" }), {
+        treinamentoId: "t1",
+        nome: "NR-35",
+      })
+    ).toBe(true);
+  });
+
+  it("casa NR pelo numero, apesar do nome completo diferente", () => {
+    // Ninguem digita o nome do catalogo inteiro no cadastro manual.
+    expect(
+      certificadoCasaComExigencia(cert({ nomeTreinamento: "NR10" }), {
+        treinamentoId: "t1",
+        nome: "NR-10 Segurança em Instalações Elétricas",
+      })
+    ).toBe(true);
+  });
+
+  it("NAO confunde NR1 com NR10", () => {
+    // A armadilha de resolver isso por substring: "nr1" esta contido em "nr10",
+    // e dar baixa na norma errada nao produz erro visivel em lugar nenhum.
+    expect(
+      certificadoCasaComExigencia(cert({ nomeTreinamento: "NR1" }), {
+        treinamentoId: "t1",
+        nome: "NR-10 Segurança em Instalações Elétricas",
+      })
+    ).toBe(false);
+    expect(
+      certificadoCasaComExigencia(cert({ nomeTreinamento: "NR-01" }), {
+        treinamentoId: "t1",
+        nome: "NR10",
+      })
+    ).toBe(false);
+  });
+
+  it("fora das NRs exige nome igual, ignorando acento e caixa", () => {
+    expect(
+      certificadoCasaComExigencia(cert({ nomeTreinamento: "integracao de seguranca" }), {
+        treinamentoId: "t1",
+        nome: "Integração de Segurança",
+      })
+    ).toBe(true);
+    expect(
+      certificadoCasaComExigencia(cert({ nomeTreinamento: "Integração" }), {
+        treinamentoId: "t1",
+        nome: "Integração de Segurança",
+      })
+    ).toBe(false);
+  });
+
+  it("nome vazio de qualquer lado nao casa", () => {
+    expect(
+      certificadoCasaComExigencia(cert({ nomeTreinamento: "  " }), { treinamentoId: "t1", nome: "NR10" })
+    ).toBe(false);
+    expect(certificadoCasaComExigencia(cert(), { treinamentoId: "t1", nome: null })).toBe(false);
+  });
+});
+
+describe("situacaoTreinamento — duas fontes", () => {
+  const manual = (over: Partial<CertificadoManual> = {}): CertificadoManual => ({
+    colaboradorId: "c1",
+    nomeTreinamento: "NR10",
+    ...over,
+  });
+  const extras = (certificadosManuais: CertificadoManual[]) => ({
+    nomeExigido: "NR-10 Segurança em Instalações Elétricas",
+    certificadosManuais,
+  });
+
+  it("certificado manual valido da baixa sem turma nenhuma", () => {
+    // O caso do roteiro 12.10: NR cadastrada a mao, com o papel anexado.
+    expect(
+      situacaoTreinamento([], "t1", HOJE, extras([manual({ validade: "2030-01-01" })]))
+    ).toEqual({ situacao: "OK", vencimento: "2030-01-01" });
+  });
+
+  it("certificado manual sem validade vale para sempre", () => {
+    expect(situacaoTreinamento([], "t1", HOJE, extras([manual()])).situacao).toBe("OK");
+  });
+
+  it("certificado manual vencido volta a ser pendencia", () => {
+    expect(
+      situacaoTreinamento([], "t1", HOJE, extras([manual({ validade: "2020-01-01" })]))
+    ).toEqual({ situacao: "VENCIDO", vencimento: "2020-01-01" });
+  });
+
+  it("MANUAL PREVALECE: vencido derruba turma aprovada e valida", () => {
+    // Decisao do usuario. A consequencia esta escrita no util: registro manual
+    // velho derruba turma recem-concluida, e a saida e corrigir o registro.
+    const turmaValida = [
+      { colaboradorId: "c1", treinamentoId: "t1", resultado: "APROVADO", validade: "2030-01-01" },
+    ];
+    expect(
+      situacaoTreinamento(turmaValida, "t1", HOJE, extras([manual({ validade: "2020-01-01" })]))
+        .situacao
+    ).toBe("VENCIDO");
+  });
+
+  it("MANUAL PREVALECE: valido cobre turma vencida", () => {
+    const turmaVencida = [
+      { colaboradorId: "c1", treinamentoId: "t1", resultado: "APROVADO", validade: "2020-01-01" },
+    ];
+    expect(
+      situacaoTreinamento(turmaVencida, "t1", HOJE, extras([manual({ validade: "2030-01-01" })]))
+        .situacao
+    ).toBe("OK");
+  });
+
+  it("sem certificado do MESMO treinamento, quem decide e a turma", () => {
+    // Certificado de outra NR nao interfere.
+    const turmaValida = [
+      { colaboradorId: "c1", treinamentoId: "t1", resultado: "APROVADO", validade: "2030-01-01" },
+    ];
+    expect(
+      situacaoTreinamento(
+        turmaValida,
+        "t1",
+        HOJE,
+        extras([manual({ nomeTreinamento: "NR35", validade: "2020-01-01" })])
+      ).situacao
+    ).toBe("OK");
+  });
+
+  it("sem nenhuma das duas fontes segue NUNCA_FEITO", () => {
+    expect(situacaoTreinamento([], "t1", HOJE, extras([])).situacao).toBe("NUNCA_FEITO");
+  });
+
+  it("comportamento antigo intacto quando nao se passa a quarta opcao", () => {
+    // As dez chamadas antigas do arquivo continuam valendo sem alteracao.
+    const turma = [
+      { colaboradorId: "c1", treinamentoId: "t1", resultado: "APROVADO", validade: "2030-01-01" },
+    ];
+    expect(situacaoTreinamento(turma, "t1", HOJE).situacao).toBe("OK");
   });
 });

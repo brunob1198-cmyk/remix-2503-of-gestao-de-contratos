@@ -103,33 +103,154 @@ function comoIso(data: Date): string {
 }
 
 /**
+ * Certificado de NR cadastrado à mão na ficha do trabalhador.
+ *
+ * Segunda fonte de "treinamento feito", ao lado da matrícula em turma. Vem da
+ * tabela `sgsst_colaborador_treinamentos`, que guarda o certificado em papel com
+ * o anexo no R2 — treinamento feito antes do sistema, ou em escola externa, onde
+ * nunca houve turma cadastrada aqui.
+ */
+export interface CertificadoManual {
+  colaboradorId: string;
+  /** Texto livre digitado no cadastro. É por ele que o casamento acontece. */
+  nomeTreinamento: string;
+  /**
+   * Curso do catálogo, quando o registro aponta um.
+   *
+   * Hoje é sempre nulo: o formulário da ficha não oferece o campo. Fica aqui
+   * porque, existindo, é o casamento forte — e evita depender do nome.
+   */
+  treinamentoId?: string | null;
+  dataConclusao?: string | null;
+  validade?: string | null;
+}
+
+/**
+ * Nome normalizado para comparação: sem acento, sem caixa, sem espaço repetido.
+ */
+export function chaveDoTreinamento(nome: string): string {
+  return (nome ?? "")
+    .normalize("NFD")
+    // Remove os acentos que o NFD acabou de separar da letra. A faixa entre os
+    // colchetes é U+0300 a U+036F (acentos combinantes) e está escrita com os
+    // caracteres em si, que não têm desenho próprio e por isso parecem lixo no
+    // editor. Se alguém "limpar" essa linha, o casamento por nome passa a
+    // distinguir "Trabalho em Altura" de "Trabalho em altura".
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * O número da NR citada no nome, quando há uma.
+ *
+ * "NR10", "NR-10", "nr 10 básico" e "NR-10 Segurança em Instalações Elétricas"
+ * todos devolvem "10".
+ *
+ * POR QUE NÃO BASTA COMPARAR TEXTO, E POR QUE NÃO PODE SER "UM CONTÉM O OUTRO"
+ *
+ * O cadastro manual é texto livre: ninguém digita o nome do catálogo inteiro.
+ * "NR10" precisa casar com "NR-10 Segurança em Instalações Elétricas".
+ *
+ * Resolver isso por substring seria um desastre silencioso: "NR1" está contido em
+ * "NR10", e NR-1 e NR-10 são normas diferentes — a ficha daria baixa na norma
+ * errada e ninguém notaria. Comparar o NÚMERO extraído não tem esse problema.
+ */
+export function numeroDaNr(nome: string): string | null {
+  const achado = chaveDoTreinamento(nome).match(/\bnr[\s-]?(\d{1,2})\b/);
+  // Sem zero à esquerda: "NR-01" e "NR1" são a mesma norma.
+  return achado ? String(Number(achado[1])) : null;
+}
+
+/** O certificado manual corresponde ao treinamento exigido? */
+export function certificadoCasaComExigencia(
+  certificado: CertificadoManual,
+  exigencia: { treinamentoId: string; nome?: string | null }
+): boolean {
+  // 1. Vínculo explícito vence tudo.
+  if (certificado.treinamentoId && certificado.treinamentoId === exigencia.treinamentoId) {
+    return true;
+  }
+
+  const nomeExigido = exigencia.nome ?? "";
+  if (!nomeExigido.trim() || !certificado.nomeTreinamento?.trim()) return false;
+
+  // 2. Duas NRs com o mesmo número são a mesma norma, tenham o nome que tiverem.
+  const nrDoCertificado = numeroDaNr(certificado.nomeTreinamento);
+  const nrDaExigencia = numeroDaNr(nomeExigido);
+  if (nrDoCertificado && nrDaExigencia) return nrDoCertificado === nrDaExigencia;
+
+  // 3. Fora das NRs, só nome igual. Aproximar mais aqui daria baixa por engano.
+  return chaveDoTreinamento(certificado.nomeTreinamento) === chaveDoTreinamento(nomeExigido);
+}
+
+/** Situação de um conjunto de registros que têm validade. Regra única das duas fontes. */
+function situacaoPorValidade(
+  validades: readonly (string | null | undefined)[],
+  hoje: Date
+): { situacao: "OK" | "VENCIDO"; vencimento: string | null } {
+  // Sem validade = não expira. Um registro perpétuo basta.
+  if (validades.some((v) => !v)) return { situacao: "OK", vencimento: null };
+
+  // Entre os que vencem, o que vence mais tarde é o que manda.
+  const maisRecente = validades
+    .map((v) => v as string)
+    .sort()
+    .at(-1) as string;
+
+  return {
+    situacao: comoData(maisRecente) < hoje ? "VENCIDO" : "OK",
+    vencimento: maisRecente,
+  };
+}
+
+/**
  * Um treinamento conta como feito?
  *
- * Só `APROVADO` vale — presença sem aprovação não capacita. `validade` nula
- * significa treinamento que não expira, então uma aprovação basta para sempre.
+ * DUAS FONTES, E O CERTIFICADO MANUAL PREVALECE
+ *
+ * Antes só a matrícula em turma dava baixa. NR cadastrada à mão na ficha, com o
+ * certificado anexado, não contava: a exigência da função continuava aparecendo
+ * como "nunca realizado" mesmo com o papel no sistema.
+ *
+ * As duas fontes passaram a valer. Quando as duas têm registro do mesmo
+ * treinamento e discordam, o CADASTRO MANUAL decide — decisão do usuário, e
+ * coerente com o fato de ser ele que carrega o certificado assinado.
+ *
+ * A consequência a conhecer: um registro manual velho e vencido derruba uma
+ * turma recém-concluída do mesmo curso. É o preço de "o manual prevalece", e a
+ * saída é corrigir o registro manual, que agora é editável.
+ *
+ * Só `APROVADO` vale na turma — presença sem aprovação não capacita. O cadastro
+ * manual não tem campo de aprovação: existir já significa que houve certificado.
  */
 export function situacaoTreinamento(
   participacoes: readonly ParticipacaoTreinamento[],
   treinamentoId: string,
-  hoje: Date
+  hoje: Date,
+  extras?: {
+    /** Nome do treinamento exigido, para casar com o cadastro manual. */
+    nomeExigido?: string | null;
+    certificadosManuais?: readonly CertificadoManual[];
+  }
 ): { situacao: Exclude<SituacaoItem, "SEM_FUNCAO">; vencimento: string | null } {
+  const manuais = (extras?.certificadosManuais ?? []).filter((c) =>
+    certificadoCasaComExigencia(c, { treinamentoId, nome: extras?.nomeExigido })
+  );
+
+  // O manual decide sozinho quando existe — inclusive para dizer VENCIDO.
+  if (manuais.length > 0) {
+    return situacaoPorValidade(manuais.map((c) => c.validade), hoje);
+  }
+
   const aprovadas = participacoes.filter(
     (p) => p.treinamentoId === treinamentoId && p.resultado === "APROVADO"
   );
 
   if (aprovadas.length === 0) return { situacao: "NUNCA_FEITO", vencimento: null };
 
-  // Sem validade = não expira. Se qualquer aprovação for perpétua, está em dia.
-  if (aprovadas.some((p) => !p.validade)) return { situacao: "OK", vencimento: null };
-
-  // Entre as que vencem, a que vence mais tarde é a que manda.
-  const maisRecente = aprovadas
-    .map((p) => p.validade as string)
-    .sort()
-    .at(-1) as string;
-
-  const vencida = comoData(maisRecente) < hoje;
-  return { situacao: vencida ? "VENCIDO" : "OK", vencimento: maisRecente };
+  return situacaoPorValidade(aprovadas.map((p) => p.validade), hoje);
 }
 
 /**
@@ -217,11 +338,24 @@ export function calcularMatriz(params: {
   treinamentosPorFuncao: Readonly<Record<string, readonly ExigenciaTreinamento[]>>;
   episPorFuncao: Readonly<Record<string, readonly ExigenciaEpi[]>>;
   participacoes: readonly ParticipacaoTreinamento[];
+  /**
+   * NRs cadastradas a mao na ficha do trabalhador. Segunda fonte de baixa, e a
+   * que prevalece quando discorda da turma. Opcional para nao quebrar quem ainda
+   * nao passa a lista.
+   */
+  certificadosManuais?: readonly CertificadoManual[];
   entregas: readonly EntregaEpi[];
   hoje: Date;
 }): ResultadoMatriz {
-  const { colaboradores, treinamentosPorFuncao, episPorFuncao, participacoes, entregas, hoje } =
-    params;
+  const {
+    colaboradores,
+    treinamentosPorFuncao,
+    episPorFuncao,
+    participacoes,
+    entregas,
+    hoje,
+  } = params;
+  const certificadosManuais = params.certificadosManuais ?? [];
 
   const pendencias: PendenciaItem[] = [];
   const porFuncao: Record<string, ResumoDaFuncao> = {};
@@ -258,6 +392,9 @@ export function calcularMatriz(params: {
     const minhasParticipacoes = participacoes.filter(
       (p) => p.colaboradorId === colaborador.id
     );
+    const meusCertificados = certificadosManuais.filter(
+      (c) => c.colaboradorId === colaborador.id
+    );
     const minhasEntregas = entregas.filter((e) => e.colaboradorId === colaborador.id);
 
     const exigenciasTr = (treinamentosPorFuncao[colaborador.funcaoId] ?? []).filter(
@@ -273,7 +410,8 @@ export function calcularMatriz(params: {
       const { situacao, vencimento } = situacaoTreinamento(
         minhasParticipacoes,
         exigencia.treinamentoId,
-        hoje
+        hoje,
+        { nomeExigido: exigencia.nome, certificadosManuais: meusCertificados }
       );
       if (situacao === "OK") continue;
 

@@ -64,6 +64,15 @@ interface LinhaParticipacao {
   turma?: { treinamento_id: string } | null;
 }
 
+interface LinhaCertificadoManual {
+  colaborador_id: string;
+  treinamento_id?: string | null;
+  nome_treinamento?: string | null;
+  data_conclusao?: string | null;
+  /** A coluna chama data_validade aqui, e validade na participacao em turma. */
+  data_validade?: string | null;
+}
+
 interface LinhaEntrega {
   colaborador_id: string;
   epi_id: string;
@@ -116,7 +125,7 @@ export function useSgsstFuncaoMatriz(options?: { enabled?: boolean }): MatrizFun
     enabled: !!empresaId && options?.enabled !== false,
     staleTime: 1000 * 60,
     queryFn: async () => {
-      const [colaboradores, exigenciasTr, exigenciasEpi, participacoes, entregas] =
+      const [colaboradores, exigenciasTr, exigenciasEpi, participacoes, entregas, certificadosManuais] =
         await Promise.all([
           buscar<LinhaColaborador>(
             "sgsst_colaborador_dados",
@@ -136,9 +145,16 @@ export function useSgsstFuncaoMatriz(options?: { enabled?: boolean }): MatrizFun
             "colaborador_id, resultado, validade, data_conclusao, turma:sgsst_treinamentos_turmas(treinamento_id)"
           ),
           buscar<LinhaEntrega>("sgsst_epi_entregas", "colaborador_id, epi_id, data_entrega"),
+          // Segunda fonte de baixa: NR cadastrada à mão na ficha, com o certificado
+          // anexado. Antes a matriz olhava só a matrícula em turma, e o papel no
+          // sistema não contava — a exigência seguia como "nunca realizado".
+          buscar<LinhaCertificadoManual>(
+            "sgsst_colaborador_treinamentos",
+            "colaborador_id, treinamento_id, nome_treinamento, data_conclusao, data_validade"
+          ),
         ]);
 
-      const truncado = [colaboradores, exigenciasTr, exigenciasEpi, participacoes, entregas].some(
+      const truncado = [colaboradores, exigenciasTr, exigenciasEpi, participacoes, entregas, certificadosManuais].some(
         (lista) => lista.length >= MATRIZ_LIMITE_LINHAS
       );
 
@@ -193,6 +209,13 @@ export function useSgsstFuncaoMatriz(options?: { enabled?: boolean }): MatrizFun
         treinamentosPorFuncao,
         episPorFuncao,
         participacoes: participacoesMatriz,
+        certificadosManuais: certificadosManuais.map((c) => ({
+          colaboradorId: c.colaborador_id,
+          nomeTreinamento: c.nome_treinamento ?? "",
+          treinamentoId: c.treinamento_id ?? null,
+          dataConclusao: c.data_conclusao ?? null,
+          validade: c.data_validade ?? null,
+        })),
         entregas: entregasMatriz,
         hoje: new Date(),
       });
