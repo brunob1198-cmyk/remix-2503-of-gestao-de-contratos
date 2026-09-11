@@ -8,7 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SgsstColaboradorDados, useSgsstColaboradores } from "@/hooks/sgsst/useSgsstColaboradores";
+import {
+  SgsstColaboradorDados,
+  SgsstColaboradorTreinamento,
+  useSgsstColaboradores,
+} from "@/hooks/sgsst/useSgsstColaboradores";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { uploadImage } from "@/services/uploadImage";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,6 +34,7 @@ import {
   MapPin,
   IdCard,
   FileDown,
+  Edit2,
 } from "lucide-react";
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,7 +54,7 @@ export function ColaboradorDetailDialog({
   onOpenChange,
   colaborador,
 }: ColaboradorDetailDialogProps) {
-  const { addTreinamento, removeTreinamento } = useSgsstColaboradores();
+  const { addTreinamento, updateTreinamento, removeTreinamento } = useSgsstColaboradores();
   const { empresa } = useEmpresaAtual();
   const { profile: usuario } = useAuth();
 
@@ -110,6 +115,8 @@ export function ColaboradorDetailDialog({
   };
 
   const [isAddingTreinamento, setIsAddingTreinamento] = useState(false);
+  // Nulo = cadastrando; preenchido = corrigindo um lancamento existente.
+  const [treinamentoEmEdicao, setTreinamentoEmEdicao] = useState<SgsstColaboradorTreinamento | null>(null);
   const [isUploadingCert, setIsUploadingCert] = useState(false);
 
   // New Training Form States
@@ -155,6 +162,45 @@ export function ColaboradorDetailDialog({
     }
   };
 
+  const limparFormularioDoTreinamento = () => {
+    setNomeTreinamento("");
+    setCargaHoraria("8");
+    setDataConclusao("");
+    setDataValidade("");
+    setCertificadoUrl("");
+    setCertificadoR2Key("");
+    setObservacoes("");
+    setTreinamentoEmEdicao(null);
+    setIsAddingTreinamento(false);
+  };
+
+  /**
+   * Abre o formulário limpo para um cadastro novo.
+   *
+   * Zera `treinamentoEmEdicao` antes de abrir: reaproveitar o mesmo formulário
+   * para os dois casos é o que evita duplicar tela, mas deixa a armadilha de
+   * abrir "novo" ainda apontando para o registro que acabou de ser editado — e o
+   * cadastro sobrescreveria aquele lançamento em vez de criar outro.
+   */
+  const limparFormularioAbrindoCadastro = () => {
+    limparFormularioDoTreinamento();
+    setIsAddingTreinamento(true);
+  };
+
+  /** Abre o mesmo formulário do cadastro, já preenchido com o lançamento. */
+  const iniciarEdicaoDoTreinamento = (tr: SgsstColaboradorTreinamento) => {
+    setTreinamentoEmEdicao(tr);
+    setNomeTreinamento(tr.nome_treinamento ?? "");
+    setCargaHoraria(String(tr.carga_horaria ?? 8));
+    setDataConclusao(tr.data_conclusao ?? "");
+    setDataValidade(tr.data_validade ?? "");
+    // O anexo vem junto: é o que se perdia no caminho de apagar e lançar de novo.
+    setCertificadoUrl(tr.certificado_url ?? "");
+    setCertificadoR2Key(tr.certificado_r2_key ?? "");
+    setObservacoes(tr.observacoes ?? "");
+    setIsAddingTreinamento(true);
+  };
+
   const handleSaveTreinamento = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomeTreinamento.trim()) {
@@ -163,26 +209,33 @@ export function ColaboradorDetailDialog({
     }
 
     try {
-      await addTreinamento.mutateAsync({
-        colaborador_id: colaborador.id,
-        nome_treinamento: nomeTreinamento.trim(),
-        carga_horaria: cargaHoraria ? parseInt(cargaHoraria) : 8,
-        data_conclusao: dataConclusao || undefined,
-        data_validade: dataValidade || undefined,
-        certificado_url: certificadoUrl || undefined,
-        certificado_r2_key: certificadoR2Key || undefined,
-        observacoes: observacoes.trim() || undefined,
-      });
+      if (treinamentoEmEdicao) {
+        await updateTreinamento.mutateAsync({
+          id: treinamentoEmEdicao.id,
+          nome_treinamento: nomeTreinamento.trim(),
+          carga_horaria: cargaHoraria ? parseInt(cargaHoraria) : 8,
+          // `null` e não `undefined` na edição: `undefined` seria omitido do update
+          // e o campo ficaria com o valor antigo — limpar uma data seria impossível.
+          data_conclusao: dataConclusao || null,
+          data_validade: dataValidade || null,
+          certificado_url: certificadoUrl || null,
+          certificado_r2_key: certificadoR2Key || null,
+          observacoes: observacoes.trim() || null,
+        });
+      } else {
+        await addTreinamento.mutateAsync({
+          colaborador_id: colaborador.id,
+          nome_treinamento: nomeTreinamento.trim(),
+          carga_horaria: cargaHoraria ? parseInt(cargaHoraria) : 8,
+          data_conclusao: dataConclusao || undefined,
+          data_validade: dataValidade || undefined,
+          certificado_url: certificadoUrl || undefined,
+          certificado_r2_key: certificadoR2Key || undefined,
+          observacoes: observacoes.trim() || undefined,
+        });
+      }
 
-      // Reset form
-      setNomeTreinamento("");
-      setCargaHoraria("8");
-      setDataConclusao("");
-      setDataValidade("");
-      setCertificadoUrl("");
-      setCertificadoR2Key("");
-      setObservacoes("");
-      setIsAddingTreinamento(false);
+      limparFormularioDoTreinamento();
     } catch (err) {
       // Handled in mutation
     }
@@ -461,7 +514,7 @@ export function ColaboradorDetailDialog({
               </div>
 
               {!isAddingTreinamento && (
-                <Button size="sm" onClick={() => setIsAddingTreinamento(true)} className="gap-1 text-xs">
+                <Button size="sm" onClick={limparFormularioAbrindoCadastro} className="gap-1 text-xs">
                   <Plus className="h-3.5 w-3.5" /> Adicionar Treinamento / NR
                 </Button>
               )}
@@ -471,7 +524,11 @@ export function ColaboradorDetailDialog({
             {isAddingTreinamento && (
               <Card className="border-primary/30 bg-primary/5">
                 <CardHeader className="py-2.5 px-4 border-b bg-primary/10">
-                  <CardTitle className="text-xs font-bold text-primary">Novo Treinamento / Certificado NR</CardTitle>
+                  <CardTitle className="text-xs font-bold text-primary">
+                    {treinamentoEmEdicao
+                      ? `Editando: ${treinamentoEmEdicao.nome_treinamento}`
+                      : "Novo Treinamento / Certificado NR"}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
                   <form onSubmit={handleSaveTreinamento} className="space-y-3 text-xs">
@@ -544,11 +601,21 @@ export function ColaboradorDetailDialog({
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2 border-t">
-                      <Button type="button" variant="outline" size="sm" onClick={() => setIsAddingTreinamento(false)}>
+                      {/*
+                        Cancelar limpa o formulário inteiro, e não só fecha: sem
+                        zerar `treinamentoEmEdicao`, o próximo clique em "Adicionar"
+                        abriria o formulário ainda apontando para o registro anterior
+                        e o cadastro novo sobrescreveria aquele lançamento.
+                      */}
+                      <Button type="button" variant="outline" size="sm" onClick={limparFormularioDoTreinamento}>
                         Cancelar
                       </Button>
-                      <Button type="submit" size="sm" disabled={addTreinamento.isPending}>
-                        Salvar Treinamento
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={addTreinamento.isPending || updateTreinamento.isPending}
+                      >
+                        {treinamentoEmEdicao ? "Salvar alterações" : "Salvar Treinamento"}
                       </Button>
                     </div>
                   </form>
@@ -605,11 +672,30 @@ export function ColaboradorDetailDialog({
                               )}
                             </TableCell>
                             <TableCell className="text-right">
+                              {/*
+                                Editar existia só como apagar-e-lançar-de-novo, e esse
+                                caminho perde o anexo: a URL do certificado no R2 vive
+                                no registro apagado, então o usuário teria de reenviar
+                                o arquivo para corrigir uma data digitada errada.
+                                Data de conclusão e validade vêm de um certificado em
+                                papel, digitadas à mão — são os campos que mais se
+                                corrigem.
+                              */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => iniciarEdicaoDoTreinamento(tr)}
+                                className="h-7 w-7"
+                                title="Editar lançamento"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleRemoveTr(tr.id)}
                                 className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Remover lançamento"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>

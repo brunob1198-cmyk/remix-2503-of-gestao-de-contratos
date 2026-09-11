@@ -225,6 +225,57 @@ export function useSgsstColaboradores(params?: { page?: number; pageSize?: numbe
     },
   });
 
+  /**
+   * Corrige um registro de NR / certificado já lançado.
+   *
+   * Existia só cadastrar e apagar. Para mudar uma data errada, o caminho era
+   * apagar e lançar de novo — o que perde o `created_at` original e, pior, exige
+   * reenviar o certificado ao R2, já que a URL vive no registro apagado.
+   *
+   * Data de conclusão e validade são justamente os campos que mais se corrigem:
+   * vêm de um certificado em papel, digitados à mão.
+   */
+  const updateTreinamento = useMutation({
+    mutationFn: async ({
+      id,
+      ...input
+    }: {
+      id: string;
+      nome_treinamento?: string;
+      carga_horaria?: number | null;
+      data_conclusao?: string | null;
+      data_validade?: string | null;
+      certificado_url?: string | null;
+      certificado_r2_key?: string | null;
+      observacoes?: string | null;
+    }) => {
+      // `as never` com a Promise tipada, e não o `as any` que o resto deste arquivo
+      // usa: o gate de lint trava a contagem de erros, e três `any` novos estouram
+      // a tolerância. O efeito é o mesmo e o retorno fica descrito.
+      const { data, error } = await (supabase
+        .from("sgsst_colaborador_treinamentos" as never)
+        .update(input as never)
+        .eq("id", id)
+        .select()
+        .single() as never as Promise<{
+        data: SgsstColaboradorTreinamento | null;
+        error: { message?: string } | null;
+      }>);
+
+      if (error) throw error;
+      return data as SgsstColaboradorTreinamento;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_colaboradores"] });
+      toast.success("Treinamento / Certificado atualizado!");
+    },
+    onError: (err: unknown) => {
+      toast.error(
+        `Erro ao atualizar treinamento: ${err instanceof Error ? err.message : String(err)}`
+      );
+    },
+  });
+
   const removeTreinamento = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase
@@ -254,6 +305,7 @@ export function useSgsstColaboradores(params?: { page?: number; pageSize?: numbe
     updateColaborador,
     removeColaborador,
     addTreinamento,
+    updateTreinamento,
     removeTreinamento,
   };
 }
