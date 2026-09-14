@@ -239,6 +239,9 @@ export function useSgsstFuncaoMatriz(options?: { enabled?: boolean }): MatrizFun
     // de concluir "esta função não tem ninguém": mapa vazio durante a consulta
     // não é zero colaborador.
     porFuncao: data?.porFuncao ?? {},
+    // Mesma ressalva do `porFuncao`: vazio durante a consulta não quer dizer que
+    // o trabalhador não tem exigência nenhuma.
+    exigenciasPorColaborador: data?.exigenciasPorColaborador ?? {},
     truncado: data?.truncado ?? false,
     isLoading,
     error,

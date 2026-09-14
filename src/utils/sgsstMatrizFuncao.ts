@@ -265,14 +265,28 @@ export function situacaoEpi(
   epiId: string,
   periodicidadeTrocaMeses: number | null | undefined,
   hoje: Date
-): { situacao: Exclude<SituacaoItem, "SEM_FUNCAO">; vencimento: string | null } {
+): {
+  situacao: Exclude<SituacaoItem, "SEM_FUNCAO">;
+  vencimento: string | null;
+  /**
+   * Quando o EPI foi entregue pela última vez.
+   *
+   * Devolvido junto porque é a METADE AFIRMATIVA da resposta. Só com `situacao`
+   * dá para dizer que falta alguma coisa; para dizer que o EPI exigido pela
+   * função **consta como entregue** — que é o que um dossiê precisa provar — é
+   * preciso a data da entrega.
+   */
+  ultimaEntrega: string | null;
+} {
   const doEpi = entregas.filter((e) => e.epiId === epiId);
-  if (doEpi.length === 0) return { situacao: "NUNCA_FEITO", vencimento: null };
+  if (doEpi.length === 0) {
+    return { situacao: "NUNCA_FEITO", vencimento: null, ultimaEntrega: null };
+  }
 
   const ultima = doEpi.map((e) => e.dataEntrega).sort().at(-1) as string;
 
   if (!periodicidadeTrocaMeses || periodicidadeTrocaMeses <= 0) {
-    return { situacao: "OK", vencimento: null };
+    return { situacao: "OK", vencimento: null, ultimaEntrega: ultima };
   }
 
   const proximaTroca = somarMeses(comoData(ultima), periodicidadeTrocaMeses);
@@ -281,6 +295,7 @@ export function situacaoEpi(
   return {
     situacao: vencida ? "VENCIDO" : "OK",
     vencimento: comoIso(proximaTroca),
+    ultimaEntrega: ultima,
   };
 }
 
@@ -316,6 +331,92 @@ export const RESUMO_DA_FUNCAO_VAZIO: ResumoDaFuncao = {
   pendenciasEpi: 0,
 };
 
+/**
+ * Uma exigência da função já confrontada com o histórico do trabalhador —
+ * INCLUSIVE quando está tudo certo.
+ *
+ * POR QUE O "ESTÁ TUDO CERTO" PRECISA EXISTIR COMO DADO
+ *
+ * A matriz nasceu para responder "quem está em falta", e por isso descartava todo
+ * item em dia. O efeito colateral só apareceu no uso: o dossiê do trabalhador não
+ * tinha como dizer que o EPI exigido pela função **foi entregue**, nem quando é a
+ * próxima troca — a data era calculada por `situacaoEpi` e jogada fora na linha
+ * seguinte.
+ *
+ * Um dossiê que só sabe listar problemas não serve para provar conformidade, que
+ * é justamente para o que ele é pedido numa fiscalização.
+ */
+export interface ExigenciaAvaliada {
+  tipo: "TREINAMENTO" | "EPI";
+  itemId: string;
+  itemNome: string;
+  /** Falso = recomendado. Só o obrigatório vira pendência. */
+  obrigatorio: boolean;
+  situacao: Exclude<SituacaoItem, "SEM_FUNCAO">;
+  /** Vencimento do treinamento, ou a data da próxima troca do EPI. */
+  vencimento: string | null;
+  /** Só para EPI: quando foi entregue e de quanto em quanto tempo se troca. */
+  ultimaEntrega?: string | null;
+  periodicidadeTrocaMeses?: number | null;
+}
+
+/**
+ * Como a exigência é nomeada para quem lê.
+ *
+ * "Em dia" serve para treinamento, mas não para EPI: o que se quer saber de um
+ * capacete é se ele foi ENTREGUE. E "Vencido" num EPI não significa que o
+ * equipamento estragou — significa que passou da data de troca programada, que é
+ * outra afirmação.
+ */
+export function rotuloDaExigencia(e: ExigenciaAvaliada): string {
+  if (e.tipo === "EPI") {
+    if (e.situacao === "OK") return "Entregue";
+    if (e.situacao === "VENCIDO") return "Troca vencida";
+    return "Nunca entregue";
+  }
+  return SITUACAO_ITEM_LABEL[e.situacao];
+}
+
+/**
+ * A frase que sustenta o rótulo: datas e periodicidade.
+ *
+ * Recebe o formatador de data de fora para continuar pura — a tela e o PDF
+ * formatam data de jeitos diferentes e precisam do mesmo texto.
+ */
+export function detalheDaExigencia(
+  e: ExigenciaAvaliada,
+  formatarData: (iso?: string | null) => string
+): string {
+  if (e.tipo === "EPI") {
+    if (e.situacao === "NUNCA_FEITO") return "";
+
+    const entrega = e.ultimaEntrega ? `entregue em ${formatarData(e.ultimaEntrega)}` : "";
+
+    if (e.situacao === "VENCIDO") {
+      const venc = e.vencimento ? `troca venceu em ${formatarData(e.vencimento)}` : "";
+      return [entrega, venc].filter(Boolean).join(" · ");
+    }
+
+    // Sem periodicidade cadastrada não há previsão de troca — e inventar uma
+    // seria afirmar um prazo que ninguém definiu.
+    const troca = e.vencimento
+      ? `próxima troca em ${formatarData(e.vencimento)}${
+          e.periodicidadeTrocaMeses ? ` (a cada ${e.periodicidadeTrocaMeses} meses)` : ""
+        }`
+      : "sem troca programada";
+
+    return [entrega, troca].filter(Boolean).join(" · ");
+  }
+
+  if (e.situacao === "OK") {
+    return e.vencimento ? `válido até ${formatarData(e.vencimento)}` : "sem vencimento";
+  }
+  if (e.situacao === "VENCIDO" && e.vencimento) {
+    return `venceu em ${formatarData(e.vencimento)}`;
+  }
+  return "";
+}
+
 export interface ResultadoMatriz {
   pendencias: PendenciaItem[];
   resumo: ResumoMatriz;
@@ -325,6 +426,13 @@ export interface ResultadoMatriz {
    * terminou: ausência durante o carregamento não é zero.
    */
   porFuncao: Record<string, ResumoDaFuncao>;
+  /**
+   * Todas as exigências de cada trabalhador, em dia ou não, indexadas por id de
+   * colaborador. Sai do MESMO cálculo das pendências de propósito: uma segunda
+   * função avaliando a mesma regra acabaria divergindo dela, e aí a tela e a
+   * lista de pendências passariam a discordar sobre o mesmo trabalhador.
+   */
+  exigenciasPorColaborador: Record<string, ExigenciaAvaliada[]>;
 }
 
 /**
@@ -359,6 +467,7 @@ export function calcularMatriz(params: {
 
   const pendencias: PendenciaItem[] = [];
   const porFuncao: Record<string, ResumoDaFuncao> = {};
+  const exigenciasPorColaborador: Record<string, ExigenciaAvaliada[]> = {};
   let semFuncao = 0;
   let emDia = 0;
 
@@ -397,12 +506,15 @@ export function calcularMatriz(params: {
     );
     const minhasEntregas = entregas.filter((e) => e.colaboradorId === colaborador.id);
 
-    const exigenciasTr = (treinamentosPorFuncao[colaborador.funcaoId] ?? []).filter(
-      (t) => t.obrigatorio
-    );
-    const exigenciasEpi = (episPorFuncao[colaborador.funcaoId] ?? []).filter(
-      (e) => e.obrigatorio
-    );
+    // TODAS as exigências são avaliadas, inclusive as recomendadas e as que estão
+    // em dia. O filtro de obrigatoriedade passou a ser aplicado só na hora de
+    // decidir o que vira PENDÊNCIA — antes ele era aplicado aqui, e por isso o
+    // item em dia não existia nem como dado.
+    const exigenciasTr = treinamentosPorFuncao[colaborador.funcaoId] ?? [];
+    const exigenciasEpi = episPorFuncao[colaborador.funcaoId] ?? [];
+
+    const avaliadas: ExigenciaAvaliada[] = [];
+    exigenciasPorColaborador[colaborador.id] = avaliadas;
 
     let temPendencia = false;
 
@@ -413,7 +525,19 @@ export function calcularMatriz(params: {
         hoje,
         { nomeExigido: exigencia.nome, certificadosManuais: meusCertificados }
       );
-      if (situacao === "OK") continue;
+
+      avaliadas.push({
+        tipo: "TREINAMENTO",
+        itemId: exigencia.treinamentoId,
+        itemNome: exigencia.nome,
+        obrigatorio: exigencia.obrigatorio,
+        situacao,
+        vencimento,
+      });
+
+      // Recomendação em falta não é pendência: apareceria como cobrança e o
+      // usuário passaria a ignorar a lista inteira.
+      if (situacao === "OK" || !exigencia.obrigatorio) continue;
 
       temPendencia = true;
       resumoFuncao.pendenciasTreinamento += 1;
@@ -433,13 +557,25 @@ export function calcularMatriz(params: {
     }
 
     for (const exigencia of exigenciasEpi) {
-      const { situacao, vencimento } = situacaoEpi(
+      const { situacao, vencimento, ultimaEntrega } = situacaoEpi(
         minhasEntregas,
         exigencia.epiId,
         exigencia.periodicidadeTrocaMeses,
         hoje
       );
-      if (situacao === "OK") continue;
+
+      avaliadas.push({
+        tipo: "EPI",
+        itemId: exigencia.epiId,
+        itemNome: exigencia.nome,
+        obrigatorio: exigencia.obrigatorio,
+        situacao,
+        vencimento,
+        ultimaEntrega,
+        periodicidadeTrocaMeses: exigencia.periodicidadeTrocaMeses ?? null,
+      });
+
+      if (situacao === "OK" || !exigencia.obrigatorio) continue;
 
       temPendencia = true;
       resumoFuncao.pendenciasEpi += 1;
@@ -481,6 +617,7 @@ export function calcularMatriz(params: {
       pendenciasEpi: pendencias.filter((p) => p.tipo === "EPI").length,
     },
     porFuncao,
+    exigenciasPorColaborador,
   };
 }
 

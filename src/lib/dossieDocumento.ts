@@ -6,6 +6,11 @@ import {
 } from "@/lib/sgsstDocumentoEstilos";
 import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import { enderecoComComplemento } from "@/utils/cep";
+import {
+  detalheDaExigencia,
+  rotuloDaExigencia,
+  type ExigenciaAvaliada,
+} from "@/utils/sgsstMatrizFuncao";
 import type {
   SgsstColaboradorDados,
   SgsstColaboradorTreinamento,
@@ -60,6 +65,15 @@ export interface DossieDados {
   entregasEpi: readonly SgsstEpiEntrega[];
   /** Do cruzamento com as exigências da função. */
   pendencias: readonly PendenciaDossie[];
+  /**
+   * O mesmo cruzamento, mas COMPLETO — inclusive o que está em dia.
+   *
+   * Opcional para não quebrar quem ainda não passa a lista. Quando vem, a seção
+   * "Situação hoje" deixa de ser uma lista de faltas e passa a ser o quadro
+   * inteiro: é o que permite ao dossiê provar que o EPI exigido foi entregue e
+   * quando é a próxima troca, em vez de só provar o que falta.
+   */
+  exigencias?: readonly ExigenciaAvaliada[];
   empresa: { nome?: string | null; cnpj?: string | null } | null;
   geradoPor?: string | null;
 }
@@ -221,6 +235,71 @@ export function pendenciasDossie(dados: DossieDados, hoje = new Date()): string[
   return p;
 }
 
+/**
+ * O quadro das exigências da função.
+ *
+ * Com a lista completa, imprime TODAS as exigências e a situação de cada uma —
+ * inclusive as atendidas, com a data da entrega e a da próxima troca. É a
+ * diferença entre um documento que lista faltas e um documento que comprova
+ * conformidade, e é este segundo que é pedido numa fiscalização.
+ *
+ * Sem a lista completa, cai no comportamento antigo: só as pendências. O dossiê
+ * continua saindo, dizendo menos.
+ */
+function tabelaDeExigencias(dados: DossieDados): string {
+  const exigencias = dados.exigencias ?? [];
+
+  if (exigencias.length > 0) {
+    return `<table class="doc-tabela">
+        <thead>
+          <tr><th>Tipo</th><th>Item exigido pela função</th><th>Situação</th><th>Detalhe</th></tr>
+        </thead>
+        <tbody>
+          ${exigencias
+            .map(
+              (e) => `<tr>
+                <td>${e.tipo === "TREINAMENTO" ? "Treinamento" : "EPI"}</td>
+                <td>${esc(e.itemNome)}${
+                  e.obrigatorio ? "" : ' <span class="doc-neutro">(recomendado)</span>'
+                }</td>
+                <td><span class="${
+                  e.situacao === "OK" ? "doc-apto" : "doc-inapto"
+                }">${esc(rotuloDaExigencia(e))}</span></td>
+                <td>${esc(detalheDaExigencia(e, (iso) => (iso ? dataBr(iso) : "—"))) || "—"}</td>
+              </tr>`
+            )
+            .join("")}
+        </tbody>
+       </table>`;
+  }
+
+  if (dados.pendencias.length === 0) {
+    return `<p class="doc-conclusao doc-apto">
+        Nenhuma pendência em relação às exigências da função registrada.
+       </p>`;
+  }
+
+  return `<table class="doc-tabela">
+      <thead>
+        <tr><th>Tipo</th><th>Item exigido pela função</th><th>Situação</th><th>Venceu em</th></tr>
+      </thead>
+      <tbody>
+        ${dados.pendencias
+          .map(
+            (p) => `<tr>
+              <td>${p.tipo === "TREINAMENTO" ? "Treinamento" : "EPI"}</td>
+              <td>${esc(p.itemNome)}</td>
+              <td><span class="doc-inapto">${
+                p.situacao === "NUNCA_FEITO" ? "Nunca realizado" : "Vencido"
+              }</span></td>
+              <td>${p.vencimento ? dataBr(p.vencimento) : "—"}</td>
+            </tr>`
+          )
+          .join("")}
+      </tbody>
+     </table>`;
+}
+
 function secaoSituacao(dados: DossieDados, hoje: Date): string {
   const { asos, pendencias } = dados;
   const situacao = situacaoOcupacional(asos, hoje);
@@ -255,31 +334,7 @@ function secaoSituacao(dados: DossieDados, hoje: Date): string {
           </div>
         </div>
 
-        ${
-          pendencias.length === 0
-            ? `<p class="doc-conclusao doc-apto">
-                Nenhuma pendência em relação às exigências da função registrada.
-               </p>`
-            : `<table class="doc-tabela">
-                <thead>
-                  <tr><th>Tipo</th><th>Item exigido pela função</th><th>Situação</th><th>Venceu em</th></tr>
-                </thead>
-                <tbody>
-                  ${pendencias
-                    .map(
-                      (p) => `<tr>
-                        <td>${p.tipo === "TREINAMENTO" ? "Treinamento" : "EPI"}</td>
-                        <td>${esc(p.itemNome)}</td>
-                        <td><span class="doc-inapto">${
-                          p.situacao === "NUNCA_FEITO" ? "Nunca realizado" : "Vencido"
-                        }</span></td>
-                        <td>${p.vencimento ? dataBr(p.vencimento) : "—"}</td>
-                      </tr>`
-                    )
-                    .join("")}
-                </tbody>
-               </table>`
-        }
+        ${tabelaDeExigencias(dados)}
       </div>
     </div>
   `;

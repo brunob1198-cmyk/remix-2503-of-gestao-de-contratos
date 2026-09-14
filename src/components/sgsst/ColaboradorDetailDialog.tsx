@@ -39,6 +39,11 @@ import {
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSgsstColaboradorDossie } from "@/hooks/sgsst/useSgsstColaboradorDossie";
+import {
+  detalheDaExigencia,
+  rotuloDaExigencia,
+  type ExigenciaAvaliada,
+} from "@/utils/sgsstMatrizFuncao";
 import { gerarPdfDossie, pendenciasDossie } from "@/lib/dossieDocumento";
 import { format, parseISO, differenceInYears } from "date-fns";
 import { toast } from "sonner";
@@ -73,6 +78,12 @@ export function ColaboradorDetailDialog({
       return valor;
     }
   };
+  const classeDaExigencia = (situacao: ExigenciaAvaliada["situacao"]) => {
+    if (situacao === "OK") return "text-emerald-700 font-semibold";
+    if (situacao === "VENCIDO") return "text-red-700 font-semibold";
+    return "text-amber-800 font-semibold";
+  };
+
   const [emitindo, setEmitindo] = useState(false);
 
   const emitirDossie = async () => {
@@ -85,6 +96,7 @@ export function ColaboradorDetailDialog({
       asos: dossie.asos,
       entregasEpi: dossie.entregasEpi,
       pendencias: dossie.pendencias,
+      exigencias: dossie.exigencias,
       empresa: empresa ?? null,
       geradoPor: usuario?.nome ?? null,
     };
@@ -414,6 +426,18 @@ export function ColaboradorDetailDialog({
               Dado calculado e exibido em nenhum lugar é o mesmo que dado ausente para
               quem usa: o usuário vinculou o treinamento, abriu o dossiê e concluiu que
               não estava sendo cobrado.
+
+              E O ITEM EM DIA — o que faltava para o roteiro 13.16.
+
+              A primeira versão deste bloco listava só PENDÊNCIA. Com o EPI entregue e
+              dentro do prazo, ele não tinha o que mostrar — e a pergunta do roteiro é
+              justamente a afirmativa: "o EPI exigido pela função consta como entregue,
+              e a previsão de troca aparece?". A data da próxima troca já era calculada
+              por `situacaoEpi` e descartada na linha seguinte, porque a matriz existia
+              para achar faltas.
+
+              Um dossiê que só sabe listar problemas não prova conformidade — que é
+              exatamente para o que ele é pedido numa fiscalização.
             */}
             <Card>
               <CardHeader className="py-2.5 px-4 bg-slate-50 border-b">
@@ -437,35 +461,38 @@ export function ColaboradorDetailDialog({
                     Colaborador sem função definida. Sem função, o sistema não tem
                     contra o que conferir treinamentos e EPIs.
                   </p>
-                ) : dossie.pendencias.length === 0 ? (
-                  <p className="text-emerald-700 font-medium">
-                    Nenhuma pendência de treinamento ou EPI para esta função.
+                ) : dossie.exigencias.length === 0 ? (
+                  // "Nenhuma exigência cadastrada" NÃO é "está tudo certo". Dizer
+                  // que está em dia aqui afirmaria conformidade sobre uma função
+                  // que ninguém configurou.
+                  <p className="text-muted-foreground">
+                    Esta função ainda não tem treinamento nem EPI cadastrado como
+                    exigência. Sem isso não há contra o que conferir.
                   </p>
                 ) : (
                   <div className="space-y-1.5">
-                    {dossie.pendencias.map((p, i) => (
+                    {dossie.exigencias.map((e) => (
                       <div
-                        key={`${p.tipo}-${p.itemNome}-${i}`}
-                        className="flex flex-wrap items-center gap-2 p-2 rounded border bg-amber-50/60"
+                        key={`${e.tipo}-${e.itemId}`}
+                        className={`flex flex-wrap items-center gap-2 p-2 rounded border ${
+                          e.situacao === "OK" ? "bg-emerald-50/60" : "bg-amber-50/60"
+                        }`}
                       >
                         <Badge variant="outline" className="text-[10px]">
-                          {p.tipo === "TREINAMENTO" ? "Treinamento" : "EPI"}
+                          {e.tipo === "TREINAMENTO" ? "Treinamento" : "EPI"}
                         </Badge>
-                        <span className="font-medium">{p.itemNome}</span>
-                        <span
-                          className={
-                            p.situacao === "VENCIDO"
-                              ? "text-red-700 font-semibold"
-                              : "text-amber-800 font-semibold"
-                          }
-                        >
-                          {p.situacao === "VENCIDO" ? "Vencido" : "Nunca realizado"}
-                        </span>
-                        {p.vencimento && (
-                          <span className="text-muted-foreground">
-                            venceu em {dataBr(p.vencimento)}
-                          </span>
+                        <span className="font-medium">{e.itemNome}</span>
+                        {!e.obrigatorio && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            Recomendado
+                          </Badge>
                         )}
+                        <span className={classeDaExigencia(e.situacao)}>
+                          {rotuloDaExigencia(e)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {detalheDaExigencia(e, dataBr)}
+                        </span>
                       </div>
                     ))}
                   </div>

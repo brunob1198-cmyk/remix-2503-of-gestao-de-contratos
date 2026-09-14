@@ -13,6 +13,9 @@ import {
   type ResumoDaFuncao,
   type EntregaEpi,
   type ParticipacaoTreinamento,
+  type ExigenciaAvaliada,
+  rotuloDaExigencia,
+  detalheDaExigencia,
 } from "@/utils/sgsstMatrizFuncao";
 
 const HOJE = new Date("2026-08-20T00:00:00");
@@ -99,6 +102,7 @@ describe("situacaoEpi", () => {
     expect(situacaoEpi([], "e1", 6, HOJE)).toEqual({
       situacao: "NUNCA_FEITO",
       vencimento: null,
+      ultimaEntrega: null,
     });
   });
 
@@ -106,7 +110,11 @@ describe("situacaoEpi", () => {
     const e: EntregaEpi[] = [
       { colaboradorId: "c1", epiId: "e1", dataEntrega: "2020-01-01" },
     ];
-    expect(situacaoEpi(e, "e1", null, HOJE)).toEqual({ situacao: "OK", vencimento: null });
+    expect(situacaoEpi(e, "e1", null, HOJE)).toEqual({
+      situacao: "OK",
+      vencimento: null,
+      ultimaEntrega: "2020-01-01",
+    });
   });
 
   it("entregue dentro da periodicidade esta em dia", () => {
@@ -116,6 +124,7 @@ describe("situacaoEpi", () => {
     expect(situacaoEpi(e, "e1", 6, HOJE)).toEqual({
       situacao: "OK",
       vencimento: "2027-01-01",
+      ultimaEntrega: "2026-07-01",
     });
   });
 
@@ -126,6 +135,7 @@ describe("situacaoEpi", () => {
     expect(situacaoEpi(e, "e1", 6, HOJE)).toEqual({
       situacao: "VENCIDO",
       vencimento: "2023-07-01",
+      ultimaEntrega: "2023-01-01",
     });
   });
 
@@ -720,5 +730,186 @@ describe("situacaoTreinamento — duas fontes", () => {
       { colaboradorId: "c1", treinamentoId: "t1", resultado: "APROVADO", validade: "2030-01-01" },
     ];
     expect(situacaoTreinamento(turma, "t1", HOJE).situacao).toBe("OK");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Exigências avaliadas — o item EM DIA também é dado (roteiro 13.16)
+// ---------------------------------------------------------------------------
+//
+// A matriz nasceu para achar faltas e descartava tudo que estivesse em dia. O
+// efeito só apareceu no uso: o dossiê não tinha como dizer que o EPI exigido pela
+// função foi entregue, nem quando é a próxima troca — a data era calculada e
+// jogada fora na linha seguinte.
+
+describe("exigenciasPorColaborador", () => {
+  const COLAB: ColaboradorMatriz[] = [
+    { id: "c1", nome: "Bruno", funcaoId: "f1", funcaoNome: "Montador", obra: "Obra A" },
+  ];
+
+  it("lista o EPI entregue com a data da proxima troca", () => {
+    const r = calcularMatriz({
+      colaboradores: COLAB,
+      treinamentosPorFuncao: {},
+      episPorFuncao: {
+        f1: [{ epiId: "e1", nome: "Capacete", obrigatorio: true, periodicidadeTrocaMeses: 6 }],
+      },
+      participacoes: [],
+      entregas: [{ colaboradorId: "c1", epiId: "e1", dataEntrega: "2026-07-01" }],
+      hoje: HOJE,
+    });
+
+    // Sem pendencia — e era exatamente por isso que antes nao sobrava nada.
+    expect(r.pendencias).toHaveLength(0);
+
+    const avaliadas = r.exigenciasPorColaborador["c1"];
+    expect(avaliadas).toHaveLength(1);
+    expect(avaliadas[0]).toMatchObject({
+      tipo: "EPI",
+      itemNome: "Capacete",
+      situacao: "OK",
+      ultimaEntrega: "2026-07-01",
+      vencimento: "2027-01-01",
+      periodicidadeTrocaMeses: 6,
+    });
+  });
+
+  it("inclui a exigencia recomendada, sem transforma-la em pendencia", () => {
+    const r = calcularMatriz({
+      colaboradores: COLAB,
+      treinamentosPorFuncao: {
+        f1: [{ treinamentoId: "t1", nome: "NR 35", obrigatorio: false }],
+      },
+      episPorFuncao: {},
+      participacoes: [],
+      entregas: [],
+      hoje: HOJE,
+    });
+
+    // Recomendacao em falta nao pode virar cobranca: viraria ruido e o usuario
+    // passaria a ignorar a lista inteira.
+    expect(r.pendencias).toHaveLength(0);
+    expect(r.exigenciasPorColaborador["c1"]).toEqual([
+      {
+        tipo: "TREINAMENTO",
+        itemId: "t1",
+        itemNome: "NR 35",
+        obrigatorio: false,
+        situacao: "NUNCA_FEITO",
+        vencimento: null,
+      },
+    ]);
+  });
+
+  it("o item em falta aparece nos dois lugares, com a mesma situacao", () => {
+    const r = calcularMatriz({
+      colaboradores: COLAB,
+      treinamentosPorFuncao: {},
+      episPorFuncao: {
+        f1: [{ epiId: "e1", nome: "Capacete", obrigatorio: true, periodicidadeTrocaMeses: 6 }],
+      },
+      participacoes: [],
+      entregas: [],
+      hoje: HOJE,
+    });
+
+    expect(r.pendencias).toHaveLength(1);
+    expect(r.exigenciasPorColaborador["c1"][0].situacao).toBe(
+      r.pendencias[0].situacao
+    );
+  });
+
+  it("quem esta sem funcao nao ganha lista de exigencias", () => {
+    const r = calcularMatriz({
+      colaboradores: [{ id: "c9", nome: "Sem funcao", funcaoId: null }],
+      treinamentosPorFuncao: {},
+      episPorFuncao: {},
+      participacoes: [],
+      entregas: [],
+      hoje: HOJE,
+    });
+
+    // Sem funcao nao ha o que exigir; a propria falta de funcao e a pendencia.
+    expect(r.exigenciasPorColaborador["c9"]).toBeUndefined();
+    expect(r.pendencias[0].situacao).toBe("SEM_FUNCAO");
+  });
+});
+
+describe("texto da exigencia", () => {
+  const iso = (v?: string | null) => v ?? "—";
+
+  it("EPI entregue diz a entrega e a proxima troca", () => {
+    const e: ExigenciaAvaliada = {
+      tipo: "EPI",
+      itemId: "e1",
+      itemNome: "Capacete",
+      obrigatorio: true,
+      situacao: "OK",
+      vencimento: "2027-01-01",
+      ultimaEntrega: "2026-07-01",
+      periodicidadeTrocaMeses: 6,
+    };
+    expect(rotuloDaExigencia(e)).toBe("Entregue");
+    expect(detalheDaExigencia(e, iso)).toBe(
+      "entregue em 2026-07-01 · próxima troca em 2027-01-01 (a cada 6 meses)"
+    );
+  });
+
+  it("EPI sem periodicidade nao inventa prazo de troca", () => {
+    const e: ExigenciaAvaliada = {
+      tipo: "EPI",
+      itemId: "e1",
+      itemNome: "Luva",
+      obrigatorio: true,
+      situacao: "OK",
+      vencimento: null,
+      ultimaEntrega: "2026-07-01",
+      periodicidadeTrocaMeses: null,
+    };
+    expect(detalheDaExigencia(e, iso)).toBe("entregue em 2026-07-01 · sem troca programada");
+  });
+
+  it("EPI vencido fala de TROCA, e nao de equipamento estragado", () => {
+    const e: ExigenciaAvaliada = {
+      tipo: "EPI",
+      itemId: "e1",
+      itemNome: "Capacete",
+      obrigatorio: true,
+      situacao: "VENCIDO",
+      vencimento: "2023-07-01",
+      ultimaEntrega: "2023-01-01",
+      periodicidadeTrocaMeses: 6,
+    };
+    expect(rotuloDaExigencia(e)).toBe("Troca vencida");
+    expect(detalheDaExigencia(e, iso)).toBe(
+      "entregue em 2023-01-01 · troca venceu em 2023-07-01"
+    );
+  });
+
+  it("EPI nunca entregue nao inventa data nenhuma", () => {
+    const e: ExigenciaAvaliada = {
+      tipo: "EPI",
+      itemId: "e1",
+      itemNome: "Capacete",
+      obrigatorio: true,
+      situacao: "NUNCA_FEITO",
+      vencimento: null,
+      ultimaEntrega: null,
+    };
+    expect(rotuloDaExigencia(e)).toBe("Nunca entregue");
+    expect(detalheDaExigencia(e, iso)).toBe("");
+  });
+
+  it("treinamento em dia usa o rotulo comum", () => {
+    const e: ExigenciaAvaliada = {
+      tipo: "TREINAMENTO",
+      itemId: "t1",
+      itemNome: "NR 35",
+      obrigatorio: true,
+      situacao: "OK",
+      vencimento: "2027-09-11",
+    };
+    expect(rotuloDaExigencia(e)).toBe("Em dia");
+    expect(detalheDaExigencia(e, iso)).toBe("válido até 2027-09-11");
   });
 });
