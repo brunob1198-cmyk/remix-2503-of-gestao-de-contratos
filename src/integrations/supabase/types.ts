@@ -10945,6 +10945,236 @@ export type Database = {
           },
         ]
       }
+      signature_documents: {
+        Row: {
+          arquivo_assinado: string | null
+          arquivo_original: string
+          created_at: string
+          empresa_id: string
+          hash_assinado: string | null
+          hash_original: string
+          id: string
+          mime_type: string
+          signature_request_id: string
+          tamanho: number
+        }
+        Insert: {
+          arquivo_assinado?: string | null
+          arquivo_original: string
+          created_at?: string
+          empresa_id: string
+          hash_assinado?: string | null
+          hash_original: string
+          id?: string
+          mime_type?: string
+          signature_request_id: string
+          tamanho?: number
+        }
+        Update: {
+          arquivo_assinado?: string | null
+          arquivo_original?: string
+          created_at?: string
+          empresa_id?: string
+          hash_assinado?: string | null
+          hash_original?: string
+          id?: string
+          mime_type?: string
+          signature_request_id?: string
+          tamanho?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_documents_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signature_documents_signature_request_id_fkey"
+            columns: ["signature_request_id"]
+            isOneToOne: false
+            referencedRelation: "signature_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signature_events: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          evento: string
+          id: string
+          ip: string | null
+          metadata: Json | null
+          signature_request_id: string
+          user_agent: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          evento: string
+          id?: string
+          ip?: string | null
+          metadata?: Json | null
+          signature_request_id: string
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          evento?: string
+          id?: string
+          ip?: string | null
+          metadata?: Json | null
+          signature_request_id?: string
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_events_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signature_events_signature_request_id_fkey"
+            columns: ["signature_request_id"]
+            isOneToOne: false
+            referencedRelation: "signature_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signature_requests: {
+        Row: {
+          created_at: string
+          documento_id: string | null
+          empresa_id: string
+          entidade_id: string
+          entidade_tipo: string
+          expires_at: string | null
+          id: string
+          metodo: string
+          modulo_origem: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          documento_id?: string | null
+          empresa_id: string
+          entidade_id: string
+          entidade_tipo: string
+          expires_at?: string | null
+          id?: string
+          metodo?: string
+          modulo_origem: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          documento_id?: string | null
+          empresa_id?: string
+          entidade_id?: string
+          entidade_tipo?: string
+          expires_at?: string | null
+          id?: string
+          metodo?: string
+          modulo_origem?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_requests_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signature_signers: {
+        Row: {
+          cargo: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
+          empresa_id: string
+          empresa_nome: string | null
+          id: string
+          nome: string
+          ordem: number
+          primeiro_acesso_em: string | null
+          recusa_motivo: string | null
+          recusado_em: string | null
+          signature_request_id: string
+          signed_at: string | null
+          status: string
+          token: string | null
+          user_id: string | null
+        }
+        Insert: {
+          cargo?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          empresa_id: string
+          empresa_nome?: string | null
+          id?: string
+          nome: string
+          ordem?: number
+          primeiro_acesso_em?: string | null
+          recusa_motivo?: string | null
+          recusado_em?: string | null
+          signature_request_id: string
+          signed_at?: string | null
+          status?: string
+          token?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          cargo?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          empresa_id?: string
+          empresa_nome?: string | null
+          id?: string
+          nome?: string
+          ordem?: number
+          primeiro_acesso_em?: string | null
+          recusa_motivo?: string | null
+          recusado_em?: string | null
+          signature_request_id?: string
+          signed_at?: string | null
+          status?: string
+          token?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_signers_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signature_signers_signature_request_id_fkey"
+            columns: ["signature_request_id"]
+            isOneToOne: false
+            referencedRelation: "signature_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sites: {
         Row: {
           codigo: string
@@ -11914,6 +12144,11 @@ export type Database = {
       }
     }
     Functions: {
+      assinar_por_token: {
+        Args: { p_confirmacao?: string; p_token: string; p_user_agent?: string }
+        Returns: Json
+      }
+      assinatura_por_token: { Args: { p_token: string }; Returns: Json }
       calcular_score_fornecedor: {
         Args: { p_fornecedor_id: string }
         Returns: number
@@ -11925,6 +12160,15 @@ export type Database = {
           p_site_ids: string[]
         }
         Returns: number
+      }
+      fechar_solicitacao_por_token: {
+        Args: {
+          p_arquivo_assinado: string
+          p_hash_assinado: string
+          p_hash_original: string
+          p_token: string
+        }
+        Returns: Json
       }
       fetch_public_forecast: {
         Args: never
@@ -11971,6 +12215,7 @@ export type Database = {
         Args: { p_empresa_id: string; p_prefixo: string }
         Returns: string
       }
+      gerar_token_de_assinatura: { Args: never; Returns: string }
       get_bi_analise_obras: {
         Args: never
         Returns: {
@@ -12021,6 +12266,10 @@ export type Database = {
           sexo: string
         }[]
       }
+      get_public_signature_verification: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       get_quadro_geral_bi: {
         Args: never
         Returns: {
@@ -12054,6 +12303,14 @@ export type Database = {
         Args: { p_fornecedor_id: string }
         Returns: undefined
       }
+      recusar_assinatura_por_token: {
+        Args: { p_motivo: string; p_token: string }
+        Returns: Json
+      }
+      registrar_acesso_ao_link: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
       resumo_rdo_periodo: {
         Args: {
           p_data_fim: string
@@ -12062,6 +12319,7 @@ export type Database = {
         }
         Returns: Json
       }
+      salvar_modelo_de_checklist: { Args: { p_modelo: Json }; Returns: string }
       setup_empresa: {
         Args: { _cnpj?: string; _nome: string }
         Returns: string
