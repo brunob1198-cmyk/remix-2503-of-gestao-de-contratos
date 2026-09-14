@@ -1,9 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 import { uploadImage } from "@/services/uploadImage";
-import { gerarFolhaDeAssinaturas } from "@/services/pdfSignatureService";
+import {
+  gerarFolhaDeAssinaturas,
+  montarDocumentoAssinado,
+} from "@/services/pdfSignatureService";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
+// `situacaoDaFila` saiu daqui de propósito: quem decide se a fila fechou é o
+// banco, dentro de `assinar_por_token`. Manter a função importada sugeriria que a
+// decisão ainda mora no cliente — e foi essa suposição que deixou a assinatura
+// externa gravando em lugar nenhum.
 import {
   progressoDaFila,
-  situacaoDaFila,
   vezDeAssinar,
   type SignatarioDaFila,
 } from "@/utils/assinaturaFila";
@@ -245,36 +252,44 @@ export async function assinarPorToken(params: {
 
   const assinadoEm = new Date().toISOString();
 
-  const { error } = await (supabase
-    .from("signature_signers" as never)
-    .update({ status: "ASSINADO", signed_at: assinadoEm } as never)
-    .eq("id", dados.signatarioId) as never as Promise<{ error: RespostaDeErro | null }>);
+  // A GRAVAÇÃO PASSA PELO BANCO, E NÃO POR UPDATE DIRETO.
+  //
+  // A versão anterior fazia `update` em `signature_signers` do navegador do
+  // signatário. A RLS daquela tabela exige empresa do usuário autenticado — e
+  // signatário externo não tem usuário. O update acertava ZERO linhas e NÃO dava
+  // erro: a tela dizia "assinatura registrada" e nada era gravado. Só funcionava
+  // para quem estivesse logado, que é justamente quem não precisa do link.
+  const r = await rpc<{ ok: boolean; erro?: string; filaConcluida?: boolean }>(
+    "assinar_por_token",
+    {
+      p_token: params.token,
+      p_confirmacao: params.confirmacao ?? null,
+      p_user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+    }
+  );
 
-  if (error) {
+  if (!r?.ok) {
     return {
       assinou: false,
-      motivo: `Não foi possível registrar a assinatura: ${error.message ?? "erro desconhecido"}`,
-      comoResolver: "Tente novamente. Se persistir, avise o solicitante.",
+      motivo: r?.erro ?? "Não foi possível registrar a assinatura.",
+      comoResolver: "Recarregue a página e tente novamente. Se persistir, avise o solicitante.",
     };
+  }
+
+  if (r.filaConcluida !== true) {
+    return { assinou: true, filaConcluida: false };
   }
 
   const filaAtualizada = (dados.fila ?? []).map((s) =>
     s.id === dados.signatarioId ? { ...s, status: "ASSINADO" as const, assinadoEm } : s
   );
 
-  await registrarEvento(null, dados.solicitacaoId, "ASSINATURA_CONCLUIDA", {
-    signatario: dados.nome,
-    confirmacao: params.confirmacao ?? null,
-  });
-
-  if (situacaoDaFila(filaAtualizada) !== "CONCLUIDA") {
-    return { assinou: true, filaConcluida: false };
-  }
-
   const arquivoAssinado = await fecharSolicitacao({
+    token: params.token,
     solicitacaoId: dados.solicitacaoId,
     titulo: dados.documentoId || dados.entidadeTipo || "Documento",
     empresaNome: dados.empresaNome ?? "",
+    arquivoOriginal: dados.arquivoOriginal ?? null,
     fila: filaAtualizada,
   });
 
@@ -288,9 +303,11 @@ export async function assinarPorToken(params: {
  * do mesmo documento, e a penúltima pareceria final para quem a baixasse.
  */
 async function fecharSolicitacao(params: {
+  token: string;
   solicitacaoId: string;
   titulo: string;
   empresaNome: string;
+  arquivoOriginal: string | null;
   fila: readonly SignatarioDaFila[];
 }): Promise<string | null> {
   try {
@@ -311,31 +328,64 @@ async function fecharSolicitacao(params: {
       })),
     });
 
-    const arquivoUrl = await uploadImage(folha.pdfFile);
+    // O ARQUIVO FINAL É O DOCUMENTO MAIS A FOLHA, E NÃO A FOLHA SOZINHA.
+    //
+    // Antes, o "documento assinado" era só a folha: nome, data e hash, sem o
+    // documento. Quem baixava recebia a prova de que alguém assinou algo, sem o
+    // algo. Um documento assinado precisa se sustentar sozinho.
+    const original = await baixarOriginal(params.arquivoOriginal);
 
-    await (supabase
-      .from("signature_documents" as never)
-      .update({
-        arquivo_assinado: arquivoUrl,
-        hash_original: folha.hashOriginal,
-        hash_assinado: folha.hashAssinado,
-      } as never)
-      .eq("signature_request_id", params.solicitacaoId) as never as Promise<unknown>);
+    const { arquivo, hashAssinado } = original
+      ? await montarDocumentoAssinado({
+          original,
+          folha: await folha.pdfBlob.arrayBuffer(),
+          requestId: params.solicitacaoId,
+        })
+      : // Sem o original acessível, a folha sozinha é o que há — e é melhor que
+        // nada. O caso não deveria ocorrer; se ocorrer, fica no log.
+        { arquivo: folha.pdfFile, hashAssinado: folha.hashAssinado };
 
-    await (supabase
-      .from("signature_requests" as never)
-      .update({ status: "CONCLUIDO", updated_at: new Date().toISOString() } as never)
-      .eq("id", params.solicitacaoId) as never as Promise<unknown>);
+    const arquivoUrl = await uploadImage(arquivo);
 
-    await registrarEvento(null, params.solicitacaoId, "DOCUMENTO_GERADO", {
-      hash_assinado: folha.hashAssinado,
+    const r = await rpc<{ ok: boolean; erro?: string }>("fechar_solicitacao_por_token", {
+      p_token: params.token,
+      p_arquivo_assinado: arquivoUrl,
+      p_hash_original: folha.hashOriginal,
+      p_hash_assinado: hashAssinado,
     });
+
+    if (!r?.ok) {
+      console.error("Não foi possível fechar a solicitação:", r?.erro);
+    }
 
     return arquivoUrl;
   } catch (e) {
-    // A assinatura já foi gravada; só a folha falhou. Deixar a exceção subir
-    // faria o signatário ver erro depois de ter assinado com sucesso.
-    console.error("Falha ao gerar a folha de assinaturas:", e);
+    // A assinatura já foi gravada; só a montagem do arquivo falhou. Deixar a
+    // exceção subir faria o signatário ver erro depois de ter assinado com
+    // sucesso, e ele tentaria assinar de novo sem necessidade.
+    console.error("Falha ao montar o documento assinado:", e);
+    return null;
+  }
+}
+
+/**
+ * Baixa o PDF original para juntar à folha.
+ *
+ * `cache: "reload"` pela mesma razão das fotos nos documentos: a tela já abriu
+ * esse arquivo numa aba, e a resposta guardada no cache pode ter vindo sem o
+ * cabeçalho de CORS — aí a leitura dos bytes falha, embora o arquivo apareça.
+ */
+async function baixarOriginal(url: string | null): Promise<ArrayBuffer | null> {
+  if (!url) return null;
+  try {
+    const resposta = await fetch(resolveFileUrl(url), { cache: "reload" });
+    if (!resposta.ok) {
+      console.warn(`Documento original respondeu HTTP ${resposta.status}`);
+      return null;
+    }
+    return await resposta.arrayBuffer();
+  } catch (e) {
+    console.warn("Não foi possível baixar o documento original:", e);
     return null;
   }
 }

@@ -348,3 +348,77 @@ export async function gerarFolhaDeAssinaturas(
     hashAssinado: await calculateSHA256(pdfArrayBuffer),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Documento assinado: o original MAIS a folha de assinaturas
+// ---------------------------------------------------------------------------
+
+/**
+ * Junta o documento original com a folha de assinaturas num arquivo só.
+ *
+ * O DEFEITO QUE ISTO CORRIGE
+ *
+ * O "documento assinado" que o sistema entregava era apenas a folha de
+ * assinaturas — nome, data e hash, sem o documento. Quem baixava recebia a prova
+ * de que alguém assinou algo, sem o algo.
+ *
+ * No DocuSign o arquivo final é o documento inteiro com a folha anexada ao fim, e
+ * o identificador do envelope carimbado em todas as páginas. É o que se espera de
+ * um documento assinado: ele se sustenta sozinho, sem depender de abrir outro
+ * arquivo ao lado.
+ *
+ * O CARIMBO EM TODAS AS PÁGINAS NÃO É ENFEITE
+ *
+ * É o que liga cada folha ao ato de assinatura. Sem ele, uma página solta do
+ * documento não tem como ser associada à assinatura — e documento de obra circula
+ * em página solta o tempo todo, fotografado e impresso em pedaços.
+ */
+export async function montarDocumentoAssinado(params: {
+  /** Bytes do PDF original, como foi enviado para assinatura. */
+  original: ArrayBuffer;
+  /** Bytes da folha de assinaturas. */
+  folha: ArrayBuffer;
+  requestId: string;
+}): Promise<{ arquivo: File; hashAssinado: string }> {
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+
+  const final = await PDFDocument.create();
+
+  const originalPdf = await PDFDocument.load(params.original);
+  const folhaPdf = await PDFDocument.load(params.folha);
+
+  const paginasOriginais = await final.copyPages(originalPdf, originalPdf.getPageIndices());
+  for (const p of paginasOriginais) final.addPage(p);
+
+  const paginasDaFolha = await final.copyPages(folhaPdf, folhaPdf.getPageIndices());
+  for (const p of paginasDaFolha) final.addPage(p);
+
+  // Carimbo do identificador no topo de cada página, inclusive da folha: quem
+  // recebe uma página solta consegue voltar à solicitação inteira.
+  const fonte = await final.embedFont(StandardFonts.Helvetica);
+  const marca = `Assinatura eletronica - ID ${params.requestId}`;
+
+  for (const pagina of final.getPages()) {
+    const { width, height } = pagina.getSize();
+    pagina.drawText(marca, {
+      x: 14,
+      y: height - 12,
+      size: 6.5,
+      font: fonte,
+      // Cinza claro: precisa ser legível e não pode competir com o conteúdo da
+      // página, que é o documento de verdade.
+      color: rgb(0.45, 0.5, 0.58),
+      maxWidth: width - 28,
+    });
+  }
+
+  const bytes = await final.save();
+  const arquivo = new File([bytes as BlobPart], `documento_assinado_${params.requestId}.pdf`, {
+    type: "application/pdf",
+  });
+
+  return {
+    arquivo,
+    hashAssinado: await calculateSHA256(bytes.buffer as ArrayBuffer),
+  };
+}
