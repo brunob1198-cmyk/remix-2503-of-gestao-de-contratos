@@ -1,87 +1,93 @@
+import QRCode from "qrcode";
+
 /**
- * Minimal QR Code DataURL Generator (Canvas / SVG fallback)
- * Generates Data URL for QR Code pointing to public verification URL.
+ * QR Code de verdade.
+ *
+ * O QUE ESTAVA AQUI ANTES
+ *
+ * Um DESENHO que imitava um QR Code. A funcao pintava os tres quadrados de canto,
+ * um borrao 8x8 derivado de um hash do texto, um retangulo de borda e o rotulo
+ * "VERIFICAR ASSINATURA" — e devolvia isso como PNG.
+ *
+ * Nao codificava nada. Nenhum leitor do mundo consegue ler aquilo, porque nao ha
+ * o que ler: os pixels eram decorativos. O texto passado por parametro so
+ * alimentava o hash que sorteava o borrao.
+ *
+ * Isso apareceu em dois lugares, e o segundo e o grave:
+ *
+ * 1. O QR Code do checklist, que o usuario tentou escanear no celular e nada
+ *    aconteceu — foi assim que o defeito foi descoberto.
+ *
+ * 2. A FOLHA DE ASSINATURAS dos documentos assinados, que imprime ao lado dele
+ *    "Escanear para verificar autenticidade no SaaS". Um documento de
+ *    conformidade afirmando, em letra de forma, uma coisa que nao era verdade.
+ *
+ * O defeito sobreviveu porque ninguem nunca escaneou. Ele passa em qualquer
+ * revisao visual: parece um QR Code. Por isso o teste deste modulo nao olha a
+ * aparencia — ele DECODIFICA o resultado e confere que a URL volta inteira.
  */
 
-export async function generateQRCodeDataUrl(text: string): Promise<string> {
-  // If running in browser with document and HTMLCanvasElement available
-  if (typeof document !== "undefined") {
-    const canvas = document.createElement("canvas");
-    canvas.width = 200;
-    canvas.height = 200;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      // Draw background
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, 200, 200);
+/**
+ * Correcao de erro em nivel M (~15%).
+ *
+ * O padrao da biblioteca e L (~7%). M porque estes codigos vao para o mundo
+ * fisico: adesivo no para-brisa de um caminhao, placa num canteiro, papel que
+ * amassa e suja. Sobe o tamanho do modulo um pouco e aguenta sujeira.
+ */
+const CORRECAO_DE_ERRO = "M" as const;
 
-      // Draw border
-      ctx.strokeStyle = "#1E293B";
-      ctx.lineWidth = 4;
-      ctx.strokeRect(8, 8, 184, 184);
+/** Sobra branca em volta, em modulos. Abaixo de 2 muitos leitores nao acham o codigo. */
+const MARGEM_EM_MODULOS = 2;
 
-      // Draw corner positioning squares (QR Code style)
-      const drawSquare = (x: number, y: number) => {
-        ctx.fillStyle = "#0F172A";
-        ctx.fillRect(x, y, 40, 40);
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(x + 6, y + 6, 28, 28);
-        ctx.fillStyle = "#0F172A";
-        ctx.fillRect(x + 12, y + 12, 16, 16);
-      };
+/** Lado da imagem, em pixels. 512 imprime bem em adesivo pequeno. */
+const LADO_PX = 512;
 
-      drawSquare(20, 20);
-      drawSquare(140, 20);
-      drawSquare(20, 140);
+export interface OpcoesDoQrCode {
+  /** Lado da imagem em pixels. */
+  lado?: number;
+  /** Cor dos modulos. Escura o bastante para contrastar com o fundo claro. */
+  cor?: string;
+}
 
-      // Draw simple deterministic module pattern from hash of text
-      ctx.fillStyle = "#0F172A";
-      let seed = 0;
-      for (let i = 0; i < text.length; i++) {
-        seed = (seed << 5) - seed + text.charCodeAt(i);
-        seed |= 0;
-      }
-
-      for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-          const bit = (Math.abs(seed ^ (r * 13 + c * 37)) >> (r + c)) & 1;
-          if (bit === 1) {
-            const px = 70 + c * 8;
-            const py = 70 + r * 8;
-            if (px < 130 && py < 130) {
-              ctx.fillRect(px, py, 6, 6);
-            }
-          }
-        }
-      }
-
-      // Draw label
-      ctx.fillStyle = "#0F172A";
-      ctx.font = "bold 9px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("VERIFICAR ASSINATURA", 100, 180);
-
-      return canvas.toDataURL("image/png");
-    }
+/**
+ * PNG (data URL) de um QR Code que realmente contem `texto`.
+ *
+ * Lanca quando o texto nao cabe num QR Code — nao devolve imagem decorativa em
+ * nenhuma hipotese, porque entregar algo ilegivel com cara de valido foi
+ * exatamente o defeito anterior.
+ */
+export async function generateQRCodeDataUrl(
+  texto: string,
+  opcoes: OpcoesDoQrCode = {}
+): Promise<string> {
+  if (!texto || !texto.trim()) {
+    throw new Error("QR Code sem conteudo: nao ha o que codificar.");
   }
 
-  // Fallback SVG Data URL
-  const encodedText = encodeURIComponent(text);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-    <rect width="200" height="200" fill="#ffffff" />
-    <rect x="8" y="8" width="184" height="184" fill="none" stroke="#0F172A" stroke-width="4" />
-    <rect x="20" y="20" width="40" height="40" fill="#0F172A" />
-    <rect x="26" y="26" width="28" height="28" fill="#ffffff" />
-    <rect x="32" y="32" width="16" height="16" fill="#0F172A" />
-    <rect x="140" y="20" width="40" height="40" fill="#0F172A" />
-    <rect x="146" y="26" width="28" height="28" fill="#ffffff" />
-    <rect x="152" y="32" width="16" height="16" fill="#0F172A" />
-    <rect x="20" y="140" width="40" height="40" fill="#0F172A" />
-    <rect x="26" y="146" width="28" height="28" fill="#ffffff" />
-    <rect x="32" y="152" width="16" height="16" fill="#0F172A" />
-    <text x="100" y="110" font-family="sans-serif" font-size="10" font-weight="bold" text-anchor="middle" fill="#0F172A">QR CODE VERIFICAÇÃO</text>
-    <text x="100" y="180" font-family="sans-serif" font-size="8" text-anchor="middle" fill="#64748B">SaaS Signature</text>
-  </svg>`;
+  return QRCode.toDataURL(texto, {
+    errorCorrectionLevel: CORRECAO_DE_ERRO,
+    margin: MARGEM_EM_MODULOS,
+    width: opcoes.lado ?? LADO_PX,
+    color: {
+      dark: opcoes.cor ?? "#0F172A",
+      light: "#FFFFFF",
+    },
+  });
+}
 
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+/**
+ * A matriz de modulos do QR Code: `true` = quadrado escuro.
+ *
+ * Existe para o teste poder DECODIFICAR o resultado sem depender de canvas nem
+ * de leitor de PNG. E a mesma matriz que a imagem desenha, entao provar que ela
+ * decodifica prova que a imagem e legivel.
+ */
+export function modulosDoQrCode(texto: string): { tamanho: number; escuro: boolean[] } {
+  const qr = QRCode.create(texto, { errorCorrectionLevel: CORRECAO_DE_ERRO });
+  const { size, data } = qr.modules;
+  return {
+    tamanho: size,
+    // `data` e Uint8Array de 0/1 achatada, linha a linha.
+    escuro: Array.from(data, (v) => v === 1),
+  };
 }
