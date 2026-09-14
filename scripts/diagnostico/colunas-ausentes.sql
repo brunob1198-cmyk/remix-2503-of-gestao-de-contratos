@@ -8,6 +8,12 @@
 -- pegaria isso. Tabela inteira ausente aparece na outra consulta, entao aqui ela
 -- e ignorada para o resultado nao repetir o mesmo problema.
 --
+-- LIMITE CONHECIDO: coluna criada por SQL dinamico (`EXECUTE format('ALTER
+-- TABLE ... ADD COLUMN IF NOT EXISTS %I', v)`) fica de fora, porque o nome so
+-- existe em tempo de execucao. Hoje e um caso so: as tres colunas de aptidao
+-- do ASO (apto_altura, apto_espaco_confinado, apto_maquinas), na migration
+-- 20260829100000.
+--
 -- NAO ALTERA NADA: so le o catalogo do Postgres.
 -- Tabelas apagadas de proposito por alguma migration ficam de fora da conta.
 
@@ -146,7 +152,6 @@ WITH esperadas(tabela, coluna) AS (VALUES
   ('sgsst_asos', 'descricao_riscos'),
   ('sgsst_asos', 'empresa_cnpj'),
   ('sgsst_asos', 'empresa_nome'),
-  ('sgsst_asos', 'if'),
   ('sgsst_asos', 'medico_coordenador'),
   ('sgsst_asos', 'nova_funcao'),
   ('sgsst_asos', 'riscos_marcados'),
