@@ -340,6 +340,11 @@ async function fecharSolicitacao(params: {
           original,
           folha: await folha.pdfBlob.arrayBuffer(),
           requestId: params.solicitacaoId,
+          // Só quem de fato assinou. Quem recusou ou não respondeu não pode ter o
+          // nome carimbado na folha — seria afirmar uma assinatura que não houve.
+          assinantes: params.fila
+            .filter((s) => s.status === "ASSINADO")
+            .map((s) => ({ nome: s.nome, assinadoEm: s.assinadoEm ?? new Date().toISOString() })),
         })
       : // Sem o original acessível, a folha sozinha é o que há — e é melhor que
         // nada. O caso não deveria ocorrer; se ocorrer, fica no log.

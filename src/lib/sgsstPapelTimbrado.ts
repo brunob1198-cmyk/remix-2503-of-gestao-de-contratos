@@ -1,4 +1,10 @@
 import { getPdfOptions } from "@/lib/pdfTemplates";
+import {
+  posicaoNaPagina,
+  serializarAncoras,
+  type Ancora,
+  type GeometriaDaFolha,
+} from "@/utils/ancoraDeAssinatura";
 
 /**
  * Papel timbrado dos documentos do SGSST.
@@ -181,6 +187,69 @@ export function alturaPaginaEmPixels(): number {
   return alturaUtilMm() * PX_POR_MM;
 }
 
+/**
+ * A geometria da folha, para quem precisa converter medida de tela em posição no
+ * PDF — hoje, o carimbo de assinatura dentro do documento.
+ *
+ * Sai daqui porque é aqui que as margens são decididas. Quem converte recebe os
+ * números em vez de recalculá-los, que é como as duas contas divergiriam.
+ */
+export function geometriaDaFolha(): GeometriaDaFolha {
+  return {
+    larguraUtilMm: A4_LARGURA_MM - MARGEM_LATERAL_MM * 2,
+    alturaUtilMm: alturaUtilMm(),
+    margemEsquerdaMm: MARGEM_LATERAL_MM,
+    margemSuperiorMm: MARGEM_SUPERIOR_MM,
+    alturaDaFolhaMm: A4_ALTURA_MM,
+  };
+}
+
+/**
+ * Atributo que marca, no HTML do documento, a célula onde a assinatura de alguém
+ * deve ser carimbada. O valor é o nome da pessoa.
+ */
+export const ATRIBUTO_DE_ANCORA = "data-assinatura-de";
+
+/**
+ * Mede, no conteúdo JÁ PAGINADO, onde fica a célula de assinatura de cada um.
+ *
+ * TEM DE SER O CLONE DO html2pdf, E NÃO O NOSSO ELEMENTO
+ *
+ * O html2pdf clona o conteúdo e, no clone, insere divs de espaçamento para que
+ * nenhum elemento com `page-break-inside: avoid` fique partido entre duas folhas.
+ * A configuração deste projeto marca `tr` — quase toda linha perto de uma quebra é
+ * empurrada para a folha seguinte. Medir no nosso elemento daria a posição de
+ * ANTES desses empurrões: o carimbo cairia na linha de outra pessoa a partir da
+ * primeira quebra de página, que é exatamente o erro que não se pode cometer.
+ *
+ * Por isso a medição acontece entre `toContainer()` e `toCanvas()`, com o clone
+ * ainda no documento — depois do `toCanvas` ele é removido.
+ */
+export function medirAncoras(container: HTMLElement): Ancora[] {
+  const base = container.getBoundingClientRect();
+  const geometria = geometriaDaFolha();
+
+  const celulas = Array.from(
+    container.querySelectorAll<HTMLElement>(`[${ATRIBUTO_DE_ANCORA}]`)
+  );
+
+  return celulas
+    .map((celula) => {
+      const r = celula.getBoundingClientRect();
+      return posicaoNaPagina({
+        chave: celula.getAttribute(ATRIBUTO_DE_ANCORA) ?? "",
+        retangulo: {
+          topoPx: r.top - base.top,
+          esquerdaPx: r.left - base.left,
+          larguraPx: r.width,
+          alturaPx: r.height,
+        },
+        geometria,
+      });
+    })
+    .filter((a): a is Ancora => a !== null && a.chave !== "");
+}
+
 /** Cache por URL: o mesmo ativo é usado em toda emissão da sessão. */
 const cacheAtivos = new Map<string, ArrayBuffer | null>();
 
@@ -209,6 +278,15 @@ async function buscarAtivo(url: string): Promise<ArrayBuffer | null> {
 export interface OpcoesTimbre {
   /** Texto curto identificando o documento, impresso no rodapé de cada página. */
   identificacao?: string;
+  /**
+   * Onde carimbar a assinatura de cada pessoa, medido na emissão.
+   *
+   * Vai gravado nos metadados do próprio arquivo, e não no banco: as coordenadas
+   * valem para a paginação DESTA emissão. Guardadas fora, uma segunda emissão do
+   * mesmo documento — com uma linha a mais, com a quebra em outro lugar — deixaria
+   * as coordenadas antigas apontando para o vazio, sem ninguém perceber.
+   */
+  ancoras?: readonly Ancora[];
 }
 
 /**
@@ -236,6 +314,12 @@ export async function aplicarPapelTimbrado(
   // conteúdo rasterizado. O que sobra aqui — logo, rodapé, numeração — É o
   // timbre, e pintar por cima do conteúdo é justamente o correto.
   const pdf = await PDFDocument.load(pdfBytes);
+
+  if (opcoes.ancoras && opcoes.ancoras.length > 0) {
+    // `Keywords` é campo livre de texto e sobrevive a cópia, download e reenvio do
+    // arquivo — que é o caminho que este PDF percorre até voltar para ser assinado.
+    pdf.setKeywords([serializarAncoras(opcoes.ancoras)]);
+  }
 
   const fonte = await pdf.embedFont(StandardFonts.Helvetica);
   const fonteNegrito = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -462,6 +546,12 @@ export async function gerarPdfTimbrado(params: {
   nomeArquivo: string;
   identificacao?: string;
   marcaDagua?: boolean;
+  /**
+   * Medir as células marcadas com `data-assinatura-de` e gravar as posições no
+   * arquivo, para a assinatura eletrônica poder ser carimbada no lugar certo
+   * depois. Só o documento que vai para a fila de assinatura precisa disso.
+   */
+  medirAncorasDeAssinatura?: boolean;
 }): Promise<Uint8Array> {
   const { default: html2pdf } = await import("html2pdf.js");
 
@@ -475,13 +565,19 @@ export async function gerarPdfTimbrado(params: {
 
     // `outputPdf("arraybuffer")` em vez de `save()`: precisamos dos bytes para
     // estampar logo e rodapé antes de entregar o arquivo.
-    const bytes: ArrayBuffer = await html2pdf()
-      .set(opcoesPdfTimbrado(params.nomeArquivo))
-      .from(container)
-      .outputPdf("arraybuffer");
+    const emissao = params.medirAncorasDeAssinatura
+      ? await emitirMedindoAncoras(html2pdf, container, params.nomeArquivo)
+      : {
+          bytes: (await html2pdf()
+            .set(opcoesPdfTimbrado(params.nomeArquivo))
+            .from(container)
+            .outputPdf("arraybuffer")) as ArrayBuffer,
+          ancoras: [] as Ancora[],
+        };
 
-    return await aplicarPapelTimbrado(bytes, {
+    return await aplicarPapelTimbrado(emissao.bytes, {
       identificacao: params.identificacao,
+      ancoras: emissao.ancoras,
     });
   } finally {
     // Sai do documento mesmo se a emissão falhar: um palco esquecido leva a folha
@@ -490,12 +586,63 @@ export async function gerarPdfTimbrado(params: {
   }
 }
 
+/**
+ * Emite parando no meio do caminho para medir as âncoras.
+ *
+ * A cadeia do html2pdf é `toContainer → toCanvas → toImg → toPdf`. Normalmente ela
+ * roda inteira de uma vez, e o clone com a paginação final nunca fica acessível: o
+ * `toCanvas` o remove do documento assim que termina de rasterizar.
+ *
+ * Aqui ela é rodada em duas partes. Entre elas, o clone está montado, paginado e
+ * ainda no documento — o único instante em que dá para saber em que folha e em que
+ * altura cada célula de assinatura foi parar. Ver `medirAncoras`.
+ *
+ * As etapas são exatamente as mesmas da chamada normal; o que muda é só onde ela é
+ * interrompida. Por isso este caminho vale apenas para quem pede a medição, e os
+ * demais documentos continuam pela chamada de uma linha só.
+ */
+async function emitirMedindoAncoras(
+  html2pdf: typeof import("html2pdf.js").default,
+  container: HTMLElement,
+  nomeArquivo: string
+): Promise<{ bytes: ArrayBuffer; ancoras: Ancora[] }> {
+  const etapa = html2pdf().set(opcoesPdfTimbrado(nomeArquivo)).from(container).toContainer();
+  await etapa;
+
+  // `prop` é estado interno do worker e não está no tipo publicado. Lido com
+  // cuidado e sem obrigatoriedade: se um dia a biblioteca mudar, o documento sai
+  // igual, só sem o carimbo no lugar — e a folha de assinaturas continua provando
+  // quem assinou.
+  const clone = (etapa as unknown as { prop?: { container?: HTMLElement | null } }).prop
+    ?.container;
+
+  let ancoras: Ancora[] = [];
+  if (clone) {
+    try {
+      ancoras = medirAncoras(clone);
+    } catch (e) {
+      console.warn("Não foi possível medir as âncoras de assinatura:", e);
+    }
+  } else {
+    console.warn("O html2pdf não expôs o container; o documento sai sem âncoras.");
+  }
+
+  const bytes = (await etapa
+    .toCanvas()
+    .toImg()
+    .toPdf()
+    .outputPdf("arraybuffer")) as ArrayBuffer;
+
+  return { bytes, ancoras };
+}
+
 /** O mesmo PDF, embrulhado como `File` para upload. */
 export async function gerarArquivoPdfTimbrado(params: {
   html: string;
   nomeArquivo: string;
   identificacao?: string;
   marcaDagua?: boolean;
+  medirAncorasDeAssinatura?: boolean;
 }): Promise<File> {
   const bytes = await gerarPdfTimbrado(params);
   return new File([bytes as BlobPart], params.nomeArquivo, { type: "application/pdf" });
