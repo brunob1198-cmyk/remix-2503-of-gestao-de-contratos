@@ -1,23 +1,13 @@
 -- DIAGNOSTICO: tabelas que as migrations declaram e este banco nao tem
 --
--- POR QUE ISTO EXISTE
+-- Gerado por scripts/diagnostico/gerar-diagnostico.mjs a partir das
+-- 275 migrations do repositorio. Para atualizar, rode o script.
 --
--- O repositorio tem 238 arquivos de migration e o banco nao registra todos
--- como aplicados. Ja aconteceu tres vezes de um recurso falhar em producao
--- porque a migration dele nunca rodou: signature_signers (fila de assinatura),
--- as colunas de geolocalizacao do checklist e a tabela checklist_qrcodes.
+-- Cada linha do resultado e uma tabela que alguma migration cria e que nao
+-- existe aqui. Resultado vazio = nao falta tabela nenhuma.
 --
--- Nos tres casos a descoberta foi por tentativa e erro, um erro por vez.
--- Esta consulta responde tudo de uma vez.
---
--- NAO ALTERA NADA. So le o catalogo do Postgres e lista o que falta.
--- Cada linha do resultado e uma tabela que algum codigo da aplicacao espera
--- encontrar e que nao existe aqui.
---
--- Para regerar depois de novas migrations:
---
---   grep -rhoiE "CREATE TABLE (IF NOT EXISTS )?public\.[a-z0-9_]+" \
---     supabase/migrations/*.sql | sed -E 's/.*public\.//' | sort -u
+-- NAO ALTERA NADA: so le o catalogo do Postgres.
+-- Tabelas apagadas de proposito por alguma migration ficam de fora da conta.
 
 WITH esperadas(nome) AS (VALUES
   ('analises_ia'),
@@ -45,13 +35,11 @@ WITH esperadas(nome) AS (VALUES
   ('cotacoes'),
   ('custo_real_erp'),
   ('dependencias_atividade'),
-  ('diario_campo_fotos'),
   ('diario_equipamentos'),
   ('diario_equipe'),
   ('diario_fotos'),
   ('diario_producao'),
   ('diario_veiculos'),
-  ('diarios_campo'),
   ('diarios_obra'),
   ('empresas'),
   ('escopo_itens'),
@@ -80,7 +68,6 @@ WITH esperadas(nome) AS (VALUES
   ('medicao_exports'),
   ('medicao_report_photo_captions'),
   ('medicao_status_historico'),
-  ('mkp_parametros'),
   ('municipios_ibge'),
   ('notificacoes'),
   ('orcamento_projetos'),
@@ -169,7 +156,6 @@ WITH esperadas(nome) AS (VALUES
   ('signature_signers'),
   ('sites'),
   ('solicitacoes_exclusao_conta'),
-  ('timeline_eventos'),
   ('user_permissions'),
   ('user_preferences'),
   ('user_roles'),
