@@ -6,7 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChecklistModelo, TipoRespostaChecklist } from "@/hooks/checklists/useChecklists";
+import {
+  ChecklistModelo,
+  TipoRespostaChecklist,
+  type EntradaDeModelo,
+} from "@/hooks/checklists/useChecklists";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,13 +21,27 @@ interface ChecklistModeloFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   modeloToEdit?: ChecklistModelo | null;
-  onSave: (data: any) => Promise<void>;
+  /**
+   * O `id` do modelo NÃO vai daqui: quem o conhece é a tela, pelo `modeloToEdit`.
+   * Assim este diálogo não tem como se enganar sobre estar criando ou editando —
+   * que foi exatamente o engano que deixou toda edição virando uma inserção.
+   */
+  onSave: (data: Omit<EntradaDeModelo, "id">) => Promise<void>;
 }
 
 interface SecaoDraft {
+  /**
+   * Id da seção que já existe no banco. Ausente = seção nova.
+   *
+   * Sem isto não há edição possível: salvar teria de apagar tudo e recriar, e
+   * item já respondido não pode ser apagado (`checklist_respostas.item_id` é ON
+   * DELETE RESTRICT) — o histórico das aplicações passaria a apontar para o vazio.
+   */
+  id?: string;
   titulo: string;
   ordem: number;
   itens: Array<{
+    id?: string;
     titulo: string;
     descricao?: string;
     tipo_resposta: TipoRespostaChecklist;
@@ -124,9 +142,11 @@ export function ChecklistModeloFormDialog({
       if (modeloToEdit.secoes && modeloToEdit.secoes.length > 0) {
         setSecoes(
           modeloToEdit.secoes.map((s) => ({
+            id: s.id,
             titulo: s.titulo,
             ordem: s.ordem,
             itens: (s.itens || []).map((i) => ({
+              id: i.id,
               titulo: i.titulo,
               descricao: i.descricao || "",
               tipo_resposta: i.tipo_resposta,
@@ -531,6 +551,43 @@ export function ChecklistModeloFormDialog({
 
                       {/* Item Rules Toggle */}
                       <div className="flex flex-wrap items-center gap-4 text-[11px] pt-1 text-slate-600 bg-slate-50 p-2 rounded">
+                        {/*
+                          OBRIGATÓRIO — o que faltava para o roteiro 15.4.
+
+                          A coluna existe no banco desde a criação da tabela, o
+                          rascunho sempre a enviou e `pendenciasDaAplicacao`
+                          realmente barra a conclusão de item obrigatório em branco.
+                          Só não havia como desmarcar: todo item nascia `true` fixo,
+                          e o modelo inteiro era obrigatório sem ninguém ter pedido.
+
+                          Desabilitado quando o item é crítico, porque crítico em
+                          branco deixaria o veredito da aplicação indefinido — a
+                          regra já existia no clique do "crítico" e agora fica
+                          visível em vez de acontecer por baixo.
+                        */}
+                        <label
+                          className={`flex items-center gap-1.5 ${
+                            item.critico ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                          }`}
+                          title={
+                            item.critico
+                              ? "Item crítico é sempre obrigatório: em branco, ele deixaria a aprovação do checklist indefinida."
+                              : "Sem resposta, um item obrigatório impede concluir a aplicação."
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.obrigatorio}
+                            disabled={item.critico}
+                            onChange={(e) => {
+                              const updated = [...secoes];
+                              updated[sIdx].itens[iIdx].obrigatorio = e.target.checked;
+                              setSecoes(updated);
+                            }}
+                          />
+                          Obrigatório
+                        </label>
+
                         <label className="flex items-center gap-1.5 cursor-pointer">
                           <input
                             type="checkbox"
@@ -612,6 +669,12 @@ export function ChecklistModeloFormDialog({
                           />
                         </label>
                       </div>
+
+                      <p className="text-[11px] text-muted-foreground px-2">
+                        Item obrigatório em branco impede concluir a aplicação. Desmarque
+                        para o que é observação de rotina, que o aplicador pode pular sem
+                        travar o checklist.
+                      </p>
 
                       <p className="text-[11px] text-muted-foreground px-2">
                         Peso maior derruba mais o índice quando o item sai não conforme.

@@ -19,6 +19,7 @@ import {
   useChecklistReincidencias,
   CHECKLIST_STATS_LIMITE_LINHAS,
   ChecklistModelo,
+  EntradaDeModelo,
   ChecklistAplicacao,
   ChecklistPlanoAcao,
 } from "@/hooks/checklists/useChecklists";
@@ -102,7 +103,7 @@ export default function ChecklistsListPage() {
   const { canEdit } = usePermissions();
   const allowEdit = canEdit("checklists");
 
-  const { modelos, isLoading: loadingModelos, isTableMissing, createModelo, duplicateModelo, deleteModelo } = useChecklistModelos();
+  const { modelos, isLoading: loadingModelos, isTableMissing, salvarModelo, duplicateModelo, deleteModelo } = useChecklistModelos();
   // As duas consultas não tinham limite: aplicação de checklist e plano de ação são
   // os registros que mais acumulam nesta tela, e a lista aparecia cortada em
   // silêncio quando passava do teto do PostgREST.
@@ -277,12 +278,24 @@ export default function ChecklistsListPage() {
     setIsModeloDialogOpen(true);
   };
 
-  const handleSaveModelo = async (data: any) => {
-    if (editingModelo) {
-      await createModelo.mutateAsync(data);
-    } else {
-      await createModelo.mutateAsync(data);
-    }
+  /**
+   * O DEFEITO QUE ISTO CORRIGE
+   *
+   * As duas ramificações deste `if` chamavam `createModelo`. O `if` era um lugar
+   * reservado para o update que nunca foi escrito, então TODA edição tentava
+   * inserir outro modelo com o mesmo código e esbarrava no índice único:
+   *
+   *   duplicate key value violates unique constraint "uq_checklist_modelo_codigo"
+   *
+   * Nenhuma alteração em modelo de checklist jamais foi salva. A mensagem dizia
+   * "Erro ao criar modelo" no meio de uma edição, que era a pista.
+   *
+   * Agora quem decide é o `id`: o banco cria quando ele falta e edita quando ele
+   * vem — numa transação só, para uma falha no meio não deixar o modelo
+   * atualizado e as seções pela metade.
+   */
+  const handleSaveModelo = async (data: EntradaDeModelo) => {
+    await salvarModelo.mutateAsync({ ...data, id: editingModelo?.id ?? null });
   };
 
   const handleOpenAplicar = (modelo: ChecklistModelo) => {
