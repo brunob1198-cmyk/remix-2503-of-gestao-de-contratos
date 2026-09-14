@@ -5,6 +5,13 @@ import {
   type Ancora,
   type GeometriaDaFolha,
 } from "@/utils/ancoraDeAssinatura";
+import {
+  decisaoDoRaster,
+  mensagemDeDocumentoLongoDemais,
+  paginasEstimadas,
+  paginasQueCabem,
+  ESCALAS_DE_RASTER,
+} from "@/utils/limiteDoRaster";
 
 /**
  * Papel timbrado dos documentos do SGSST.
@@ -478,7 +485,7 @@ export function cssMarcaDagua(): string {
  * a marca d'água aparecer por baixo — funcionava, mas levava o arquivo a ~1,2 MB
  * por página. Com a marca embutida no fundo via CSS, o JPEG volta a servir.
  */
-export function opcoesPdfTimbrado(nomeArquivo: string) {
+export function opcoesPdfTimbrado(nomeArquivo: string, escala: number = ESCALA_RENDER) {
   const base = getPdfOptions(nomeArquivo) as Record<string, unknown>;
   const html2canvasBase = (base.html2canvas ?? {}) as Record<string, unknown>;
 
@@ -506,7 +513,10 @@ export function opcoesPdfTimbrado(nomeArquivo: string) {
       //
       // O `scale` é independente — multiplica os pixels do canvas, não o layout.
       windowWidth: LARGURA_RENDER_PX,
-      scale: ESCALA_RENDER,
+      // A resolução vem de fora porque documento longo precisa de menos: acima de
+      // ~33 páginas o canvas a 2× passa do limite do navegador e volta EM BRANCO,
+      // sem erro. Ver `escolherEscalaDoRaster`.
+      scale: escala,
     },
   };
 }
@@ -563,21 +573,27 @@ export async function gerarPdfTimbrado(params: {
   try {
     await aguardarFontes(container);
 
-    // `outputPdf("arraybuffer")` em vez de `save()`: precisamos dos bytes para
-    // estampar logo e rodapé antes de entregar o arquivo.
-    const emissao = params.medirAncorasDeAssinatura
-      ? await emitirMedindoAncoras(html2pdf, container, params.nomeArquivo)
-      : {
-          bytes: (await html2pdf()
-            .set(opcoesPdfTimbrado(params.nomeArquivo))
-            .from(container)
-            .outputPdf("arraybuffer")) as ArrayBuffer,
-          ancoras: [] as Ancora[],
-        };
+    // 1. Mede o conteúdo JÁ PAGINADO e, de quebra, as âncoras de assinatura.
+    const medida = await medirNoCloneDoHtml2pdf(
+      html2pdf,
+      container,
+      params.nomeArquivo,
+      params.medirAncorasDeAssinatura === true
+    );
 
-    return await aplicarPapelTimbrado(emissao.bytes, {
+    // 2. Escolhe a resolução que este navegador aguenta rasterizar.
+    const escala = escolherEscalaDoRaster(medida.alturaPx, medida.larguraPx);
+
+    // 3. Emite. `outputPdf("arraybuffer")` em vez de `save()`: precisamos dos
+    //    bytes para estampar logo e rodapé antes de entregar o arquivo.
+    const bytes = (await html2pdf()
+      .set(opcoesPdfTimbrado(params.nomeArquivo, escala))
+      .from(container)
+      .outputPdf("arraybuffer")) as ArrayBuffer;
+
+    return await aplicarPapelTimbrado(bytes, {
       identificacao: params.identificacao,
-      ancoras: emissao.ancoras,
+      ancoras: medida.ancoras,
     });
   } finally {
     // Sai do documento mesmo se a emissão falhar: um palco esquecido leva a folha
@@ -587,53 +603,160 @@ export async function gerarPdfTimbrado(params: {
 }
 
 /**
- * Emite parando no meio do caminho para medir as âncoras.
+ * Mede o conteúdo JÁ PAGINADO, no clone que o html2pdf monta.
  *
- * A cadeia do html2pdf é `toContainer → toCanvas → toImg → toPdf`. Normalmente ela
- * roda inteira de uma vez, e o clone com a paginação final nunca fica acessível: o
- * `toCanvas` o remove do documento assim que termina de rasterizar.
+ * TEM DE SER O CLONE, E NÃO O NOSSO ELEMENTO
  *
- * Aqui ela é rodada em duas partes. Entre elas, o clone está montado, paginado e
- * ainda no documento — o único instante em que dá para saber em que folha e em que
- * altura cada célula de assinatura foi parar. Ver `medirAncoras`.
+ * O html2pdf clona o conteúdo e, no clone, insere divs de espaçamento para não
+ * partir elemento marcado com `page-break-inside: avoid` — a configuração deste
+ * projeto marca `tr`, `table` e `img`. O clone é, portanto, MAIS ALTO que o nosso
+ * elemento, e às vezes bem mais. Medir o nosso subestimaria a altura, que é
+ * exatamente o erro que faria a conta do teto de canvas passar em falso.
  *
- * As etapas são exatamente as mesmas da chamada normal; o que muda é só onde ela é
- * interrompida. Por isso este caminho vale apenas para quem pede a medição, e os
- * demais documentos continuam pela chamada de uma linha só.
+ * A cadeia é `toContainer → toCanvas → toImg → toPdf`, e o `toCanvas` remove o
+ * clone do documento assim que termina. Entre as duas primeiras etapas é o único
+ * instante em que ele existe montado, paginado e mensurável.
+ *
+ * A cadeia é ABANDONADA aqui, e a emissão de verdade começa do zero depois. É
+ * deliberado: a resolução precisa estar decidida ANTES do `toCanvas`, e a única
+ * forma de mudá-la no meio seria escrever no estado interno do worker. Uma
+ * segunda passagem custa um layout a mais — sem rasterizar nada — e o resultado é
+ * idêntico, porque nem a paginação nem a largura dependem da resolução.
  */
-async function emitirMedindoAncoras(
+async function medirNoCloneDoHtml2pdf(
   html2pdf: typeof import("html2pdf.js").default,
   container: HTMLElement,
-  nomeArquivo: string
-): Promise<{ bytes: ArrayBuffer; ancoras: Ancora[] }> {
+  nomeArquivo: string,
+  comAncoras: boolean
+): Promise<{ alturaPx: number; larguraPx: number; ancoras: Ancora[] }> {
   const etapa = html2pdf().set(opcoesPdfTimbrado(nomeArquivo)).from(container).toContainer();
   await etapa;
 
   // `prop` é estado interno do worker e não está no tipo publicado. Lido com
-  // cuidado e sem obrigatoriedade: se um dia a biblioteca mudar, o documento sai
-  // igual, só sem o carimbo no lugar — e a folha de assinaturas continua provando
-  // quem assinou.
-  const clone = (etapa as unknown as { prop?: { container?: HTMLElement | null } }).prop
-    ?.container;
+  // cuidado e sem obrigatoriedade.
+  const prop = (etapa as unknown as {
+    prop?: { container?: HTMLElement | null; overlay?: HTMLElement | null };
+  }).prop;
+  const clone = prop?.container;
 
-  let ancoras: Ancora[] = [];
-  if (clone) {
-    try {
-      ancoras = medirAncoras(clone);
-    } catch (e) {
-      console.warn("Não foi possível medir as âncoras de assinatura:", e);
+  try {
+    if (!clone) {
+      // Sem o clone sobra a medida do nosso elemento. Ela subestima a altura, e
+      // por isso o documento longo pode escapar da checagem — mas o alternativo
+      // seria não checar nada.
+      console.warn("O html2pdf não expôs o container; medindo pelo elemento de origem.");
+      const r = container.getBoundingClientRect();
+      return { alturaPx: r.height, larguraPx: r.width, ancoras: [] };
     }
-  } else {
-    console.warn("O html2pdf não expôs o container; o documento sai sem âncoras.");
+
+    const retangulo = clone.getBoundingClientRect();
+
+    let ancoras: Ancora[] = [];
+    if (comAncoras) {
+      try {
+        ancoras = medirAncoras(clone);
+      } catch (e) {
+        // O carimbo é acabamento; a folha de assinaturas é a prova. Falhar aqui
+        // não pode custar o documento.
+        console.warn("Não foi possível medir as âncoras de assinatura:", e);
+      }
+    }
+
+    return { alturaPx: retangulo.height, larguraPx: retangulo.width, ancoras };
+  } finally {
+    // Quem remove o clone é o `toCanvas`, e ele não vai rodar nesta cadeia. Sem
+    // isto, cada emissão deixaria um documento inteiro pendurado no `body`.
+    prop?.overlay?.remove();
+  }
+}
+
+/**
+ * Maior altura de canvas que ESTE navegador aceita, descoberta em tempo de
+ * execução.
+ *
+ * POR QUE NÃO UMA CONSTANTE
+ *
+ * O limite varia por motor: medi 65.535 no Chrome, e o Firefox historicamente
+ * para em 32.767. Fixar o número do Chrome deixaria o usuário de Firefox com o
+ * mesmo defeito silencioso — folha em branco — só que na metade das páginas.
+ *
+ * A sonda é barata porque usa **um pixel de largura**: mesmo na maior altura são
+ * 256 KB. Pinta o último pixel e tenta lê-lo de volta; quando o navegador recusou
+ * o tamanho, a leitura volta transparente.
+ */
+let alturaMaximaMedida: number | null = null;
+
+export function alturaMaximaDeCanvas(): number {
+  if (alturaMaximaMedida !== null) return alturaMaximaMedida;
+
+  const candidatos = [65_535, 32_767, 16_384, 8_192, 4_096];
+
+  for (const altura of candidatos) {
+    try {
+      const teste = document.createElement("canvas");
+      teste.width = 1;
+      teste.height = altura;
+      const ctx = teste.getContext("2d");
+      if (!ctx) continue;
+
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, altura - 1, 1, 1);
+      const pixel = ctx.getImageData(0, altura - 1, 1, 1).data;
+
+      if (pixel[3] > 0) {
+        alturaMaximaMedida = altura;
+        return altura;
+      }
+    } catch {
+      // Tamanho recusado com exceção — segue para o próximo candidato.
+    }
   }
 
-  const bytes = (await etapa
-    .toCanvas()
-    .toImg()
-    .toPdf()
-    .outputPdf("arraybuffer")) as ArrayBuffer;
+  // Nenhum candidato passou: fica no menor, que é uma página e pouco. Documento
+  // de uma folha continua saindo; o resto será recusado com mensagem.
+  alturaMaximaMedida = candidatos[candidatos.length - 1];
+  return alturaMaximaMedida;
+}
 
-  return { bytes, ancoras };
+/**
+ * A resolução do raster para este documento — reduzida se preciso, ou recusa.
+ *
+ * Lança quando nem a menor resolução cabe. Lançar é o comportamento certo: o
+ * alternativo, medido, é o usuário receber um PDF com o número certo de páginas,
+ * com logo e numeração, e completamente em branco por dentro.
+ */
+function escolherEscalaDoRaster(alturaPx: number, larguraPx: number): number {
+  const tetoAlturaPx = alturaMaximaDeCanvas();
+  const decisao = decisaoDoRaster({
+    alturaConteudoPx: alturaPx,
+    larguraConteudoPx: larguraPx,
+    tetoAlturaPx,
+  });
+
+  if (!decisao) {
+    const menorEscala = ESCALAS_DE_RASTER[ESCALAS_DE_RASTER.length - 1];
+    throw new Error(
+      mensagemDeDocumentoLongoDemais({
+        paginasEstimadas: paginasEstimadas(alturaPx, alturaPaginaEmPixels()),
+        paginasSuportadas: paginasQueCabem({
+          alturaDaPaginaPx: alturaPaginaEmPixels(),
+          escala: menorEscala,
+          tetoAlturaPx,
+        }),
+      })
+    );
+  }
+
+  if (decisao.reduzida) {
+    // Fica no log porque o documento sai com menos nitidez que o normal, e quem
+    // for conferir por que precisa achar a razão sem adivinhar.
+    console.warn(
+      `Documento longo: resolução reduzida para ${decisao.escala}× para caber no ` +
+        `limite de canvas do navegador (${tetoAlturaPx}px).`
+    );
+  }
+
+  return decisao.escala;
 }
 
 /** O mesmo PDF, embrulhado como `File` para upload. */
