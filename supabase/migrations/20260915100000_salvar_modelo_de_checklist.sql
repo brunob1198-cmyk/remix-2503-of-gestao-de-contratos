@@ -177,7 +177,13 @@ BEGIN
             THEN ARRAY(SELECT jsonb_array_elements_text(v_item->'opcoes_selecao'))
             ELSE NULL
           END,
-          COALESCE((v_item->>'obrigatorio')::boolean, true),
+          -- Item critico e SEMPRE obrigatorio, venha o que vier no rascunho: em
+          -- branco, ele deixaria a aprovacao do checklist indefinida. A tela ja
+          -- desabilita a caixa nesse caso, mas a tela e conveniencia — quem
+          -- chamar esta funcao direto tem de encontrar a mesma regra, senao o
+          -- banco guarda "nao obrigatorio" para algo que na pratica e.
+          CASE WHEN COALESCE((v_item->>'critico')::boolean, false) THEN true
+               ELSE COALESCE((v_item->>'obrigatorio')::boolean, true) END,
           COALESCE(NULLIF(v_item->>'ordem', '')::integer, 1),
           COALESCE((v_item->>'exigir_comentario_nao_conforme')::boolean, true),
           COALESCE((v_item->>'exigir_foto_nao_conforme')::boolean, false),
@@ -197,7 +203,11 @@ BEGIN
             THEN ARRAY(SELECT jsonb_array_elements_text(v_item->'opcoes_selecao'))
             ELSE NULL
           END,
-          obrigatorio = COALESCE((v_item->>'obrigatorio')::boolean, obrigatorio),
+          -- Mesma regra da insercao: critico manda, e obrigatorio segue.
+          obrigatorio = CASE
+            WHEN COALESCE((v_item->>'critico')::boolean, critico) THEN true
+            ELSE COALESCE((v_item->>'obrigatorio')::boolean, obrigatorio)
+          END,
           ordem = COALESCE(NULLIF(v_item->>'ordem', '')::integer, ordem),
           exigir_comentario_nao_conforme = COALESCE(
             (v_item->>'exigir_comentario_nao_conforme')::boolean, exigir_comentario_nao_conforme
