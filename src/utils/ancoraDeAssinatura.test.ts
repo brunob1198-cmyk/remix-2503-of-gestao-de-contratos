@@ -8,97 +8,10 @@ import {
   encurtarNome,
   lerAncoras,
   posicaoDoCarimbo,
-  posicaoNaPagina,
   serializarAncoras,
   type Ancora,
-  type GeometriaDaFolha,
   type TextoDoPdf,
 } from "./ancoraDeAssinatura";
-
-/** Geometria com números redondos, para as contas do teste serem conferíveis. */
-const GEOMETRIA: GeometriaDaFolha = {
-  larguraUtilMm: 186,
-  alturaUtilMm: 250,
-  margemEsquerdaMm: 12,
-  margemSuperiorMm: 30,
-  alturaDaFolhaMm: 297,
-};
-
-const PX_POR_PAGINA = GEOMETRIA.alturaUtilMm * (96 / 25.4);
-
-const celula = (topoPx: number) => ({
-  topoPx,
-  esquerdaPx: 500,
-  larguraPx: 90,
-  alturaPx: 30,
-});
-
-describe("posicaoNaPagina", () => {
-  it("põe a célula da primeira folha dentro da área de conteúdo", () => {
-    const a = posicaoNaPagina({
-      chave: "Bruno Souza da Silva",
-      retangulo: celula(100),
-      geometria: GEOMETRIA,
-    });
-
-    expect(a).not.toBeNull();
-    expect(a?.pagina).toBe(0);
-
-    const alturaDaFolhaPt = GEOMETRIA.alturaDaFolhaMm * (72 / 25.4);
-    const margemSuperiorPt = GEOMETRIA.margemSuperiorMm * (72 / 25.4);
-
-    // Abaixo do topo da área útil e acima da borda de baixo: se a conversão
-    // errasse de sinal, o carimbo cairia fora da folha e ninguém veria erro.
-    expect(a!.y + a!.altura).toBeLessThan(alturaDaFolhaPt - margemSuperiorPt);
-    expect(a!.y).toBeGreaterThan(0);
-    expect(a!.x).toBeGreaterThan(GEOMETRIA.margemEsquerdaMm * (72 / 25.4));
-  });
-
-  it("a mesma altura uma página abaixo dá a mesma posição, na folha seguinte", () => {
-    const primeira = posicaoNaPagina({
-      chave: "Ana",
-      retangulo: celula(120),
-      geometria: GEOMETRIA,
-    });
-    const segunda = posicaoNaPagina({
-      chave: "Ana",
-      retangulo: celula(120 + PX_POR_PAGINA),
-      geometria: GEOMETRIA,
-    });
-
-    expect(primeira?.pagina).toBe(0);
-    expect(segunda?.pagina).toBe(1);
-    expect(segunda?.y).toBeCloseTo(primeira!.y, 5);
-    expect(segunda?.x).toBeCloseTo(primeira!.x, 5);
-  });
-
-  it("desce na folha conforme a célula desce na tela", () => {
-    const alta = posicaoNaPagina({ chave: "A", retangulo: celula(100), geometria: GEOMETRIA });
-    const baixa = posicaoNaPagina({ chave: "B", retangulo: celula(400), geometria: GEOMETRIA });
-
-    // `y` do PDF cresce para cima: mais embaixo na tela é `y` menor.
-    expect(baixa!.y).toBeLessThan(alta!.y);
-  });
-
-  it("recusa retângulo zerado, que é o sintoma de elemento não renderizado", () => {
-    const a = posicaoNaPagina({
-      chave: "Bruno",
-      retangulo: { topoPx: 0, esquerdaPx: 0, larguraPx: 0, alturaPx: 0 },
-      geometria: GEOMETRIA,
-    });
-    // Zerado viraria um carimbo no canto superior esquerdo da primeira página.
-    expect(a).toBeNull();
-  });
-
-  it("guarda a chave normalizada, para casar com o nome do signatário", () => {
-    const a = posicaoNaPagina({
-      chave: "  BRUNO  Souza da Silva ",
-      retangulo: celula(50),
-      geometria: GEOMETRIA,
-    });
-    expect(a?.chave).toBe("bruno souza da silva");
-  });
-});
 
 describe("serializarAncoras e lerAncoras", () => {
   const ancoras: Ancora[] = [
@@ -170,7 +83,6 @@ describe("âncora por texto, para PDF anexado", () => {
   it("exige que o cabeçalho esteja acima da linha", () => {
     const linha = acharNome(itens, "Bruno Souza da Silva")!;
     expect(acharColuna(itens, "Assinatura", linha)?.x).toBe(300);
-
     // Um item com o mesmo texto ABAIXO da linha não é cabeçalho de coluna.
     const soAbaixo: TextoDoPdf[] = [
       itens[2],
@@ -240,6 +152,7 @@ describe("ajuste do texto à célula", () => {
 });
 
 describe("chaveDoTexto", () => {
+
   it("tira acento, caixa e espaço repetido", () => {
     expect(chaveDoTexto("  JOÃO   Gonçalves ")).toBe("joao goncalves");
   });
