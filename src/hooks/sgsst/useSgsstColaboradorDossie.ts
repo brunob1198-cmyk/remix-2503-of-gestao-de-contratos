@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSgsstFuncaoMatriz } from "@/hooks/sgsst/useSgsstFuncaoMatriz";
+import type { ExigenciaAvaliada } from "@/utils/sgsstMatrizFuncao";
 import type { PendenciaDossie } from "@/lib/dossieDocumento";
 import type { SgsstAso } from "@/hooks/sgsst/useSgsstAsosAndExames";
 import type { SgsstEpiEntrega } from "@/hooks/sgsst/useSgsstEpis";
@@ -53,6 +54,15 @@ export interface DossieDoColaborador {
   matriculas: SgsstTreinamentoParticipante[];
   entregasEpi: SgsstEpiEntrega[];
   pendencias: PendenciaDossie[];
+  /**
+   * Toda exigência da função deste trabalhador, em dia ou não.
+   *
+   * `pendencias` é o recorte do que está em falta e continua servindo a quem só
+   * precisa cobrar. Esta lista é a que permite AFIRMAR — "o EPI exigido consta
+   * como entregue, próxima troca em tal data" —, e é isso que um dossiê precisa
+   * fazer para valer como prova de conformidade.
+   */
+  exigencias: ExigenciaAvaliada[];
   /** Erros por fonte: o dossiê sai declarando o que não pôde ser lido. */
   erros: { fonte: string; erro: unknown }[];
   isLoading: boolean;
@@ -136,6 +146,7 @@ export function useSgsstColaboradorDossie(
 
   return {
     asos: asos.data ?? [],
+    exigencias: matriz.exigenciasPorColaborador[colaboradorId ?? ""] ?? [],
     matriculas: matriculas.data ?? [],
     entregasEpi: entregas.data ?? [],
     pendencias,
