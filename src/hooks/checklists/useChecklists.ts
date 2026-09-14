@@ -22,6 +22,55 @@ export type TipoRespostaChecklist =
   | "Selecao"
   | "MultiplaSelecao";
 
+/**
+ * O que a tela manda para salvar um modelo.
+ *
+ * `id` ausente cria; `id` preenchido edita. Vale para seção e item também — e é
+ * essa a diferença entre editar e recriar: sem os ids, salvar teria de apagar as
+ * seções e refazê-las, e item já respondido não pode ser apagado, porque as
+ * aplicações antigas apontam para ele.
+ */
+export interface EntradaDeItemDeChecklist {
+  id?: string | null;
+  titulo: string;
+  descricao?: string | null;
+  tipo_resposta: TipoRespostaChecklist;
+  opcoes_selecao?: string[] | null;
+  obrigatorio: boolean;
+  ordem: number;
+  exigir_comentario_nao_conforme?: boolean;
+  exigir_foto_nao_conforme?: boolean;
+  gerar_plano_acao_nao_conforme?: boolean;
+  peso_pontuacao?: number;
+  critico?: boolean;
+}
+
+export interface EntradaDeSecaoDeChecklist {
+  id?: string | null;
+  titulo: string;
+  ordem: number;
+  itens: EntradaDeItemDeChecklist[];
+}
+
+export interface EntradaDeModelo {
+  id?: string | null;
+  nome: string;
+  categoria?: string | null;
+  codigo?: string | null;
+  descricao?: string | null;
+  periodicidade_sugerida?: string | null;
+  responsavel_id?: string | null;
+  projeto_id?: string | null;
+  area_id?: string | null;
+  tipo_aplicacao?: string | null;
+  exigir_geolocalizacao?: string | null;
+  latitude_alvo?: number | null;
+  longitude_alvo?: number | null;
+  raio_permitido_metros?: number | null;
+  bloquear_fora_raio?: boolean;
+  secoes: EntradaDeSecaoDeChecklist[];
+}
+
 export interface ChecklistModelo {
   id: string;
   empresa_id: string;
@@ -223,109 +272,36 @@ export function useChecklistModelos() {
     queryError && ((queryError as any).code === "PGRST205" || (queryError as any).message?.includes("schema cache"))
   );
 
-  const createModelo = useMutation({
-    mutationFn: async (input: {
-      nome: string;
-      categoria?: string;
-      codigo?: string;
-      descricao?: string;
-      periodicidade_sugerida?: string;
-      responsavel_id?: string;
-      projeto_id?: string;
-      area_id?: string;
-      tipo_aplicacao?: string;
-      secoes: Array<{
-        titulo: string;
-        ordem: number;
-        itens: Array<{
-          titulo: string;
-          descricao?: string;
-          tipo_resposta: TipoRespostaChecklist;
-          opcoes_selecao?: string[];
-          obrigatorio: boolean;
-          ordem: number;
-          exigir_comentario_nao_conforme?: boolean;
-          exigir_foto_nao_conforme?: boolean;
-          gerar_plano_acao_nao_conforme?: boolean;
-          peso_pontuacao?: number;
-          critico?: boolean;
-        }>;
-      }>;
-    }) => {
-      const cleanUuid = (id?: string | null) => (id && id !== "todas" && id !== "todos" && id.trim() !== "" ? id : null);
+  const salvarModelo = useMutation({
+    mutationFn: async (input: EntradaDeModelo) => {
+      if (!empresaId) throw new Error("Empresa não identificada.");
 
-      // 1. Insert Modelo
-      const { data: modelo, error: mErr } = await (supabase
-        .from("checklist_modelos" as any)
-        .insert({
-          empresa_id: empresaId,
-          nome: input.nome,
-          categoria: input.categoria || "Geral",
-          codigo: input.codigo || `CHK-${Math.floor(1000 + Math.random() * 9000)}`,
-          descricao: input.descricao,
-          periodicidade_sugerida: input.periodicidade_sugerida || "Diario",
-          responsavel_id: cleanUuid(input.responsavel_id),
-          projeto_id: cleanUuid(input.projeto_id),
-          area_id: cleanUuid(input.area_id),
-          tipo_aplicacao: input.tipo_aplicacao || "Geral",
-          created_by: profile?.id,
-          status: "ativo",
-        })
-        .select()
-        .single() as any);
+      const { data, error } = await (supabase.rpc(
+        "salvar_modelo_de_checklist" as never,
+        { p_modelo: { ...input, empresa_id: empresaId } } as never
+      ) as never as Promise<{ data: string | null; error: { message?: string; code?: string } | null }>);
 
-      if (mErr) {
-        if (mErr.message?.includes("schema cache") || mErr.code === "PGRST205") {
-          throw new Error("As tabelas de checklist estão sendo sincronizadas no banco. Por favor, execute a migration SQL no Supabase ou aguarde a atualização do cache do PostgREST.");
+      if (error) {
+        // A função é nova. Enquanto a migration não for aplicada, o PostgREST
+        // responde "não encontrei" — e "erro ao salvar" mandaria o usuário tentar
+        // de novo para sempre.
+        if (error.code === "PGRST202" || error.message?.includes("salvar_modelo_de_checklist")) {
+          throw new Error(
+            "A função de salvar modelos ainda não existe no banco. Rode a migration " +
+              "20260915100000_salvar_modelo_de_checklist.sql no SQL Editor do Supabase."
+          );
         }
-        throw mErr;
+        throw new Error(error.message ?? "falha ao salvar o modelo");
       }
 
-      // 2. Insert Secoes & Itens
-      for (const secao of input.secoes) {
-        const { data: secaoDb, error: sErr } = await (supabase
-          .from("checklist_secoes" as any)
-          .insert({
-            empresa_id: empresaId,
-            modelo_id: modelo.id,
-            titulo: secao.titulo,
-            ordem: secao.ordem,
-          })
-          .select()
-          .single() as any);
-
-        if (sErr) throw sErr;
-
-        if (secao.itens && secao.itens.length > 0) {
-          const itensToInsert = secao.itens.map((it) => ({
-            empresa_id: empresaId,
-            secao_id: secaoDb.id,
-            titulo: it.titulo,
-            descricao: it.descricao,
-            tipo_resposta: it.tipo_resposta,
-            opcoes_selecao: it.opcoes_selecao || null,
-            obrigatorio: it.obrigatorio ?? true,
-            ordem: it.ordem,
-            exigir_comentario_nao_conforme: it.exigir_comentario_nao_conforme ?? true,
-            exigir_foto_nao_conforme: it.exigir_foto_nao_conforme ?? false,
-            gerar_plano_acao_nao_conforme: it.gerar_plano_acao_nao_conforme ?? true,
-            peso_pontuacao: it.peso_pontuacao ?? 1.0,
-            critico: it.critico ?? false,
-          }));
-
-          const { error: iErr } = await (supabase.from("checklist_itens" as any).insert(itensToInsert) as any);
-          if (iErr) throw iErr;
-        }
-      }
-
-      return modelo;
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (_id, input) => {
       queryClient.invalidateQueries({ queryKey: ["checklist_modelos"] });
-      toast.success("Modelo de checklist criado com sucesso!");
+      toast.success(input.id ? "Modelo atualizado com sucesso!" : "Modelo criado com sucesso!");
     },
     onError: (err: any) => {
-      toast.error(`Erro ao criar modelo: ${err.message || err}`);
+      toast.error(`Não foi possível salvar o modelo: ${err.message || err}`);
     },
   });
 
@@ -341,10 +317,13 @@ export function useChecklistModelos() {
 
       if (fetchErr) throw fetchErr;
 
-      return createModelo.mutateAsync({
+      return salvarModelo.mutateAsync({
         nome: `${orig.nome} (Cópia)`,
         categoria: orig.categoria,
-        codigo: `${orig.codigo}-CP`,
+        // Código em branco, e não `${codigo}-CP`: com o sufixo, duplicar o mesmo
+        // modelo duas vezes produzia "CHK-6948-CP" nas duas e esbarrava no mesmo
+        // índice único que quebrava a edição. Em branco, o gatilho numera.
+        codigo: null,
         descricao: orig.descricao,
         periodicidade_sugerida: orig.periodicidade_sugerida,
         secoes: (orig.secoes || []).map((sec: any) => ({
@@ -407,7 +386,7 @@ export function useChecklistModelos() {
     isLoading,
     isTableMissing,
     refetch,
-    createModelo,
+    salvarModelo,
     duplicateModelo,
     deleteModelo,
   };
