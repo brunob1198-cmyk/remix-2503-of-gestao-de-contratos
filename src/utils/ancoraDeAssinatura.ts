@@ -9,31 +9,24 @@
  * fim e cruzar nome por nome. O DocuSign resolve isso pondo a assinatura no lugar
  * certo, ao lado do nome de cada um.
  *
- * POR QUE EXISTEM DOIS CAMINHOS AQUI
+ * DE ONDE VEM A POSIÇÃO
  *
- * O caminho óbvio seria ler o texto do PDF e procurar o nome. Isso NÃO funciona
- * nos documentos que este sistema gera: o `html2pdf` rasteriza a folha inteira e
- * insere UMA IMAGEM JPEG por página (`addImage`, conferido na fonte da
- * biblioteca). O único texto de verdade num PGR, numa CAT ou numa lista de
- * presença é o rodapé, que o `pdf-lib` desenha depois. Procurar "BRUNO SOUZA DA
- * SILVA" ali não acha nada, porque ali ele é pixel.
+ * - **Do próprio desenho**, quando o documento é montado em PDF direto: quem
+ *   desenha a célula sabe exatamente onde ela ficou, e registra. É o caso da
+ *   lista de presença. Ver `documentoPdfDireto`.
  *
- * Então:
+ * - **Do texto do PDF** (`posicaoDoCarimbo`), para arquivo que o usuário anexa —
+ *   um contrato saído do Word. Esse tem camada de texto, e aí dá para procurar o
+ *   nome e o cabeçalho da coluna.
  *
- * - **ANCORA MEDIDA** (`posicaoNaPagina`): para o que nós geramos. A célula de
- *   assinatura é medida no DOM, na hora da emissão, e a posição viaja dentro do
- *   próprio PDF. É exata por construção.
+ * Nos dois casos a posição acaba gravada nos metadados do arquivo, e é de lá que
+ * `carimbarAssinaturas` a lê na hora de fechar a fila.
  *
- * - **ANCORA POR TEXTO** (`posicaoDoCarimbo`): para PDF que o usuário anexa — um
- *   contrato saído do Word. Esse tem camada de texto, e aí dá para achar o nome.
- *
- * POR QUE A MEDIÇÃO PRECISA SER FEITA NO CLONE DO html2pdf
- *
- * O html2pdf clona o conteúdo e, no CLONE, insere divs de espaçamento para não
- * cortar elemento marcado com `page-break-inside: avoid`. A configuração deste
- * projeto marca `tr` — ou seja, quase toda linha perto de uma quebra é empurrada.
- * Medir no nosso elemento daria a posição de ANTES desses empurrões, e o carimbo
- * cairia algumas linhas acima do lugar. Ver `medirAncoras`.
+ * Houve um terceiro caminho, removido: medir a célula no clone que o `html2pdf`
+ * monta. Ele existia porque o documento rasterizado não tem texto para procurar —
+ * e deixou de ser necessário quando a lista de presença passou a ser desenhada
+ * direto. Se outro documento precisar de assinatura no corpo, o caminho é portá-lo,
+ * e não ressuscitar a medição.
  *
  * QUANDO NÃO DÁ PARA SABER, NÃO CARIMBA
  *
@@ -42,21 +35,6 @@
  * o único desfecho pior que não carimbar — a folha de assinaturas do fim continua
  * valendo como registro em qualquer um dos casos.
  */
-
-// ---------------------------------------------------------------------------
-// Unidades
-// ---------------------------------------------------------------------------
-
-/**
- * O CSS define o milímetro em 96 dpi: 1mm = 96/25,4 px. Não é convenção nossa
- * nem depende de tela — é a unidade absoluta da especificação.
- */
-const PX_POR_MM = 96 / 25.4;
-/** O PDF trabalha em pontos tipográficos: 1pt = 1/72". */
-const PT_POR_MM = 72 / 25.4;
-
-export const mmParaPt = (mm: number): number => mm * PT_POR_MM;
-export const pxParaMm = (px: number): number => px / PX_POR_MM;
 
 // ---------------------------------------------------------------------------
 // Âncora medida
@@ -76,14 +54,14 @@ export interface GeometriaDaFolha {
   margemEsquerdaMm: number;
   margemSuperiorMm: number;
   alturaDaFolhaMm: number;
-}
-
-/** Um retângulo medido no DOM, relativo ao canto superior esquerdo do container. */
-export interface RetanguloMedido {
-  topoPx: number;
-  esquerdaPx: number;
-  larguraPx: number;
-  alturaPx: number;
+  /**
+   * Largura da folha inteira.
+   *
+   * Existe porque quem desenha o PDF direto precisa CRIAR a página, e deduzi-la
+   * de `larguraUtil + margem × 2` funcionaria hoje e divergiria no dia em que as
+   * margens deixassem de ser simétricas — sem nada acusando.
+   */
+  larguraDaFolhaMm: number;
 }
 
 /** Onde carimbar, em pontos, no sistema do PDF (origem embaixo à esquerda). */
@@ -97,56 +75,6 @@ export interface Ancora {
   y: number;
   largura: number;
   altura: number;
-}
-
-/**
- * Converte um retângulo medido no container em página + posição no PDF.
- *
- * A CONTA, E DE ONDE ELA SAI
- *
- * O html2pdf fatia o canvas de cima para baixo em pedaços de uma página e desenha
- * cada pedaço em `addImage(..., margem[1], margem[0], inner.width, pageHeight)` —
- * isto é, a área de conteúdo começa exatamente nas margens e tem a largura útil.
- * Como o container recebe `width: <inner.width>mm`, um pixel de CSS do container
- * corresponde a um pixel de CSS da folha: a conversão é a do próprio CSS, sem
- * escala intermediária. (O `scale: 2` do html2canvas multiplica os pixels do
- * raster, não o layout — por isso não entra aqui.)
- *
- * Devolve nulo para retângulo impossível, que é o sintoma de elemento não
- * renderizado: medir `display:none` devolve zeros, e zerado ele viraria um carimbo
- * no topo da primeira página.
- */
-export function posicaoNaPagina(params: {
-  chave: string;
-  retangulo: RetanguloMedido;
-  geometria: GeometriaDaFolha;
-}): Ancora | null {
-  const { retangulo: r, geometria: g } = params;
-
-  if (!(r.larguraPx > 0) || !(r.alturaPx > 0) || r.topoPx < 0 || r.esquerdaPx < 0) {
-    return null;
-  }
-
-  const pxPorPagina = g.alturaUtilMm * PX_POR_MM;
-  if (!(pxPorPagina > 0)) return null;
-
-  const pagina = Math.floor(r.topoPx / pxPorPagina);
-  const topoNaPaginaPx = r.topoPx - pagina * pxPorPagina;
-
-  const topoMm = g.margemSuperiorMm + pxParaMm(topoNaPaginaPx);
-  const esquerdaMm = g.margemEsquerdaMm + pxParaMm(r.esquerdaPx);
-  const alturaMm = pxParaMm(r.alturaPx);
-
-  // A célula que cai bem em cima da quebra teria metade em cada folha. O carimbo
-  // não pode ser partido, então ele fica na página onde a célula COMEÇA.
-  return {
-    chave: chaveDoTexto(params.chave),
-    pagina,
-    x: mmParaPt(esquerdaMm),
-    y: mmParaPt(g.alturaDaFolhaMm - topoMm - alturaMm),
-    largura: mmParaPt(pxParaMm(r.larguraPx)),
-    altura: mmParaPt(alturaMm),
-  };
 }
 
 // ---------------------------------------------------------------------------

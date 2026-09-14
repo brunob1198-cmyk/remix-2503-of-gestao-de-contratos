@@ -1,6 +1,5 @@
 import { getPdfOptions } from "@/lib/pdfTemplates";
 import {
-  posicaoNaPagina,
   serializarAncoras,
   type Ancora,
   type GeometriaDaFolha,
@@ -208,53 +207,8 @@ export function geometriaDaFolha(): GeometriaDaFolha {
     margemEsquerdaMm: MARGEM_LATERAL_MM,
     margemSuperiorMm: MARGEM_SUPERIOR_MM,
     alturaDaFolhaMm: A4_ALTURA_MM,
+    larguraDaFolhaMm: A4_LARGURA_MM,
   };
-}
-
-/**
- * Atributo que marca, no HTML do documento, a célula onde a assinatura de alguém
- * deve ser carimbada. O valor é o nome da pessoa.
- */
-export const ATRIBUTO_DE_ANCORA = "data-assinatura-de";
-
-/**
- * Mede, no conteúdo JÁ PAGINADO, onde fica a célula de assinatura de cada um.
- *
- * TEM DE SER O CLONE DO html2pdf, E NÃO O NOSSO ELEMENTO
- *
- * O html2pdf clona o conteúdo e, no clone, insere divs de espaçamento para que
- * nenhum elemento com `page-break-inside: avoid` fique partido entre duas folhas.
- * A configuração deste projeto marca `tr` — quase toda linha perto de uma quebra é
- * empurrada para a folha seguinte. Medir no nosso elemento daria a posição de
- * ANTES desses empurrões: o carimbo cairia na linha de outra pessoa a partir da
- * primeira quebra de página, que é exatamente o erro que não se pode cometer.
- *
- * Por isso a medição acontece entre `toContainer()` e `toCanvas()`, com o clone
- * ainda no documento — depois do `toCanvas` ele é removido.
- */
-export function medirAncoras(container: HTMLElement): Ancora[] {
-  const base = container.getBoundingClientRect();
-  const geometria = geometriaDaFolha();
-
-  const celulas = Array.from(
-    container.querySelectorAll<HTMLElement>(`[${ATRIBUTO_DE_ANCORA}]`)
-  );
-
-  return celulas
-    .map((celula) => {
-      const r = celula.getBoundingClientRect();
-      return posicaoNaPagina({
-        chave: celula.getAttribute(ATRIBUTO_DE_ANCORA) ?? "",
-        retangulo: {
-          topoPx: r.top - base.top,
-          esquerdaPx: r.left - base.left,
-          larguraPx: r.width,
-          alturaPx: r.height,
-        },
-        geometria,
-      });
-    })
-    .filter((a): a is Ancora => a !== null && a.chave !== "");
 }
 
 /** Cache por URL: o mesmo ativo é usado em toda emissão da sessão. */
@@ -556,12 +510,6 @@ export async function gerarPdfTimbrado(params: {
   nomeArquivo: string;
   identificacao?: string;
   marcaDagua?: boolean;
-  /**
-   * Medir as células marcadas com `data-assinatura-de` e gravar as posições no
-   * arquivo, para a assinatura eletrônica poder ser carimbada no lugar certo
-   * depois. Só o documento que vai para a fila de assinatura precisa disso.
-   */
-  medirAncorasDeAssinatura?: boolean;
 }): Promise<Uint8Array> {
   const { default: html2pdf } = await import("html2pdf.js");
 
@@ -573,13 +521,9 @@ export async function gerarPdfTimbrado(params: {
   try {
     await aguardarFontes(container);
 
-    // 1. Mede o conteúdo JÁ PAGINADO e, de quebra, as âncoras de assinatura.
-    const medida = await medirNoCloneDoHtml2pdf(
-      html2pdf,
-      container,
-      params.nomeArquivo,
-      params.medirAncorasDeAssinatura === true
-    );
+    // 1. Mede o conteúdo JÁ PAGINADO, para saber que resolução o navegador
+    //    aguenta rasterizar.
+    const medida = await medirNoCloneDoHtml2pdf(html2pdf, container, params.nomeArquivo);
 
     // 2. Escolhe a resolução que este navegador aguenta rasterizar.
     const escala = escolherEscalaDoRaster(medida.alturaPx, medida.larguraPx);
@@ -591,10 +535,7 @@ export async function gerarPdfTimbrado(params: {
       .from(container)
       .outputPdf("arraybuffer")) as ArrayBuffer;
 
-    return await aplicarPapelTimbrado(bytes, {
-      identificacao: params.identificacao,
-      ancoras: medida.ancoras,
-    });
+    return await aplicarPapelTimbrado(bytes, { identificacao: params.identificacao });
   } finally {
     // Sai do documento mesmo se a emissão falhar: um palco esquecido leva a folha
     // de estilo do documento junto, e ela vaza para a interface.
@@ -626,9 +567,8 @@ export async function gerarPdfTimbrado(params: {
 async function medirNoCloneDoHtml2pdf(
   html2pdf: typeof import("html2pdf.js").default,
   container: HTMLElement,
-  nomeArquivo: string,
-  comAncoras: boolean
-): Promise<{ alturaPx: number; larguraPx: number; ancoras: Ancora[] }> {
+  nomeArquivo: string
+): Promise<{ alturaPx: number; larguraPx: number }> {
   const etapa = html2pdf().set(opcoesPdfTimbrado(nomeArquivo)).from(container).toContainer();
   await etapa;
 
@@ -646,23 +586,11 @@ async function medirNoCloneDoHtml2pdf(
       // seria não checar nada.
       console.warn("O html2pdf não expôs o container; medindo pelo elemento de origem.");
       const r = container.getBoundingClientRect();
-      return { alturaPx: r.height, larguraPx: r.width, ancoras: [] };
+      return { alturaPx: r.height, larguraPx: r.width };
     }
 
     const retangulo = clone.getBoundingClientRect();
-
-    let ancoras: Ancora[] = [];
-    if (comAncoras) {
-      try {
-        ancoras = medirAncoras(clone);
-      } catch (e) {
-        // O carimbo é acabamento; a folha de assinaturas é a prova. Falhar aqui
-        // não pode custar o documento.
-        console.warn("Não foi possível medir as âncoras de assinatura:", e);
-      }
-    }
-
-    return { alturaPx: retangulo.height, larguraPx: retangulo.width, ancoras };
+    return { alturaPx: retangulo.height, larguraPx: retangulo.width };
   } finally {
     // Quem remove o clone é o `toCanvas`, e ele não vai rodar nesta cadeia. Sem
     // isto, cada emissão deixaria um documento inteiro pendurado no `body`.
@@ -765,7 +693,6 @@ export async function gerarArquivoPdfTimbrado(params: {
   nomeArquivo: string;
   identificacao?: string;
   marcaDagua?: boolean;
-  medirAncorasDeAssinatura?: boolean;
 }): Promise<File> {
   const bytes = await gerarPdfTimbrado(params);
   return new File([bytes as BlobPart], params.nomeArquivo, { type: "application/pdf" });

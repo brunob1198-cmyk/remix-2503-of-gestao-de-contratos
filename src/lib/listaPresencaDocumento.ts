@@ -1,14 +1,12 @@
-import { pdfGlobalStyles } from "@/lib/pdfTemplates";
+import { dataBrDoc as dataBr } from "@/lib/sgsstDocumentoEstilos";
 import {
-  estilosDocumentoSgsst,
-  escDoc as esc,
-  dataBrDoc as dataBr,
-} from "@/lib/sgsstDocumentoEstilos";
-import {
-  ATRIBUTO_DE_ANCORA,
-  emitirPdfTimbrado,
-  gerarArquivoPdfTimbrado,
-} from "@/lib/sgsstPapelTimbrado";
+  arquivoPdfDireto,
+  baixarPdfDireto,
+  type Bloco,
+  type CelulaDaTabela,
+  type ColunaDaTabela,
+  type ParDeIdentificacao,
+} from "@/lib/documentoPdfDireto";
 import {
   diasDaTurma,
   linhasEmBranco,
@@ -46,6 +44,14 @@ import type {
  * 4. **Diz se é folha para assinar ou reimpressão.** Emitida com a turma
  *    concluída, é a segunda via de um registro que já deveria estar assinado em
  *    papel — e sair igual à primeira faria a via limpa parecer documento válido.
+ *
+ * ESTE É O PRIMEIRO DOCUMENTO DESENHADO DIRETO EM PDF
+ *
+ * Os demais ainda passam por HTML e são rasterizados pelo `html2pdf`. Este foi o
+ * piloto da migração por ser o mais tabular e o que menos depende de foto — e
+ * porque a folha de presença é justamente onde a paginação importa: uma turma de
+ * trinta pessoas atravessa a quebra de página, e o cabeçalho da tabela precisava
+ * se repetir, coisa que o raster nunca soube fazer. Ver `documentoPdfDireto`.
  */
 
 export interface ListaPresencaDados {
@@ -63,9 +69,18 @@ const MODALIDADE_LABEL: Record<string, string> = {
   HIBRIDO: "Híbrido",
 };
 
-function faltando(rotulo: string): string {
-  return `<span class="doc-falta">${esc(rotulo)}</span>`;
-}
+/** Larguras fixas da tabela de frequência, em pontos. */
+const LARGURA = {
+  numero: 18,
+  cpf: 72,
+  /** Espaço confortável para assinatura de próprio punho (~24 mm). */
+  assinatura: 67.5,
+  /** O mínimo que Nome e Função somados precisam para não virar duas letras. */
+  minimoDeNomeEFuncao: 200,
+} as const;
+
+/** Altura da linha: precisa caber uma assinatura de próprio punho. */
+const ALTURA_DA_LINHA = 22.5;
 
 function nomeDoParticipante(p: SgsstTreinamentoParticipante): string {
   return (
@@ -118,7 +133,28 @@ export function pendenciasListaPresenca(dados: ListaPresencaDados): string[] {
   return p;
 }
 
-export function montarHtmlListaPresenca(dados: ListaPresencaDados): string {
+/**
+ * Largura de cada coluna de assinatura.
+ *
+ * Com uma coluna, a largura confortável. Com seis — o teto de dias da turma — não
+ * há 67,5pt para cada sem espremer Nome e Função a duas letras, então elas
+ * dividem o que sobra depois de reservado o mínimo para identificar a pessoa.
+ * Identificar quem assinou vale mais que o tamanho do campo de assinatura.
+ */
+export function larguraDaColunaDeAssinatura(params: {
+  larguraUtil: number;
+  colunas: number;
+}): number {
+  if (params.colunas <= 0) return 0;
+  const disponivel =
+    params.larguraUtil - LARGURA.numero - LARGURA.cpf - LARGURA.minimoDeNomeEFuncao;
+  return Math.max(24, Math.min(LARGURA.assinatura, disponivel / params.colunas));
+}
+
+export function montarBlocosListaPresenca(
+  dados: ListaPresencaDados,
+  larguraUtil: number
+): Bloco[] {
   const { turma, participantes, empresa, geradoPor } = dados;
   const emitidoEm = new Date().toLocaleString("pt-BR");
 
@@ -131,170 +167,168 @@ export function montarHtmlListaPresenca(dados: ListaPresencaDados): string {
     capacidade: turma.capacidade,
   });
   const reimpressao = situacaoDaFolha(turma.status) === "DEPOIS_DO_TREINAMENTO";
-
   const carga = turma.carga_horaria ?? turma.treinamento?.carga_horaria ?? null;
 
   // Cabeçalho das colunas de assinatura. Com coluna única, uma só com o período.
-  const colunasDeAssinatura =
-    colunaUnica || dias.length === 0
-      ? [{ rotulo: "Assinatura" }]
-      : dias.map((d) => ({ rotulo: dataBr(d) }));
+  const rotulosDeAssinatura =
+    colunaUnica || dias.length === 0 ? ["Assinatura"] : dias.map((d) => dataBr(d));
 
-  const celulasVazias = colunasDeAssinatura.map(() => "<td></td>").join("");
+  const larguraAssin = larguraDaColunaDeAssinatura({
+    larguraUtil,
+    colunas: rotulosDeAssinatura.length,
+  });
+
+  const colunas: ColunaDaTabela[] = [
+    { rotulo: "#", largura: LARGURA.numero, alinhamento: "centro" },
+    { rotulo: "Nome" },
+    { rotulo: "CPF", largura: LARGURA.cpf },
+    { rotulo: "Função" },
+    ...rotulosDeAssinatura.map((rotulo) => ({ rotulo, largura: larguraAssin })),
+  ];
 
   /**
    * A célula de assinatura da pessoa, marcada para a assinatura eletrônica saber
-   * onde carimbar o nome dela dentro do documento.
+   * onde carimbar o nome dela.
    *
    * SÓ QUANDO A FOLHA TEM UMA COLUNA. Com uma coluna por dia, a assinatura
    * eletrônica é UM ato e não diz nada sobre cada dia separadamente — carimbá-la
    * nas três colunas afirmaria presença em três dias a partir de um clique, que é
-   * exatamente o vício que a coluna por dia existe para impedir. Nesse caso a folha
-   * sai em branco para assinatura de próprio punho, e quem assinou eletronicamente
-   * consta na folha de assinaturas do fim.
+   * exatamente o vício que a coluna por dia existe para impedir.
    */
-  const celulasDoParticipante = (nome: string): string => {
-    if (colunasDeAssinatura.length !== 1 || !nome.trim()) return celulasVazias;
-    return `<td ${ATRIBUTO_DE_ANCORA}="${esc(nome)}"></td>`;
-  };
+  const celulasDeAssinatura = (nome: string): CelulaDaTabela[] =>
+    rotulosDeAssinatura.map((_, i) => ({
+      texto: "",
+      ancoraDeAssinatura:
+        i === 0 && rotulosDeAssinatura.length === 1 && nome.trim() ? nome : undefined,
+    }));
 
-  const linhasInscritos = participantes
-    .map((p, i) => {
-      const nome = nomeDoParticipante(p);
-      return `<tr>
-        <td class="num">${i + 1}</td>
-        <td>${esc(nome) || faltando("sem nome")}</td>
-        <td>${esc(p.colaborador?.cpf) || "—"}</td>
-        <td>${esc(p.colaborador?.funcao?.nome) || "—"}</td>
-        ${celulasDoParticipante(nome)}
-      </tr>`;
-    })
-    .join("");
+  const linhasInscritos = participantes.map((p, i) => {
+    const nome = nomeDoParticipante(p);
+    return [
+      { texto: String(i + 1) },
+      { texto: nome || "(sem nome)" },
+      { texto: p.colaborador?.cpf || "—" },
+      { texto: p.colaborador?.funcao?.nome || "—" },
+      ...celulasDeAssinatura(nome),
+    ];
+  });
 
   // As linhas em branco saem numeradas na sequência: numerar é o que impede de
   // acrescentarem uma linha a lápis no rodapé depois da folha assinada.
-  const linhasVazias = Array.from({ length: vazias }, (_, i) => {
-    return `<tr class="linha-vazia">
-      <td class="num">${participantes.length + i + 1}</td>
-      <td></td><td></td><td></td>
-      ${celulasVazias}
-    </tr>`;
-  }).join("");
+  const linhasVazias = Array.from({ length: vazias }, (_, i) => [
+    { texto: String(participantes.length + i + 1) },
+    { texto: "" },
+    { texto: "" },
+    { texto: "" },
+    ...rotulosDeAssinatura.map(() => ({ texto: "" })),
+  ]);
 
-  return `
-    ${pdfGlobalStyles}
-    ${estilosDocumentoSgsst}
-    <style>
-      /* Altura de linha suficiente para caber assinatura de próprio punho. Uma
-         tabela compacta economiza papel e inutiliza a folha. */
-      table.doc-tabela tbody td { height: 30px; }
-      table.doc-tabela .num { width: 24px; text-align: center; }
-      .linha-vazia td { background: #fff; }
-      .col-assin { width: 90px; }
-    </style>
-    <div class="doc">
+  const identificacao: ParDeIdentificacao[] = [
+    {
+      rotulo: "Organização",
+      valor: turma.empresa_nome || empresa?.nome || "não informada",
+      forte: true,
+      falta: !(turma.empresa_nome || empresa?.nome),
+    },
+    { rotulo: "CNPJ", valor: turma.empresa_cnpj || empresa?.cnpj || "—" },
+    {
+      rotulo: "Curso",
+      valor: turma.treinamento?.nome || "não identificado",
+      forte: true,
+      falta: !turma.treinamento?.nome,
+    },
+    {
+      rotulo: "Carga horária",
+      valor: carga ? `${carga} horas` : "não informada",
+      falta: !carga,
+    },
+    {
+      rotulo: "Período",
+      valor: turma.data_inicial
+        ? turma.data_final && turma.data_final !== turma.data_inicial
+          ? `${dataBr(turma.data_inicial)} a ${dataBr(turma.data_final)}`
+          : dataBr(turma.data_inicial)
+        : "não informado",
+      falta: !turma.data_inicial,
+    },
+    {
+      rotulo: "Modalidade",
+      valor: MODALIDADE_LABEL[turma.modalidade] ?? turma.modalidade ?? "—",
+    },
+    {
+      rotulo: "Instrutor",
+      valor: turma.instrutor || "não informado",
+      falta: !turma.instrutor,
+    },
+    {
+      rotulo: "Local",
+      valor:
+        turma.local || (turma.modalidade === "ONLINE" ? "—" : "não informado"),
+      falta: !turma.local && turma.modalidade !== "ONLINE",
+    },
+  ];
 
-      <div class="doc-cab">
-        <h1>Lista de Presença</h1>
-        <p class="doc-sub">
-          ${turma.codigo_turma ? `Turma ${esc(turma.codigo_turma)} · ` : ""}Registro de frequência — NR-01 item 1.7
-        </p>
-      </div>
+  const blocos: Bloco[] = [
+    {
+      tipo: "cabecalho",
+      titulo: "Lista de Presença",
+      subtitulo: `${
+        turma.codigo_turma ? `Turma ${turma.codigo_turma} · ` : ""
+      }Registro de frequência — NR-01 item 1.7`,
+    },
+  ];
 
-      ${
-        reimpressao
-          ? `<div class="doc-aviso">
-              <strong>Turma já concluída — esta é uma segunda via.</strong>
-              A folha assinada de próprio punho é a que vale como registro de
-              frequência. Esta cópia serve de conferência, e não a substitui.
-             </div>`
-          : ""
-      }
+  if (reimpressao) {
+    blocos.push({
+      tipo: "aviso",
+      titulo: "Turma já concluída — esta é uma segunda via.",
+      texto:
+        "A folha assinada de próprio punho é a que vale como registro de frequência. " +
+        "Esta cópia serve de conferência, e não a substitui.",
+    });
+  }
 
-      <div class="doc-ident">
-        <table>
-          <tr>
-            <td class="rot">Organização</td>
-            <td><strong>${esc(turma.empresa_nome || empresa?.nome) || faltando("não informada")}</strong></td>
-            <td class="rot">CNPJ</td>
-            <td>${esc(turma.empresa_cnpj || empresa?.cnpj) || "—"}</td>
-          </tr>
-          <tr>
-            <td class="rot">Curso</td>
-            <td><strong>${esc(turma.treinamento?.nome) || faltando("não identificado")}</strong></td>
-            <td class="rot">Carga horária</td>
-            <td>${carga ? `${carga} horas` : faltando("não informada")}</td>
-          </tr>
-          <tr>
-            <td class="rot">Período</td>
-            <td>${
-              turma.data_inicial
-                ? turma.data_final && turma.data_final !== turma.data_inicial
-                  ? `${dataBr(turma.data_inicial)} a ${dataBr(turma.data_final)}`
-                  : dataBr(turma.data_inicial)
-                : faltando("não informado")
-            }</td>
-            <td class="rot">Modalidade</td>
-            <td>${esc(MODALIDADE_LABEL[turma.modalidade] ?? turma.modalidade)}</td>
-          </tr>
-          <tr>
-            <td class="rot">Instrutor</td>
-            <td>${esc(turma.instrutor) || faltando("não informado")}</td>
-            <td class="rot">Local</td>
-            <td>${esc(turma.local) || (turma.modalidade === "ONLINE" ? "—" : faltando("não informado"))}</td>
-          </tr>
-        </table>
-      </div>
+  blocos.push(
+    { tipo: "identificacao", pares: identificacao },
+    { tipo: "secao", titulo: "Frequência" },
+    {
+      tipo: "tabela",
+      colunas,
+      linhas: [...linhasInscritos, ...linhasVazias],
+      alturaDaLinha: ALTURA_DA_LINHA,
+    },
+    {
+      tipo: "paragrafo",
+      fraco: true,
+      texto:
+        (colunaUnica && dias.length > 0
+          ? "O período é longo demais para uma coluna por dia; a assinatura cobre o período inteiro. "
+          : "") +
+        "As linhas numeradas em branco existem para quem comparecer sem estar matriculado. " +
+        "Linha não utilizada deve ser inutilizada com um traço.",
+    },
+    {
+      tipo: "assinaturas",
+      campos: [
+        {
+          nome: turma.instrutor,
+          papel: `Instrutor${
+            turma.instrutor_qualificacao ? ` — ${turma.instrutor_qualificacao}` : ""
+          }`,
+        },
+        { nome: turma.responsavel_tecnico, papel: "Responsável técnico" },
+      ],
+    },
+    {
+      tipo: "paragrafo",
+      fraco: true,
+      texto: `Emitido em ${emitidoEm}${
+        geradoPor ? ` por ${geradoPor}` : ""
+      } · Lista de presença — NR-01 item 1.7`,
+    }
+  );
 
-      <h2 class="doc-sec">Frequência</h2>
-      <table class="doc-tabela">
-        <thead>
-          <tr>
-            <th class="num">#</th>
-            <th>Nome</th>
-            <th>CPF</th>
-            <th>Função</th>
-            ${colunasDeAssinatura
-              .map((c) => `<th class="col-assin">${esc(c.rotulo)}</th>`)
-              .join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${linhasInscritos}
-          ${linhasVazias}
-        </tbody>
-      </table>
-
-      <p class="doc-neutro">
-        ${
-          colunaUnica && dias.length > 0
-            ? "O período é longo demais para uma coluna por dia; a assinatura cobre o período inteiro. "
-            : ""
-        }As linhas numeradas em branco existem para quem comparecer sem estar
-        matriculado. Linha não utilizada deve ser inutilizada com um traço.
-      </p>
-
-      <div class="doc-assin">
-        <div class="doc-assin-centro">
-          <div class="doc-centro-txt">${esc(turma.instrutor) || "&nbsp;"}</div>
-          <hr>
-          <p>Instrutor${
-            turma.instrutor_qualificacao ? ` — ${esc(turma.instrutor_qualificacao)}` : ""
-          }</p>
-        </div>
-        <div class="doc-assin-centro">
-          <div class="doc-centro-txt">${esc(turma.responsavel_tecnico) || "&nbsp;"}</div>
-          <hr>
-          <p>Responsável técnico</p>
-        </div>
-      </div>
-
-      <div class="doc-rodape">
-        Emitido em ${esc(emitidoEm)}${geradoPor ? ` por ${esc(geradoPor)}` : ""} ·
-        Lista de presença — NR-01 item 1.7
-      </div>
-    </div>
-  `;
+  return blocos;
 }
 
 function nomeArquivo(turma: SgsstTreinamentoTurma): string {
@@ -302,14 +336,32 @@ function nomeArquivo(turma: SgsstTreinamentoTurma): string {
   return `Lista_Presenca_${base.replace(/[^\w-]+/g, "_").slice(0, 48)}.pdf`;
 }
 
+function identificacaoDoRodape(dados: ListaPresencaDados): string {
+  return `Lista de presença — ${
+    dados.turma.codigo_turma || dados.turma.treinamento?.nome || ""
+  }`.slice(0, 88);
+}
+
+/**
+ * Largura útil da folha, em pontos.
+ *
+ * A montagem dos blocos precisa dela para dividir as colunas da tabela. Vem da
+ * mesma geometria que o renderizador usa, e não de um número repetido aqui.
+ */
+async function larguraUtilEmPontos(): Promise<number> {
+  const { geometriaDaFolha } = await import("@/lib/sgsstPapelTimbrado");
+  return geometriaDaFolha().larguraUtilMm * (72 / 25.4);
+}
+
 export async function gerarPdfListaPresenca(dados: ListaPresencaDados): Promise<void> {
-  await emitirPdfTimbrado({
-    html: montarHtmlListaPresenca(dados),
-    nomeArquivo: nomeArquivo(dados.turma),
-    identificacao: `Lista de presença — ${
-      dados.turma.codigo_turma || dados.turma.treinamento?.nome || ""
-    }`.slice(0, 88),
-  });
+  const largura = await larguraUtilEmPontos();
+  await baixarPdfDireto(
+    {
+      blocos: montarBlocosListaPresenca(dados, largura),
+      identificacao: identificacaoDoRodape(dados),
+    },
+    nomeArquivo(dados.turma)
+  );
 }
 
 /**
@@ -317,16 +369,18 @@ export async function gerarPdfListaPresenca(dados: ListaPresencaDados): Promise<
  *
  * Sem download: aqui o PDF vai para o armazenamento e fica anexado à
  * solicitação, para cada signatário abrir e ler antes de assinar.
+ *
+ * As âncoras de assinatura saem exatas, e não medidas: quem desenha a célula sabe
+ * onde ela ficou. No caminho por HTML era preciso interromper o html2pdf no meio
+ * e medir o clone dele.
  */
 export async function gerarArquivoListaPresenca(dados: ListaPresencaDados): Promise<File> {
-  return gerarArquivoPdfTimbrado({
-    html: montarHtmlListaPresenca(dados),
-    nomeArquivo: nomeArquivo(dados.turma),
-    // Mede onde ficou a célula de assinatura de cada um, para o nome de quem
-    // assinar eletronicamente ser carimbado na linha certa da folha.
-    medirAncorasDeAssinatura: true,
-    identificacao: `Lista de presença — ${
-      dados.turma.codigo_turma || dados.turma.treinamento?.nome || ""
-    }`.slice(0, 88),
-  });
+  const largura = await larguraUtilEmPontos();
+  return arquivoPdfDireto(
+    {
+      blocos: montarBlocosListaPresenca(dados, largura),
+      identificacao: identificacaoDoRodape(dados),
+    },
+    nomeArquivo(dados.turma)
+  );
 }
