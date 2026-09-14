@@ -4,7 +4,11 @@ import {
   escDoc as esc,
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
-import { emitirPdfTimbrado, gerarArquivoPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
+import {
+  ATRIBUTO_DE_ANCORA,
+  emitirPdfTimbrado,
+  gerarArquivoPdfTimbrado,
+} from "@/lib/sgsstPapelTimbrado";
 import {
   diasDaTurma,
   linhasEmBranco,
@@ -138,6 +142,22 @@ export function montarHtmlListaPresenca(dados: ListaPresencaDados): string {
 
   const celulasVazias = colunasDeAssinatura.map(() => "<td></td>").join("");
 
+  /**
+   * A célula de assinatura da pessoa, marcada para a assinatura eletrônica saber
+   * onde carimbar o nome dela dentro do documento.
+   *
+   * SÓ QUANDO A FOLHA TEM UMA COLUNA. Com uma coluna por dia, a assinatura
+   * eletrônica é UM ato e não diz nada sobre cada dia separadamente — carimbá-la
+   * nas três colunas afirmaria presença em três dias a partir de um clique, que é
+   * exatamente o vício que a coluna por dia existe para impedir. Nesse caso a folha
+   * sai em branco para assinatura de próprio punho, e quem assinou eletronicamente
+   * consta na folha de assinaturas do fim.
+   */
+  const celulasDoParticipante = (nome: string): string => {
+    if (colunasDeAssinatura.length !== 1 || !nome.trim()) return celulasVazias;
+    return `<td ${ATRIBUTO_DE_ANCORA}="${esc(nome)}"></td>`;
+  };
+
   const linhasInscritos = participantes
     .map((p, i) => {
       const nome = nomeDoParticipante(p);
@@ -146,7 +166,7 @@ export function montarHtmlListaPresenca(dados: ListaPresencaDados): string {
         <td>${esc(nome) || faltando("sem nome")}</td>
         <td>${esc(p.colaborador?.cpf) || "—"}</td>
         <td>${esc(p.colaborador?.funcao?.nome) || "—"}</td>
-        ${celulasVazias}
+        ${celulasDoParticipante(nome)}
       </tr>`;
     })
     .join("");
@@ -302,6 +322,9 @@ export async function gerarArquivoListaPresenca(dados: ListaPresencaDados): Prom
   return gerarArquivoPdfTimbrado({
     html: montarHtmlListaPresenca(dados),
     nomeArquivo: nomeArquivo(dados.turma),
+    // Mede onde ficou a célula de assinatura de cada um, para o nome de quem
+    // assinar eletronicamente ser carimbado na linha certa da folha.
+    medirAncorasDeAssinatura: true,
     identificacao: `Lista de presença — ${
       dados.turma.codigo_turma || dados.turma.treinamento?.nome || ""
     }`.slice(0, 88),

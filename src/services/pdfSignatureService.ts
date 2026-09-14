@@ -372,6 +372,13 @@ export async function gerarFolhaDeAssinaturas(
  * É o que liga cada folha ao ato de assinatura. Sem ele, uma página solta do
  * documento não tem como ser associada à assinatura — e documento de obra circula
  * em página solta o tempo todo, fotografado e impresso em pedaços.
+ *
+ * E A ASSINATURA APARECE NO CORPO DO DOCUMENTO
+ *
+ * Antes de juntar as duas partes, o nome de quem assinou é carimbado na célula de
+ * assinatura dele — a coluna "Assinatura" da lista de presença, por exemplo. Sem
+ * isso, o documento sai com a folha de frequência em branco e a prova só no fim, e
+ * quem abre não vê que ele foi assinado. Ver `carimbarAssinaturas`.
  */
 export async function montarDocumentoAssinado(params: {
   /** Bytes do PDF original, como foi enviado para assinatura. */
@@ -379,12 +386,39 @@ export async function montarDocumentoAssinado(params: {
   /** Bytes da folha de assinaturas. */
   folha: ArrayBuffer;
   requestId: string;
-}): Promise<{ arquivo: File; hashAssinado: string }> {
+  /** Quem assinou, para o nome ser carimbado no lugar dele no documento. */
+  assinantes?: readonly { nome: string; assinadoEm: string }[];
+}): Promise<{ arquivo: File; hashAssinado: string; carimbados: string[] }> {
   const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+
+  // O carimbo vem ANTES da junção, sobre o original: depois de copiado para o
+  // documento final, o original já não é o arquivo que os signatários leram, e as
+  // posições medidas na emissão valem para ele.
+  let corpo = params.original;
+  let carimbados: string[] = [];
+
+  if (params.assinantes && params.assinantes.length > 0) {
+    try {
+      const { carimbarAssinaturas } = await import("@/services/carimboDeAssinatura");
+      const r = await carimbarAssinaturas({
+        original: params.original,
+        assinantes: params.assinantes,
+      });
+      corpo = r.bytes.buffer.slice(
+        r.bytes.byteOffset,
+        r.bytes.byteOffset + r.bytes.byteLength
+      ) as ArrayBuffer;
+      carimbados = r.carimbados;
+    } catch (e) {
+      // O carimbo é o acabamento; a folha de assinaturas é a prova. Falhar aqui
+      // não pode custar o documento assinado inteiro.
+      console.warn("Não foi possível carimbar as assinaturas no documento:", e);
+    }
+  }
 
   const final = await PDFDocument.create();
 
-  const originalPdf = await PDFDocument.load(params.original);
+  const originalPdf = await PDFDocument.load(corpo);
   const folhaPdf = await PDFDocument.load(params.folha);
 
   const paginasOriginais = await final.copyPages(originalPdf, originalPdf.getPageIndices());
@@ -420,5 +454,6 @@ export async function montarDocumentoAssinado(params: {
   return {
     arquivo,
     hashAssinado: await calculateSHA256(bytes.buffer as ArrayBuffer),
+    carimbados,
   };
 }

@@ -1,0 +1,411 @@
+/**
+ * Onde carimbar a assinatura DENTRO do documento.
+ *
+ * O QUE FALTAVA
+ *
+ * O documento assinado passou a trazer o original mais a folha de assinaturas.
+ * Mas no original nada mudava: a coluna "Assinatura" da lista de presença saía
+ * vazia. Quem abre o documento não vê quem assinou — precisa ir até a folha do
+ * fim e cruzar nome por nome. O DocuSign resolve isso pondo a assinatura no lugar
+ * certo, ao lado do nome de cada um.
+ *
+ * POR QUE EXISTEM DOIS CAMINHOS AQUI
+ *
+ * O caminho óbvio seria ler o texto do PDF e procurar o nome. Isso NÃO funciona
+ * nos documentos que este sistema gera: o `html2pdf` rasteriza a folha inteira e
+ * insere UMA IMAGEM JPEG por página (`addImage`, conferido na fonte da
+ * biblioteca). O único texto de verdade num PGR, numa CAT ou numa lista de
+ * presença é o rodapé, que o `pdf-lib` desenha depois. Procurar "BRUNO SOUZA DA
+ * SILVA" ali não acha nada, porque ali ele é pixel.
+ *
+ * Então:
+ *
+ * - **ANCORA MEDIDA** (`posicaoNaPagina`): para o que nós geramos. A célula de
+ *   assinatura é medida no DOM, na hora da emissão, e a posição viaja dentro do
+ *   próprio PDF. É exata por construção.
+ *
+ * - **ANCORA POR TEXTO** (`posicaoDoCarimbo`): para PDF que o usuário anexa — um
+ *   contrato saído do Word. Esse tem camada de texto, e aí dá para achar o nome.
+ *
+ * POR QUE A MEDIÇÃO PRECISA SER FEITA NO CLONE DO html2pdf
+ *
+ * O html2pdf clona o conteúdo e, no CLONE, insere divs de espaçamento para não
+ * cortar elemento marcado com `page-break-inside: avoid`. A configuração deste
+ * projeto marca `tr` — ou seja, quase toda linha perto de uma quebra é empurrada.
+ * Medir no nosso elemento daria a posição de ANTES desses empurrões, e o carimbo
+ * cairia algumas linhas acima do lugar. Ver `medirAncoras`.
+ *
+ * QUANDO NÃO DÁ PARA SABER, NÃO CARIMBA
+ *
+ * Nome ausente, nome escrito diferente do cadastro, dois homônimos: em todos o
+ * lugar não é encontrado, e o resultado é não carimbar. Carimbar no lugar errado é
+ * o único desfecho pior que não carimbar — a folha de assinaturas do fim continua
+ * valendo como registro em qualquer um dos casos.
+ */
+
+// ---------------------------------------------------------------------------
+// Unidades
+// ---------------------------------------------------------------------------
+
+/**
+ * O CSS define o milímetro em 96 dpi: 1mm = 96/25,4 px. Não é convenção nossa
+ * nem depende de tela — é a unidade absoluta da especificação.
+ */
+const PX_POR_MM = 96 / 25.4;
+/** O PDF trabalha em pontos tipográficos: 1pt = 1/72". */
+const PT_POR_MM = 72 / 25.4;
+
+export const mmParaPt = (mm: number): number => mm * PT_POR_MM;
+export const pxParaMm = (px: number): number => px / PX_POR_MM;
+
+// ---------------------------------------------------------------------------
+// Âncora medida
+// ---------------------------------------------------------------------------
+
+/**
+ * A geometria da folha, passada de fora.
+ *
+ * Os números moram em `sgsstPapelTimbrado`, que é quem decide as margens. Recebê-los
+ * por parâmetro mantém este módulo puro e evita o ciclo de importação — o papel
+ * timbrado precisa daqui, e daqui não se precisa dele.
+ */
+export interface GeometriaDaFolha {
+  /** Largura da área de conteúdo. É a largura que o html2pdf dá ao container. */
+  larguraUtilMm: number;
+  alturaUtilMm: number;
+  margemEsquerdaMm: number;
+  margemSuperiorMm: number;
+  alturaDaFolhaMm: number;
+}
+
+/** Um retângulo medido no DOM, relativo ao canto superior esquerdo do container. */
+export interface RetanguloMedido {
+  topoPx: number;
+  esquerdaPx: number;
+  larguraPx: number;
+  alturaPx: number;
+}
+
+/** Onde carimbar, em pontos, no sistema do PDF (origem embaixo à esquerda). */
+export interface Ancora {
+  /** Identifica de quem é esta célula. Normalizado por `chaveDoTexto`. */
+  chave: string;
+  /** Página, começando em 0. */
+  pagina: number;
+  x: number;
+  /** Base do retângulo — `y` cresce para cima no PDF. */
+  y: number;
+  largura: number;
+  altura: number;
+}
+
+/**
+ * Converte um retângulo medido no container em página + posição no PDF.
+ *
+ * A CONTA, E DE ONDE ELA SAI
+ *
+ * O html2pdf fatia o canvas de cima para baixo em pedaços de uma página e desenha
+ * cada pedaço em `addImage(..., margem[1], margem[0], inner.width, pageHeight)` —
+ * isto é, a área de conteúdo começa exatamente nas margens e tem a largura útil.
+ * Como o container recebe `width: <inner.width>mm`, um pixel de CSS do container
+ * corresponde a um pixel de CSS da folha: a conversão é a do próprio CSS, sem
+ * escala intermediária. (O `scale: 2` do html2canvas multiplica os pixels do
+ * raster, não o layout — por isso não entra aqui.)
+ *
+ * Devolve nulo para retângulo impossível, que é o sintoma de elemento não
+ * renderizado: medir `display:none` devolve zeros, e zerado ele viraria um carimbo
+ * no topo da primeira página.
+ */
+export function posicaoNaPagina(params: {
+  chave: string;
+  retangulo: RetanguloMedido;
+  geometria: GeometriaDaFolha;
+}): Ancora | null {
+  const { retangulo: r, geometria: g } = params;
+
+  if (!(r.larguraPx > 0) || !(r.alturaPx > 0) || r.topoPx < 0 || r.esquerdaPx < 0) {
+    return null;
+  }
+
+  const pxPorPagina = g.alturaUtilMm * PX_POR_MM;
+  if (!(pxPorPagina > 0)) return null;
+
+  const pagina = Math.floor(r.topoPx / pxPorPagina);
+  const topoNaPaginaPx = r.topoPx - pagina * pxPorPagina;
+
+  const topoMm = g.margemSuperiorMm + pxParaMm(topoNaPaginaPx);
+  const esquerdaMm = g.margemEsquerdaMm + pxParaMm(r.esquerdaPx);
+  const alturaMm = pxParaMm(r.alturaPx);
+
+  // A célula que cai bem em cima da quebra teria metade em cada folha. O carimbo
+  // não pode ser partido, então ele fica na página onde a célula COMEÇA.
+  return {
+    chave: chaveDoTexto(params.chave),
+    pagina,
+    x: mmParaPt(esquerdaMm),
+    y: mmParaPt(g.alturaDaFolhaMm - topoMm - alturaMm),
+    largura: mmParaPt(pxParaMm(r.larguraPx)),
+    altura: mmParaPt(alturaMm),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Guardar e recuperar as âncoras
+// ---------------------------------------------------------------------------
+
+/**
+ * Marca que identifica o bloco de âncoras dentro dos metadados do PDF.
+ *
+ * As âncoras ficam NO ARQUIVO, e não numa coluna do banco, porque elas descrevem
+ * AQUELE arquivo: as coordenadas valem para a paginação daquela emissão. Guardadas
+ * fora, uma segunda emissão do mesmo documento — com uma linha a mais, com a
+ * quebra em outro lugar — deixaria as coordenadas antigas apontando para o vazio, e
+ * ninguém perceberia.
+ */
+const MARCA_DAS_ANCORAS = "ancoras-de-assinatura:";
+
+/** Uma casa decimal de ponto é ~0,35 mm: precisão muito além do necessário. */
+function arredondar(v: number): number {
+  return Math.round(v * 10) / 10;
+}
+
+export function serializarAncoras(ancoras: readonly Ancora[]): string {
+  const enxutas = ancoras.map((a) => ({
+    c: a.chave,
+    p: a.pagina,
+    x: arredondar(a.x),
+    y: arredondar(a.y),
+    l: arredondar(a.largura),
+    a: arredondar(a.altura),
+  }));
+  return MARCA_DAS_ANCORAS + JSON.stringify(enxutas);
+}
+
+/**
+ * Lê o bloco de âncoras. Devolve lista vazia para qualquer coisa que não seja
+ * exatamente o que gravamos — metadado é campo livre, e o PDF pode ter vindo de
+ * outro lugar.
+ */
+export function lerAncoras(bruto: string | null | undefined): Ancora[] {
+  if (!bruto) return [];
+  const inicio = bruto.indexOf(MARCA_DAS_ANCORAS);
+  if (inicio < 0) return [];
+
+  try {
+    const json = bruto.slice(inicio + MARCA_DAS_ANCORAS.length);
+    const lista: unknown = JSON.parse(json);
+    if (!Array.isArray(lista)) return [];
+
+    return lista
+      .map((item): Ancora | null => {
+        const o = item as Record<string, unknown>;
+        const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+        const chave = typeof o?.c === "string" ? o.c : null;
+        const pagina = num(o?.p);
+        const x = num(o?.x);
+        const y = num(o?.y);
+        const largura = num(o?.l);
+        const altura = num(o?.a);
+        if (!chave || pagina === null || x === null || y === null) return null;
+        if (largura === null || altura === null) return null;
+        return { chave, pagina, x, y, largura, altura };
+      })
+      .filter((a): a is Ancora => a !== null);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * A âncora desta pessoa, ou nula.
+ *
+ * Duas âncoras com a mesma chave — dois homônimos na mesma turma — devolvem nulo:
+ * escolher uma seria carimbar na linha de outra pessoa.
+ */
+export function ancoraDe(ancoras: readonly Ancora[], nome: string): Ancora | null {
+  const alvo = chaveDoTexto(nome);
+  if (!alvo) return null;
+  const achadas = ancoras.filter((a) => a.chave === alvo);
+  return achadas.length === 1 ? achadas[0] : null;
+}
+
+// ---------------------------------------------------------------------------
+// Âncora por texto — para PDF anexado, que tem camada de texto
+// ---------------------------------------------------------------------------
+
+/** Normaliza para comparar: sem acento, sem caixa, sem espaço repetido. */
+export function chaveDoTexto(valor: string): string {
+  return (valor ?? "")
+    .normalize("NFD")
+    // Faixa U+0300–U+036F: os acentos que o NFD separou da letra. Escritos como
+    // escape, e não com os próprios caracteres, porque um combinante solto no
+    // arquivo-fonte não sobrevive a toda ferramenta que toca no código.
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Um pedaço de texto do PDF, com onde ele está. Vem do pdfjs. */
+export interface TextoDoPdf {
+  texto: string;
+  /** Página, começando em 0. */
+  pagina: number;
+  /** Canto inferior esquerdo, no sistema do PDF (y cresce para cima). */
+  x: number;
+  y: number;
+  largura: number;
+  altura: number;
+}
+
+/**
+ * Acha o item de texto que contém o nome.
+ *
+ * Exige o nome INTEIRO, e não a primeira palavra: "Bruno" acertaria qualquer Bruno
+ * da folha. Nome repetido em mais de um item — o cabeçalho e a linha — devolve
+ * nulo, porque escolher seria adivinhar.
+ */
+export function acharNome(
+  itens: readonly TextoDoPdf[],
+  nome: string
+): TextoDoPdf | null {
+  const alvo = chaveDoTexto(nome);
+  if (alvo.length < 5) return null; // Curto demais casa com qualquer coisa.
+
+  const achados = itens.filter((i) => chaveDoTexto(i.texto).includes(alvo));
+  return achados.length === 1 ? achados[0] : null;
+}
+
+/**
+ * Acha a coluna pelo texto do cabeçalho, na mesma página.
+ *
+ * O cabeçalho tem de estar ACIMA da linha — `y` maior, porque no PDF o eixo cresce
+ * para cima. Sem essa checagem, um texto igual mais abaixo na folha passaria por
+ * cabeçalho de coluna.
+ */
+export function acharColuna(
+  itens: readonly TextoDoPdf[],
+  rotulo: string,
+  referencia: TextoDoPdf
+): TextoDoPdf | null {
+  const alvo = chaveDoTexto(rotulo);
+
+  const candidatos = itens.filter(
+    (i) =>
+      i.pagina === referencia.pagina && i.y > referencia.y && chaveDoTexto(i.texto) === alvo
+  );
+  if (candidatos.length === 0) return null;
+
+  // O cabeçalho mais próximo da linha, quando o rótulo aparece mais de uma vez.
+  return candidatos.sort((a, b) => a.y - b.y)[0];
+}
+
+/**
+ * Onde carimbar num PDF com camada de texto, ou nulo quando não dá para saber.
+ *
+ * POR QUE SÓ O CRUZAMENTO LINHA × COLUNA, E NÃO "ACIMA DO NOME"
+ *
+ * Carimbar logo acima do nome é o que se faria num contrato, onde o nome vem sob a
+ * linha de assinatura. Mas o nome de alguém também aparece no meio do texto — "…
+ * entre a CONTRATANTE e BRUNO SOUZA DA SILVA, doravante …" — e nesse caso o
+ * carimbo cairia dentro de um parágrafo. Sem enxergar o documento não há como
+ * distinguir os dois casos.
+ *
+ * Exigir um cabeçalho de coluna ACIMA do nome elimina o parágrafo: coluna de
+ * assinatura só existe em tabela. Se o documento não tiver essa coluna, não há
+ * carimbo — e a folha de assinaturas do fim continua provando quem assinou.
+ */
+export function posicaoDoCarimbo(params: {
+  itens: readonly TextoDoPdf[];
+  nome: string;
+  rotuloDaColuna: string;
+}): Ancora | null {
+  const linha = acharNome(params.itens, params.nome);
+  if (!linha) return null;
+
+  const chave = chaveDoTexto(params.nome);
+
+  const coluna = acharColuna(params.itens, params.rotuloDaColuna, linha);
+  if (!coluna) return null;
+
+  // Largura disponível: até o próximo item à direita do cabeçalho, na mesma
+  // altura. Sem esse limite, um nome longo atravessaria a borda da célula.
+  const vizinhoDireita = params.itens
+    .filter(
+      (i) =>
+        i.pagina === coluna.pagina &&
+        Math.abs(i.y - coluna.y) < coluna.altura &&
+        i.x > coluna.x + coluna.largura
+    )
+    .sort((a, b) => a.x - b.x)[0];
+
+  const largura = vizinhoDireita
+    ? vizinhoDireita.x - coluna.x - 4
+    : Math.max(coluna.largura * 1.6, 60);
+
+  return {
+    chave,
+    pagina: linha.pagina,
+    x: coluna.x,
+    // Alinhado pela base do nome, para o carimbo ficar na mesma linha da tabela.
+    y: linha.y,
+    largura,
+    altura: linha.altura,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Ajuste do texto à célula
+// ---------------------------------------------------------------------------
+
+/**
+ * Reduz o corpo da fonte até o texto caber na largura disponível.
+ *
+ * `medirLargura` vem de fora — na emissão é o `widthOfTextAtSize` da própria fonte
+ * embutida, que é a medida exata. O teste passa uma medida sintética.
+ *
+ * Abaixo do mínimo o texto seria ilegível impresso; nesse caso ele é ENCURTADO
+ * pelo chamador, porque um nome miúdo demais não prova nada.
+ */
+export function corpoQueCabe(params: {
+  texto: string;
+  larguraMaxima: number;
+  medirLargura: (texto: string, corpo: number) => number;
+  corpoIdeal?: number;
+  corpoMinimo?: number;
+}): number {
+  const ideal = params.corpoIdeal ?? 9;
+  const minimo = params.corpoMinimo ?? 5;
+
+  if (!(params.larguraMaxima > 0) || !params.texto) return minimo;
+
+  let corpo = ideal;
+  // Passos de meio ponto: o suficiente para acompanhar a diferença de largura e
+  // poucas iterações até o mínimo.
+  while (corpo > minimo && params.medirLargura(params.texto, corpo) > params.larguraMaxima) {
+    corpo -= 0.5;
+  }
+  return Math.max(minimo, corpo);
+}
+
+/**
+ * Encurta o nome para caber, quando nem no corpo mínimo ele cabe.
+ *
+ * Mantém o PRIMEIRO e o ÚLTIMO nome e abrevia o meio — "Bruno S. da Silva" — que é
+ * como a pessoa é identificada na fala e no crachá. Cortar o fim produziria "Bruno
+ * Souza da S", que parece erro de sistema.
+ */
+export function encurtarNome(nome: string): string {
+  const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length <= 2) return partes.join(" ");
+
+  const primeiro = partes[0];
+  const ultimo = partes[partes.length - 1];
+  const meio = partes
+    .slice(1, -1)
+    // Preposições ficam inteiras: "da", "de", "dos" abreviadas viram ruído.
+    .map((p) => (p.length <= 3 ? p : `${p[0]}.`))
+    .join(" ");
+
+  return `${primeiro} ${meio} ${ultimo}`;
+}
