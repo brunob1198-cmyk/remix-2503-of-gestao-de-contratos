@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ export function ChecklistQrCodeDialog({ open, onOpenChange, modelo }: ChecklistQ
   const [vinculadoNome, setVinculadoNome] = useState("");
   const [selectedQrImage, setSelectedQrImage] = useState<string | null>(null);
   const [activeToken, setActiveToken] = useState<string | null>(null);
+  const cartaoDoQrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (modelo && open) {
@@ -55,11 +56,40 @@ export function ChecklistQrCodeDialog({ open, onOpenChange, modelo }: ChecklistQ
     }
   };
 
+  /**
+   * "Ver" parecia não fazer nada, e quase não fazia.
+   *
+   * Com um QR Code só na lista, ele regenerava a MESMA imagem do mesmo token e
+   * trocava o estado por um valor igual ao anterior — nenhum pixel mudava na
+   * tela. Quem clicava concluía, com razão, que o botão estava quebrado.
+   *
+   * Agora ele rola até o cartão e avisa qual vínculo está sendo exibido, que é a
+   * informação que o clique realmente produz quando há vários códigos.
+   */
   const handleSelectQrForView = async (token: string) => {
-    const startUrl = `${window.location.origin}/checklists/iniciar/${token}`;
-    const img = await generateQRCodeDataUrl(startUrl);
-    setSelectedQrImage(img);
-    setActiveToken(token);
+    try {
+      const startUrl = `${window.location.origin}/checklists/iniciar/${token}`;
+      const img = await generateQRCodeDataUrl(startUrl);
+      setSelectedQrImage(img);
+      setActiveToken(token);
+
+      const qr = qrcodes.find((q) => q.token === token);
+      toast.success(
+        qr?.vinculado_nome
+          ? `Exibindo o QR Code de "${qr.vinculado_nome}".`
+          : "QR Code exibido acima."
+      );
+
+      // O cartão fica acima da lista; sem isto, em tela pequena o clique rola
+      // para fora da vista.
+      cartaoDoQrRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch (e) {
+      // Antes a falha era silenciosa: a promessa era descartada e a tela ficava
+      // exatamente como estava, sem explicar nada.
+      toast.error(
+        `Não foi possível montar o QR Code: ${e instanceof Error ? e.message : e}`
+      );
+    }
   };
 
   const handleCopyLink = (token: string) => {
@@ -136,7 +166,7 @@ export function ChecklistQrCodeDialog({ open, onOpenChange, modelo }: ChecklistQ
 
           {/* VISUALIZADOR DE QR CODE */}
           {selectedQrImage && activeToken && (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            <div ref={cartaoDoQrRef} className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
               <img src={selectedQrImage} alt="QR Code" className="w-36 h-36 border p-2 bg-white rounded-lg shadow-sm" />
               <div className="space-y-2 flex-1">
                 <Badge className="bg-emerald-600 text-white font-bold">QR CODE ATIVO</Badge>

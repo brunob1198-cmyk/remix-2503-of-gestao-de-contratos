@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { calculateSHA256 } from "@/utils/cryptoUtils";
 import { generateQRCodeDataUrl } from "@/utils/qrCodeGenerator";
+import { decodificarQrCode } from "@/utils/tests/decodificarQrCode";
 import { SignatureStatus, SignatureMethod, SignatureEventName } from "@/types/signature";
 
 describe("Central Signature Service - Unit & Cryptographic Tests", () => {
@@ -24,12 +25,24 @@ describe("Central Signature Service - Unit & Cryptographic Tests", () => {
     expect(originalHash).not.toBe(modifiedHash);
   });
 
-  it("deve gerar URL de QR Code para validação pública de assinatura", async () => {
+  /**
+   * ESTE TESTE PRECISOU SER REESCRITO, E O MOTIVO IMPORTA
+   *
+   * Ele afirmava apenas que o resultado começava com "data:image/". O gerador
+   * antigo não produzia QR Code nenhum — desenhava três quadrados de canto e um
+   * borrão derivado de um hash — e passava aqui sem esforço, porque um desenho
+   * decorativo também é "data:image/".
+   *
+   * A folha de assinaturas imprime "Escanear para verificar autenticidade" ao
+   * lado dessa imagem. Um teste que não decodifica não tem como saber se a frase
+   * é verdade. Agora decodifica.
+   */
+  it("o QR Code da folha de assinaturas leva mesmo à URL de verificação", async () => {
     const verificationUrl = "https://app.saas.com.br/verificar-assinatura/req-uuid-123456";
     const qrDataUrl = await generateQRCodeDataUrl(verificationUrl);
 
-    expect(qrDataUrl).toBeDefined();
-    expect(qrDataUrl.startsWith("data:image/")).toBe(true);
+    expect(qrDataUrl.startsWith("data:image/png;base64,")).toBe(true);
+    expect(decodificarQrCode(verificationUrl)).toBe(verificationUrl);
   });
 
   it("deve validar a lista de status centralizados conforme especificação", () => {
