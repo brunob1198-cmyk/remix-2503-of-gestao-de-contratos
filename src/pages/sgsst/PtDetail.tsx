@@ -528,12 +528,20 @@ export default function SgsstPtDetailPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-4 border-t text-xs">
             <div>
-              <span className="text-muted-foreground block">Início da Validade:</span>
+              <span className="text-muted-foreground block">Válida a partir de:</span>
               <span className="font-semibold">{formatDateStr(currentPt.data_inicio)}</span>
             </div>
             <div>
-              <span className="text-muted-foreground block">Término da Validade:</span>
-              <span className="font-semibold">{formatDateStr(currentPt.data_fim)}</span>
+              <span className="text-muted-foreground block">Válida até:</span>
+              {/*
+                `validade_fim`, e não `data_fim`. Os dois existiam, e a tela mostrava
+                o que NÃO governa nada: quem o documento imprime e quem a checagem de
+                pendências cobra é `validade_fim`. `data_fim` continua no banco para
+                os registros antigos, e só aparece quando não há o outro.
+              */}
+              <span className="font-semibold">
+                {formatDateStr(currentPt.validade_fim ?? currentPt.data_fim)}
+              </span>
             </div>
             <div>
               <span className="text-muted-foreground block">Supervisor Responsável:</span>
