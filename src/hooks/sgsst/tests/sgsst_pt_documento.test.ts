@@ -279,6 +279,16 @@ describe("montarHtmlPt — avaliação atmosférica", () => {
     expect(html).toContain("Entrada NÃO liberada");
   });
 
+  it("sem plano de resgate, a folha afixada não diz que a entrada está liberada", () => {
+    // Roteiro 8.11. O documento já listava "Plano de resgate não descrito" nas
+    // pendências — e, logo acima, estampava "Entrada LIBERADA". A folha se
+    // contradizia na mesma página, e o veredito é o que se lê de longe.
+    const html = montarHtmlPt(dados({ pt: { ...PT, plano_resgate: null } }), HOJE);
+    expect(html).toContain("Entrada NÃO liberada");
+    expect(html).not.toContain("Entrada LIBERADA");
+    expect(html).toContain("Plano de resgate");
+  });
+
   it("sem vigia designado, a entrada não é liberada", () => {
     const html = montarHtmlPt(dados({ participantes: [EXECUTANTE] }), HOJE);
     expect(html).toContain("Entrada NÃO liberada");

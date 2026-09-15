@@ -58,6 +58,8 @@ interface PtAtmosferaPanelProps {
   ptId: string;
   participantes: readonly SgsstPtParticipante[];
   allowEdit?: boolean;
+  /** Plano de resgate da PT: a NR-33 o exige ANTES da entrada. */
+  planoResgate?: string | null;
 }
 
 const ICONE_SITUACAO: Record<SituacaoParametro, typeof CheckCircle2> = {
@@ -78,6 +80,7 @@ export function PtAtmosferaPanel({
   ptId,
   participantes,
   allowEdit = false,
+  planoResgate,
 }: PtAtmosferaPanelProps) {
   // A foto do visor do detector e o que sustenta a leitura no documento: o numero
   // digitado a mao nao mostra o equipamento nem a hora do aparelho.
@@ -106,9 +109,10 @@ export function PtAtmosferaPanel({
       avaliarLiberacaoEntrada({
         medicoes,
         responsabilidades: participantes.map((p) => p.responsabilidade),
+        planoResgate,
         hoje: new Date(),
       }),
-    [medicoes, participantes]
+    [medicoes, participantes, planoResgate]
   );
 
   const nOxigenio = parseLimite(oxigenio);

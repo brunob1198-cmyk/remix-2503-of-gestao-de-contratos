@@ -278,11 +278,18 @@ describe("avaliarMedicao", () => {
 
 describe("avaliarLiberacaoEntrada", () => {
   const comVigia = [PAPEL_VIGIA, "Executante"];
+  /**
+   * A NR-33 exige o plano de resgate ANTES da entrada. Os casos abaixo o
+   * informam porque estao medindo OUTRA condicao; a ausencia dele tem casos
+   * proprios no fim deste bloco.
+   */
+  const PLANO = "Tripe com talha, resgate sem entrada. Brigada acionada pelo radio canal 3.";
 
   it("libera com medicao pre-entrada aprovada e vigia designado", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [MEDICAO_OK],
       responsabilidades: comVigia,
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.liberado).toBe(true);
@@ -294,6 +301,7 @@ describe("avaliarLiberacaoEntrada", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [],
       responsabilidades: comVigia,
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.liberado).toBe(false);
@@ -305,6 +313,7 @@ describe("avaliarLiberacaoEntrada", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [MEDICAO_OK],
       responsabilidades: ["Executante", "Supervisor de Entrada"],
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.liberado).toBe(false);
@@ -315,6 +324,7 @@ describe("avaliarLiberacaoEntrada", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [MEDICAO_OK],
       responsabilidades: ["  vIGIA  "],
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.liberado).toBe(true);
@@ -325,6 +335,7 @@ describe("avaliarLiberacaoEntrada", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [{ ...MEDICAO_OK, momento: "DURANTE" }],
       responsabilidades: comVigia,
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.liberado).toBe(false);
@@ -348,6 +359,7 @@ describe("avaliarLiberacaoEntrada", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [antiga, nova],
       responsabilidades: comVigia,
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.medicaoVigente?.id).toBe("nova");
@@ -370,6 +382,7 @@ describe("avaliarLiberacaoEntrada", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [aprovadaAntiga, reprovadaNova],
       responsabilidades: comVigia,
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.medicaoVigente?.id).toBe("nova");
@@ -380,6 +393,7 @@ describe("avaliarLiberacaoEntrada", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [{ ...MEDICAO_OK, momento: null }],
       responsabilidades: comVigia,
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.liberado).toBe(true);
@@ -389,6 +403,7 @@ describe("avaliarLiberacaoEntrada", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [],
       responsabilidades: [],
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.impedimentos).toHaveLength(2);
@@ -398,8 +413,65 @@ describe("avaliarLiberacaoEntrada", () => {
     const r = avaliarLiberacaoEntrada({
       medicoes: [MEDICAO_OK],
       responsabilidades: [null, undefined, PAPEL_VIGIA],
+      planoResgate: PLANO,
       hoje: HOJE,
     });
     expect(r.liberado).toBe(true);
+  });
+/**
+   * Roteiro 8.11 — teste NEGATIVO.
+   *
+   * O plano de resgate era coletado no formulario, gravado no banco, e o PDF ate
+   * imprimia "Plano de resgate nao descrito" na lista de pendencias. Mas a decisao
+   * de liberar a entrada nunca consultava o campo: o sistema liberava assim mesmo.
+   *
+   * Documento honesto com sistema permissivo e pior que os dois errados juntos —
+   * quem le o PDF acredita que alguem foi barrado.
+   */
+  describe("plano de resgate (NR-33, antes da entrada)", () => {
+    it("nao libera sem plano de resgate, mesmo com atmosfera aprovada e vigia", () => {
+      const r = avaliarLiberacaoEntrada({
+        medicoes: [MEDICAO_OK],
+        responsabilidades: comVigia,
+        hoje: HOJE,
+      });
+      expect(r.liberado).toBe(false);
+      expect(r.impedimentos.join(" ")).toContain("Plano de resgate");
+    });
+
+    it("espaco em branco nao conta como plano", () => {
+      const r = avaliarLiberacaoEntrada({
+        medicoes: [MEDICAO_OK],
+        responsabilidades: comVigia,
+        planoResgate: "   ",
+        hoje: HOJE,
+      });
+      expect(r.liberado).toBe(false);
+    });
+
+    it("nulo nao conta como plano", () => {
+      const r = avaliarLiberacaoEntrada({
+        medicoes: [MEDICAO_OK],
+        responsabilidades: comVigia,
+        planoResgate: null,
+        hoje: HOJE,
+      });
+      expect(r.liberado).toBe(false);
+    });
+
+    it("acumula com os outros impedimentos em vez de esconde-los", () => {
+      // Quem esta sem plano costuma estar sem mais coisas. Mostrar so a primeira
+      // falta faz a pessoa corrigir uma, tentar de novo, e descobrir a seguinte.
+      const r = avaliarLiberacaoEntrada({
+        medicoes: [],
+        responsabilidades: ["Executante"],
+        hoje: HOJE,
+      });
+      expect(r.liberado).toBe(false);
+      expect(r.impedimentos).toHaveLength(3);
+      expect(r.impedimentos.join(" ")).toContain("avaliação atmosférica");
+      expect(r.impedimentos.join(" ")).toContain("Vigia");
+      expect(r.impedimentos.join(" ")).toContain("Plano de resgate");
+    });
   });
 });

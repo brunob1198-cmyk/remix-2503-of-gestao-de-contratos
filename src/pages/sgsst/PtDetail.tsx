@@ -584,6 +584,7 @@ export default function SgsstPtDetailPage() {
               ptId={currentPt.id}
               participantes={participantes}
               allowEdit={allowEdit && !isReadOnly}
+              planoResgate={currentPt.plano_resgate}
             />
           </TabsContent>
         )}
