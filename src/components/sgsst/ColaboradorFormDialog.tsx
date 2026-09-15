@@ -43,6 +43,9 @@ export function ColaboradorFormDialog({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingFoto, setIsUploadingFoto] = useState(false);
+  // Controlada para que um erro de validacao possa trazer a aba do campo
+  // faltante para a frente -- mensagem sobre campo invisivel nao orienta ninguem.
+  const [abaAtiva, setAbaAtiva] = useState("pessoal");
 
   // Form States
   const [nome, setNome] = useState("");
@@ -186,6 +189,8 @@ export function ColaboradorFormDialog({
       setCep("");
       setEnderecoComplemento("");
     }
+    // Reabrir sempre começa pela primeira aba, e não pela que o erro anterior abriu.
+    setAbaAtiva("pessoal");
   }, [colaboradorToEdit, open]);
 
   const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -246,6 +251,27 @@ export function ColaboradorFormDialog({
       return;
     }
 
+    /**
+     * Função é o que torna o dossiê capaz de cobrar alguma coisa.
+     *
+     * O rótulo do campo já trazia o asterisco de obrigatório, mas nada validava:
+     * o `Select` não é `<select required>`, então o navegador também não barra, e
+     * o salvamento gravava `funcao_id: null` calado.
+     *
+     * O efeito não é um campo vazio a mais. Toda exigência de EPI, treinamento e
+     * exame pende DA FUNÇÃO. Sem ela o dossiê do trabalhador sai sem pendência
+     * nenhuma — e um dossiê limpo por falta de vínculo é indistinguível, na tela,
+     * de um dossiê limpo por estar tudo em dia.
+     */
+    if (!funcaoId) {
+      toast.error("Escolha a função ocupacional.", {
+        description:
+          "É a função que define quais EPIs, treinamentos e exames serão cobrados. Sem ela, o dossiê sai sem pendência alguma — parecendo regular.",
+      });
+      setAbaAtiva("ocupacional");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       await onSave({
@@ -295,7 +321,7 @@ export function ColaboradorFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <Tabs defaultValue="pessoal" className="w-full">
+          <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
             <TabsList className="grid grid-cols-3 w-full">
               <TabsTrigger value="pessoal" className="gap-1 text-xs">
                 <User className="h-3.5 w-3.5" /> 1. Dados Pessoais

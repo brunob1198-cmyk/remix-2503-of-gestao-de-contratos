@@ -52,6 +52,7 @@ import { useChecklistsOffline } from "@/hooks/checklists/useChecklistsOffline";
 import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { saveOfflinePhoto } from "@/lib/checklistsOfflineDb";
 import { toast } from "sonner";
+import { cercaEstaConfigurada } from "@/utils/cercaDoChecklist";
 
 interface AplicarChecklistDialogProps {
   open: boolean;
@@ -230,7 +231,7 @@ export function AplicarChecklistDialog({
         setGeoStart(coordsCaptured);
 
         // Validar Raio de alcance se configurado no modelo
-        if (modelo.latitude_alvo && modelo.longitude_alvo && modelo.raio_permitido_metros) {
+        if (cercaEstaConfigurada(modelo)) {
           const radiusResult = isWithinRadius(
             coordsCaptured.latitude,
             coordsCaptured.longitude,
@@ -479,7 +480,7 @@ export function AplicarChecklistDialog({
         coordsCaptured = await getCurrentDeviceLocation();
         setGeoFinish(coordsCaptured);
 
-        if (modelo.latitude_alvo && modelo.longitude_alvo && modelo.raio_permitido_metros) {
+        if (cercaEstaConfigurada(modelo)) {
           const radiusResult = isWithinRadius(
             coordsCaptured.latitude,
             coordsCaptured.longitude,

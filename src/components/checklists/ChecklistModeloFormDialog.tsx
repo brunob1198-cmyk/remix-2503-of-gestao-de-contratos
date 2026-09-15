@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Trash2, Layers, HelpCircle, CheckSquare, Settings2, FolderCheck, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { problemaNaCerca } from "@/utils/cercaDoChecklist";
 
 interface ChecklistModeloFormDialogProps {
   open: boolean;
@@ -260,6 +261,20 @@ export function ChecklistModeloFormDialog({
       return;
     }
 
+    // A regra está em `cercaEstaConfigurada`, a mesma que a tela de aplicação
+    // consulta antes de medir distância. Estava escrita só lá, como condição
+    // solta — e aqui não estava escrita em lugar nenhum: dava para salvar
+    // "bloquear fora do raio" sem coordenada, e o bloqueio nunca disparava.
+    const problema = problemaNaCerca({
+      latitude: latitudeAlvo,
+      longitude: longitudeAlvo,
+      bloquearForaRaio,
+    });
+    if (problema) {
+      toast.error(problema.titulo, { description: problema.detalhe });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       await onSave({
@@ -450,6 +465,18 @@ export function ChecklistModeloFormDialog({
                     Bloquear preenchimento se o usuário estiver fora da área permitida
                   </Label>
                 </div>
+
+                {/*
+                  Exigir a coordenada sem ponto alvo é uso legítimo — registra ONDE
+                  o checklist foi feito. O que não pode é a tela deixar parecer que
+                  também confere a área: sem alvo, nenhuma distância é calculada.
+                */}
+                {exigirGeolocalizacao !== "nao" && !latitudeAlvo.trim() && (
+                  <p className="sm:col-span-2 text-xs text-amber-700 dark:text-amber-500">
+                    Sem latitude e longitude, a localização será apenas <strong>registrada</strong>.
+                    Nenhuma área será conferida.
+                  </p>
+                )}
               </div>
             </div>
           </div>

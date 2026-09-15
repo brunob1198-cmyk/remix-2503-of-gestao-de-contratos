@@ -195,13 +195,13 @@ export function pendenciasPt(dados: PtDocumentoDados, hoje = new Date()): string
     const liberacao = avaliarLiberacaoEntrada({
       medicoes,
       responsabilidades: participantes.map((x) => x.responsabilidade),
+      planoResgate: dados.pt.plano_resgate,
       hoje,
     });
     p.push(...liberacao.impedimentos);
 
-    if (!dados.pt.plano_resgate?.trim()) {
-      p.push("Plano de resgate não descrito — a NR-33 o exige antes da entrada, não depois");
-    }
+    // O plano de resgate agora e impedimento de liberacao, e ja vem em
+    // liberacao.impedimentos -- repetir aqui duplicaria a linha no documento.
     if (!dados.pt.ventilacao_adotada?.trim()) {
       p.push("Ventilação adotada não descrita");
     }
@@ -236,6 +236,7 @@ function secaoAtmosfera(dados: PtDocumentoDados, hoje: Date): string {
   const liberacao = avaliarLiberacaoEntrada({
     medicoes,
     responsabilidades: participantes.map((p) => p.responsabilidade),
+    planoResgate: dados.pt.plano_resgate,
     hoje,
   });
 

@@ -270,7 +270,7 @@ export function avaliarMedicao(medicao: MedicaoAtmosfera, hoje: Date): Avaliacao
 }
 
 export interface LiberacaoEntrada {
-  /** True quando há medição pré-entrada válida e vigia designado. */
+  /** True quando há medição pré-entrada válida, vigia designado e plano de resgate. */
   liberado: boolean;
   /** Tudo que falta para liberar, pronto para exibir. */
   impedimentos: string[];
@@ -284,17 +284,26 @@ export const PAPEL_VIGIA = "Vigia";
 /**
  * A PT de espaço confinado pode ser liberada?
  *
- * Duas condições que a norma trata como inegociáveis: avaliação atmosférica
- * prévia aprovada, e vigia designado. Sem qualquer uma delas a entrada é
- * proibida, não "não recomendada".
+ * Três condições que a norma trata como inegociáveis: avaliação atmosférica
+ * prévia aprovada, vigia designado e plano de resgate descrito. Sem qualquer uma
+ * delas a entrada é proibida, não "não recomendada".
+ *
+ * O plano de resgate entrou depois, e a ausência dele era o furo mais perigoso
+ * daqui: o campo era coletado, era salvo, e o PDF até imprimia "Plano de resgate
+ * não descrito — a NR-33 o exige antes da entrada, não depois". Mas isso era uma
+ * frase no papel; a decisão de liberar não consultava o campo, e o sistema
+ * liberava assim mesmo. Documento honesto com sistema permissivo é pior que os
+ * dois errados juntos: quem lê o PDF acredita que alguém foi barrado.
  */
 export function avaliarLiberacaoEntrada(params: {
   medicoes: readonly MedicaoAtmosfera[];
   /** Responsabilidades dos participantes, como estão cadastradas. */
   responsabilidades: readonly (string | null | undefined)[];
+  /** Plano de resgate da PT, como está gravado. */
+  planoResgate?: string | null;
   hoje: Date;
 }): LiberacaoEntrada {
-  const { medicoes, responsabilidades, hoje } = params;
+  const { medicoes, responsabilidades, planoResgate, hoje } = params;
   const impedimentos: string[] = [];
 
   const preEntrada = medicoes
@@ -320,6 +329,12 @@ export function avaliarLiberacaoEntrada(params: {
   if (!temVigia) {
     impedimentos.push(
       "Nenhum participante designado como Vigia. A NR-33 exige vigia do lado de fora durante toda a permanência."
+    );
+  }
+
+  if (!planoResgate?.trim()) {
+    impedimentos.push(
+      "Plano de resgate não descrito. A NR-33 o exige ANTES da entrada — resgate improvisado é como morre a segunda pessoa."
     );
   }
 
