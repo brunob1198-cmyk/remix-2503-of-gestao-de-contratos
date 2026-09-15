@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, ChevronRight, ChevronDown, FileDown, Building2, FolderOpen, Layers, MapPin, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ListaVazia } from "@/components/medicoes/ListaVazia";
 import * as XLSX from "xlsx";
 import { MonthRangePicker } from "@/components/analise/MonthRangePicker";
 import { startOfYear, endOfYear, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
@@ -529,6 +530,27 @@ export default function QuadroGeral() {
       .filter(Boolean) as AreaGroup[];
   }, [areaGroups, filterArea, filterCliente, filterProjeto, filterSite, filterStatus, projetos, visibleColumns]);
 
+  // Quantos projetos chegaram ANTES de qualquer filtro. É a diferença entre
+  // "não há nada cadastrado" e "você está escondendo tudo": os filtros ficam
+  // salvos no localStorage e sobrevivem a logout e a troca de usuário, então
+  // uma escolha antiga esvazia a tela sem que ninguém lembre de tê-la feito.
+  const totalDeProjetos = useMemo(
+    () => areaGroups.reduce((s, ag) => s + ag.clientes.reduce((t, c) => t + c.projetos.length, 0), 0),
+    [areaGroups],
+  );
+
+  const temFiltroAtivo =
+    filterArea.size > 0 || filterCliente.size > 0 || filterProjeto.size > 0 ||
+    filterSite.size > 0 || filterStatus.size > 0;
+
+  const limparFiltros = () => {
+    setFilterAreaArr([]);
+    setFilterClienteArr([]);
+    setFilterProjetoArr([]);
+    setFilterSiteArr([]);
+    setFilterStatusArr([]);
+  };
+
   const grandTotals = useMemo(() => calcTotals(filteredAreaGroups.map(g => g.totals)), [filteredAreaGroups]);
   const grandPercent = grandTotals.valor_contrato > 0 ? (grandTotals.valor_executado / grandTotals.valor_contrato) * 100 : 0;
 
@@ -761,15 +783,21 @@ export default function QuadroGeral() {
                   title="Mostrar/Ocultar filtro de Status"
                 />
               </div>
-              {(filterArea.size > 0 || filterCliente.size > 0 || filterProjeto.size > 0 || filterSite.size > 0 || filterStatus.size > 0) && (
-                <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => { setFilterAreaArr([]); setFilterClienteArr([]); setFilterProjetoArr([]); setFilterSiteArr([]); setFilterStatusArr([]); }}>
+              {temFiltroAtivo && (
+                <Button variant="ghost" size="sm" className="text-xs h-8" onClick={limparFiltros}>
                   Limpar filtros
                 </Button>
               )}
             </div>
           </div>
           {filteredAreaGroups.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Nenhum projeto cadastrado</p>
+            <ListaVazia
+              total={totalDeProjetos}
+              filtrosAtivos={temFiltroAtivo}
+              aoLimparFiltros={limparFiltros}
+              mensagemSemCadastro="Nenhum projeto cadastrado"
+              plural="projetos"
+            />
           ) : (
             <div className="rounded-md border overflow-auto h-[calc(100vh-380px)] min-h-[500px]">
               <Table className="relative">

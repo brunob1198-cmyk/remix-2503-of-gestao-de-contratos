@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
+import { aplicarPoliticaDoCache } from "@/lib/cacheDoUsuario";
 
 // Cache TTL para profile/role/empresa (raramente mudam)
 const AUTH_CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutos
@@ -88,6 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [empresaLogoUrl, setEmpresaLogoUrl] = useState<string | null>(null);
+  // O AuthProvider fica dentro do PersistQueryClientProvider (ver App.tsx), então
+  // daqui dá para alcançar o cache de dados que precisa ser descartado no logout.
+  const queryClient = useQueryClient();
   const lastFetchedUserIdRef = useRef<string | null>(null);
   // Deduplicação global: evita múltiplos requests simultâneos para o mesmo usuário
   const inFlightRef = useRef<Map<string, Promise<void>>>(new Map());
@@ -214,6 +219,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       setSession(nextSession);
 
+      // Antes de qualquer consulta rodar com a sessão nova: o cache de dados
+      // gravado no disco só vale se for do próprio usuário que está entrando.
+      // Vale tanto para o botão Sair quanto para a sessão que expira sozinha —
+      // e é justamente sem sessão que as consultas voltam vazias pelo RLS, sem
+      // erro, e gravavam esse vazio por cima do cache bom.
+      const motivo = aplicarPoliticaDoCache(queryClient, nextSession?.user?.id ?? null);
+      if (motivo) console.info(`[Auth] Cache de dados descartado: ${motivo}.`);
+
       if (nextSession?.user) {
         if (lastFetchedUserIdRef.current === nextSession.user.id) {
           if (mounted) setLoading(false);
@@ -266,6 +279,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     inFlightRef.current.clear();
     pendingRefreshRef.current = null;
     clearAuthCache();
+    // `onAuthStateChange` também aplicaria a política, mas só no próximo tique.
+    // Aqui é imediato, para nenhuma tela alcançar o cache da sessão encerrada.
+    aplicarPoliticaDoCache(queryClient, null);
     setSession(null);
     setProfile(null);
     setRole(null);
