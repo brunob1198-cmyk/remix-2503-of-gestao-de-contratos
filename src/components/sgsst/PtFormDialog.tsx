@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Switch } from "@/components/ui/switch";
 import { ShieldCheck, Wind } from "lucide-react";
+import { campoLocalDoIso, isoDoCampoLocal } from "@/utils/dataHoraLocal";
 
 interface PtFormDialogProps {
   open: boolean;
@@ -41,7 +42,6 @@ export function PtFormDialog({
   const [localExecucao, setLocalExecucao] = useState("");
   const [responsavelId, setResponsavelId] = useState("none");
   const [dataInicio, setDataInicio] = useState("");
-  const [dataFim, setDataFim] = useState("");
   const [status, setStatus] = useState<StatusPt>("RASCUNHO");
   const [observacoes, setObservacoes] = useState("");
 
@@ -135,11 +135,10 @@ export function PtFormDialog({
       setAtividade(pt.atividade || "");
       setLocalExecucao(pt.local_execucao || "");
       setResponsavelId(pt.responsavel_id || "none");
-      setDataInicio(pt.data_inicio ? pt.data_inicio.split("T")[0] : "");
-      setDataFim(pt.data_fim ? pt.data_fim.split("T")[0] : "");
+      setDataInicio(campoLocalDoIso(pt.data_inicio));
       setStatus(pt.status || "RASCUNHO");
       setObservacoes(pt.observacoes || "");
-      setValidadeFim(pt.validade_fim ? pt.validade_fim.slice(0, 16) : "");
+      setValidadeFim(campoLocalDoIso(pt.validade_fim));
       setVentilacaoAdotada(pt.ventilacao_adotada || "");
       setBloqueioEnergias(!!pt.bloqueio_energias);
       setPlanoResgate(pt.plano_resgate || "");
@@ -154,8 +153,7 @@ export function PtFormDialog({
       setAtividade("");
       setLocalExecucao("");
       setResponsavelId("none");
-      setDataInicio(new Date().toISOString().split("T")[0]);
-      setDataFim("");
+      setDataInicio(campoLocalDoIso(new Date().toISOString()));
       setStatus("RASCUNHO");
       setObservacoes("");
       setValidadeFim("");
@@ -195,11 +193,10 @@ export function PtFormDialog({
       atividade: atividade.trim(),
       local_execucao: localExecucao.trim() || null,
       responsavel_id: responsavelId === "none" ? null : responsavelId,
-      data_inicio: dataInicio ? new Date(dataInicio).toISOString() : new Date().toISOString(),
-      data_fim: dataFim ? new Date(dataFim).toISOString() : null,
+      data_inicio: isoDoCampoLocal(dataInicio) ?? new Date().toISOString(),
       status,
       observacoes: observacoes.trim() || null,
-      validade_fim: validadeFim ? new Date(validadeFim).toISOString() : null,
+      validade_fim: isoDoCampoLocal(validadeFim),
       ventilacao_adotada: ventilacaoAdotada.trim() || null,
       bloqueio_energias: bloqueioEnergias,
       plano_resgate: planoResgate.trim() || null,
@@ -362,25 +359,19 @@ export function PtFormDialog({
               </Select>
             </div>
 
+            {/*
+              Data E hora: a PT vale para um turno, não para um dia. Enquanto era
+              campo `date`, o valor digitado virava meia-noite UTC — e a tela de
+              detalhe mostrava o dia anterior, às 21:00 no horário de Brasília.
+            */}
             <div className="space-y-1.5">
-              <Label htmlFor="dataInicio">Validade Início *</Label>
+              <Label htmlFor="dataInicio">Válida a partir de *</Label>
               <Input
                 id="dataInicio"
-                type="date"
+                type="datetime-local"
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
                 required
-                disabled={isReadOnly}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="dataFim">Validade Término</Label>
-              <Input
-                id="dataFim"
-                type="date"
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
                 disabled={isReadOnly}
               />
             </div>
