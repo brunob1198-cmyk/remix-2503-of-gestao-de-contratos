@@ -41,9 +41,39 @@ export interface Incoerencia {
 export function incoerenciaDoExame(params: {
   status: string | null | undefined;
   dataRealizacao: string | null | undefined;
+  /** `resultado_classificacao`: NORMAL, ALTERADO, INCONCLUSIVO. */
+  classificacao?: string | null | undefined;
 }): Incoerencia | null {
   const status = (params.status ?? "").trim().toUpperCase();
   const temData = !!(params.dataRealizacao ?? "").trim();
+  const temClassificacao = !!(params.classificacao ?? "").trim();
+
+  /**
+   * Classificar o resultado de um exame que não foi feito.
+   *
+   * Encontrado em dados reais: um exame PENDENTE, sem data de realização,
+   * gravado com classificação NORMAL. Um laudo para algo que não aconteceu.
+   *
+   * Hoje o relatório analítico não é contaminado — ele só conta os realizados.
+   * O dano é adiado: no dia em que alguém marcar o exame como realizado, a
+   * classificação velha vai junto, e a estatística de achados passa a incluir um
+   * "normal" que nenhum médico leu.
+   *
+   * É a mesma família do `DEFAULT 'APTO'` que o ASO já teve: um juízo clínico
+   * presente sem ninguém o ter feito. Por isso IMPEDE, e não avisa — este
+   * projeto já decidiu, no ASO, que conclusão sem base se recusa.
+   */
+  if (temClassificacao && !temData) {
+    return {
+      gravidade: "IMPEDE",
+      resumo: "Resultado classificado sem data de realização.",
+      comoResolver:
+        "Informe a data em que o exame foi feito. Se ele ainda não aconteceu, " +
+        "deixe a classificação em branco — um exame sem realização não tem " +
+        "resultado a classificar, e a classificação gravada agora entraria na " +
+        "estatística de achados no dia em que alguém marcasse o exame como realizado.",
+    };
+  }
 
   if (status === "REALIZADO" && !temData) {
     return {
