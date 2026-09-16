@@ -41,7 +41,14 @@ const PT: SgsstPt = {
   projeto: { id: "pj1", codigo: "OBR-01", nome: "Estação de Tratamento Norte" },
   area: { id: "a1", nome: "Reservatórios" },
   responsavel: { id: "u1", nome: "Marina Reis" },
-  apr: { id: "apr1", codigo: "APR-014", titulo: "Entrada em espaço confinado" },
+  // Com validade vigente: PT "completa" inclui analise de risco no prazo, e sem
+  // isto todo caso deste arquivo passaria a acusar a pendencia da APR.
+  apr: {
+    id: "apr1",
+    codigo: "APR-014",
+    titulo: "Entrada em espaço confinado",
+    validade: "2026-12-31",
+  },
 };
 
 const RISCO: SgsstPtRisco = {
@@ -450,5 +457,47 @@ describe("pendenciasPt", () => {
       HOJE
     );
     expect(p.join(" ").toLowerCase()).toContain("calibra");
+  });
+});
+
+/**
+ * Roteiro 7.8 — a APR vencida tem de aparecer NA PT que a cita.
+ *
+ * `apr.validade` era preenchida, salva e impressa, e nunca comparada com hoje.
+ * Uma análise de risco vencida ficava idêntica a uma vigente em toda tela — e a
+ * folha afixada no local autorizava o trabalho citando-a sem ressalva.
+ */
+describe("APR vinculada — validade", () => {
+  const comApr = (validade: string | null) =>
+    dados({ pt: { ...PT, apr: { id: "a1", codigo: "APR-2026-0007", titulo: "Montagem", validade } } });
+
+  it("APR vencida vira pendência da PT, com a data", () => {
+    const p = pendenciasPt(comApr("2026-08-01"), HOJE);
+    const linha = p.find((x) => x.includes("APR"));
+    expect(linha).toBeDefined();
+    expect(linha).toContain("APR-2026-0007");
+    expect(linha).toContain("2026-08-01");
+  });
+
+  it("a folha impressa mostra a ressalva", () => {
+    const html = montarHtmlPt(comApr("2026-08-01"), HOJE);
+    expect(html).toContain("não está mais vigente");
+  });
+
+  it("APR vigente não gera ressalva", () => {
+    // Avisar sobre o que está certo ensina a ignorar avisos.
+    const p = pendenciasPt(comApr("2027-01-01"), HOJE);
+    expect(p.some((x) => x.includes("APR"))).toBe(false);
+  });
+
+  it("APR sem validade é cobrada, e não como vencida", () => {
+    const p = pendenciasPt(comApr(null), HOJE);
+    const linha = p.find((x) => x.includes("APR"));
+    expect(linha).toContain("não tem validade definida");
+  });
+
+  it("PT sem APR não inventa pendência de APR", () => {
+    const p = pendenciasPt(dados({ pt: { ...PT, apr: null } }), HOJE);
+    expect(p.some((x) => x.includes("APR"))).toBe(false);
   });
 });

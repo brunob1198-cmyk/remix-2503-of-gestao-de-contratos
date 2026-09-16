@@ -39,6 +39,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PtAtmosferaPanel } from "@/components/sgsst/PtAtmosferaPanel";
 import { avaliarLiberacaoEntrada } from "@/utils/sgsstAtmosfera";
+import { avisoDaAprVinculada } from "@/utils/validadeDaApr";
+import { comoIsoLocal } from "@/utils/dataLocal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -166,6 +168,16 @@ export default function SgsstPtDetailPage() {
   // A aba de atmosfera so aparece em espaco confinado: cobrar medicao de gases
   // numa PT de icamento seria ruido, e o usuario aprenderia a ignorar o aviso.
   const eEspacoConfinado = currentPt.tipo === "Espaço Confinado";
+
+  // Ver `validadeDaApr`: devolve null quando a APR está vigente, para a tela não
+  // anunciar o que está certo e ensinar a ignorar avisos.
+  const avisoDaApr = currentPt?.apr
+    ? avisoDaAprVinculada({
+        validade: currentPt.apr.validade,
+        hojeIso: comoIsoLocal(new Date()),
+        identificacao: currentPt.apr.codigo || currentPt.apr.titulo,
+      })
+    : null;
 
   const liberacaoEntrada = avaliarLiberacaoEntrada({
     medicoes: medicoesAtmosfera,
@@ -550,6 +562,22 @@ export default function SgsstPtDetailPage() {
             <div>
               <span className="text-muted-foreground block">APR Vinculada:</span>
               <span className="font-semibold">{currentPt.apr ? currentPt.apr.titulo : "Nenhuma"}</span>
+              {/*
+                A validade da APR existia no banco e não era comparada com hoje em
+                lugar nenhum: vencida ficava idêntica a vigente. Quem assina a PT
+                está dizendo que os riscos estão analisados — se a análise venceu,
+                é aqui que a frase precisa ser desmentida.
+              */}
+              {avisoDaApr && (
+                <span
+                  className={`mt-1 flex items-start gap-1 text-[11px] leading-tight ${
+                    avisoDaApr.grave ? "text-destructive" : "text-amber-700 dark:text-amber-500"
+                  }`}
+                >
+                  <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                  {avisoDaApr.texto}
+                </span>
+              )}
             </div>
           </div>
         </CardContent>
