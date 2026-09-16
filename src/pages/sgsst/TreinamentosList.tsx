@@ -219,6 +219,9 @@ export default function SgsstTreinamentosListPage() {
     const decisao = emissaoDoCertificado({
       statusDaTurma: turmaDoCertificado.status,
       dataConclusao: p.data_conclusao,
+      // O lote ja filtrava reprovado; o botao individual emitia com uma nota de
+      // rodape. Dois caminhos, duas regras, para o mesmo documento.
+      resultado: p.resultado,
       hoje: hojeLocalIso(),
     });
 

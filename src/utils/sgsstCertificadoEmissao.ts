@@ -50,9 +50,46 @@ export function emissaoDoCertificado(params: {
   statusDaTurma?: StatusDaTurma | string | null;
   /** `data_conclusao` do participante. */
   dataConclusao?: string | null;
+  /** `resultado` do participante: APROVADO, REPROVADO, PENDENTE. */
+  resultado?: string | null;
   hoje: string;
 }): EmissaoDoCertificado {
   const status = (params.statusDaTurma ?? "").toUpperCase();
+  const resultado = (params.resultado ?? "").trim().toUpperCase();
+
+  /**
+   * Aluno não aprovado.
+   *
+   * Havia dois caminhos para o mesmo documento, com regras diferentes: o botão
+   * do LOTE filtrava os reprovados antes de emitir; o botão INDIVIDUAL emitia, e
+   * tratava "não está aprovado" como mais uma pendência impressa no rodapé.
+   *
+   * A pendência impressa é a política certa para o que está incompleto — PGR sem
+   * medida, PCMSO sem agravos, PT em rascunho. Não serve aqui, e o motivo já
+   * estava escrito neste arquivo, para o caso da turma não concluída: quando a
+   * lacuna É a afirmação central do documento, não há lacuna a marcar.
+   *
+   * Um certificado existe para afirmar que a pessoa concluiu E foi aprovada.
+   * Emitido para quem reprovou, ele afirma o contrário do que aconteceu — e a
+   * nota de rodapé viaja mal: some numa fotocópia, num recorte, num print.
+   *
+   * Vazio não bloqueia: quem chama sem informar o resultado (código antigo) não
+   * muda de comportamento.
+   */
+  if (resultado && resultado !== "APROVADO") {
+    const reprovado = resultado === "REPROVADO";
+    return {
+      emite: false,
+      motivo: reprovado
+        ? "O participante está reprovado."
+        : "O resultado do participante ainda não foi lançado.",
+      comoResolver: reprovado
+        ? "Certificado atesta conclusão COM aprovação. Para quem reprovou, o " +
+          "caminho é nova turma — e o treinamento continua pendente no dossiê dele."
+        : "Lance o resultado do participante. Sem ele, o certificado afirmaria uma " +
+          "aprovação que ninguém registrou.",
+    };
+  }
 
   if (status === "CANCELADA") {
     return {
