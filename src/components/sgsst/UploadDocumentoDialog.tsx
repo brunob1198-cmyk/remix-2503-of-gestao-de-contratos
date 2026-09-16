@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CategoriaDocumento } from "@/hooks/sgsst/useSgsstDocumentos";
-import { ALLOWED_DOC_EXTENSIONS, MAX_DOC_FILE_SIZE_BYTES } from "@/utils/sgsstDocumentosUtils";
+import { ALLOWED_DOC_EXTENSIONS, recusaDoArquivo } from "@/utils/sgsstDocumentosUtils";
 import { UploadCloud, FileText, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,8 +57,14 @@ export function UploadDocumentoDialog({
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
 
-      if (selectedFile.size > MAX_DOC_FILE_SIZE_BYTES) {
-        toast.error("O arquivo excede o tamanho máximo permitido de 50MB.");
+      // Tamanho E tipo. O `accept` do input abaixo é só dica: o diálogo do
+      // sistema tem "todos os arquivos", e arrastar-e-soltar o ignora.
+      const recusa = recusaDoArquivo(selectedFile);
+      if (recusa) {
+        toast.error(recusa);
+        // Limpa a selecao: sem isto o input segura o arquivo recusado e a
+        // pessoa acha que ele foi aceito.
+        e.target.value = "";
         return;
       }
 
