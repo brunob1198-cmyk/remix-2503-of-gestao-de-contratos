@@ -318,8 +318,197 @@ export type Database = {
           },
         ]
       }
+      checklist_agendamento_execucoes: {
+        Row: {
+          agendamento_id: string
+          aplicacao_id: string | null
+          competencia: string
+          created_at: string
+          data_prevista: string
+          empresa_id: string
+          id: string
+          prazo: string
+          responsavel_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agendamento_id: string
+          aplicacao_id?: string | null
+          competencia: string
+          created_at?: string
+          data_prevista: string
+          empresa_id: string
+          id?: string
+          prazo: string
+          responsavel_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agendamento_id?: string
+          aplicacao_id?: string | null
+          competencia?: string
+          created_at?: string
+          data_prevista?: string
+          empresa_id?: string
+          id?: string
+          prazo?: string
+          responsavel_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_agendamento_execucoes_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamento_execucoes_aplicacao_id_fkey"
+            columns: ["aplicacao_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_aplicacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamento_execucoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_agendamentos: {
+        Row: {
+          area_id: string | null
+          checklist_modelo_id: string
+          created_at: string
+          data_final: string | null
+          data_inicial: string
+          empresa_id: string
+          exigir_geolocalizacao: boolean | null
+          horario: string | null
+          id: string
+          observacoes: string | null
+          periodicidade: string
+          prazo_dias: number
+          projeto_id: string | null
+          responsavel_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          area_id?: string | null
+          checklist_modelo_id: string
+          created_at?: string
+          data_final?: string | null
+          data_inicial?: string
+          empresa_id: string
+          exigir_geolocalizacao?: boolean | null
+          horario?: string | null
+          id?: string
+          observacoes?: string | null
+          periodicidade?: string
+          prazo_dias?: number
+          projeto_id?: string | null
+          responsavel_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          area_id?: string | null
+          checklist_modelo_id?: string
+          created_at?: string
+          data_final?: string | null
+          data_inicial?: string
+          empresa_id?: string
+          exigir_geolocalizacao?: boolean | null
+          horario?: string | null
+          id?: string
+          observacoes?: string | null
+          periodicidade?: string
+          prazo_dias?: number
+          projeto_id?: string | null
+          responsavel_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_agendamentos_checklist_modelo_id_fkey"
+            columns: ["checklist_modelo_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_modelos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_bi_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_flash_transactions"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_producao_diario"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast"
+            referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_agendamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "view_public_forecast_flat"
+            referencedColumns: ["projeto_id"]
+          },
+        ]
+      }
       checklist_aplicacoes: {
         Row: {
+          aplicador_externo_documento: string | null
+          aplicador_externo_ip: string | null
+          aplicador_externo_nome: string | null
+          aplicador_externo_user_agent: string | null
           aplicador_id: string | null
           apr_id: string | null
           area_id: string | null
@@ -337,12 +526,14 @@ export type Database = {
           modelo_id: string
           nao_conformidade_id: string | null
           observacoes_gerais: string | null
+          origem: string
           percentual_conformidade: number | null
           pgr_id: string | null
           pontuacao_maxima: number | null
           pontuacao_obtida: number | null
           projeto_id: string | null
           pt_id: string | null
+          qrcode_id: string | null
           reprovado_por_item_critico: boolean
           responsavel_id: string | null
           status: string
@@ -353,6 +544,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          aplicador_externo_documento?: string | null
+          aplicador_externo_ip?: string | null
+          aplicador_externo_nome?: string | null
+          aplicador_externo_user_agent?: string | null
           aplicador_id?: string | null
           apr_id?: string | null
           area_id?: string | null
@@ -370,12 +565,14 @@ export type Database = {
           modelo_id: string
           nao_conformidade_id?: string | null
           observacoes_gerais?: string | null
+          origem?: string
           percentual_conformidade?: number | null
           pgr_id?: string | null
           pontuacao_maxima?: number | null
           pontuacao_obtida?: number | null
           projeto_id?: string | null
           pt_id?: string | null
+          qrcode_id?: string | null
           reprovado_por_item_critico?: boolean
           responsavel_id?: string | null
           status?: string
@@ -386,6 +583,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          aplicador_externo_documento?: string | null
+          aplicador_externo_ip?: string | null
+          aplicador_externo_nome?: string | null
+          aplicador_externo_user_agent?: string | null
           aplicador_id?: string | null
           apr_id?: string | null
           area_id?: string | null
@@ -403,12 +604,14 @@ export type Database = {
           modelo_id?: string
           nao_conformidade_id?: string | null
           observacoes_gerais?: string | null
+          origem?: string
           percentual_conformidade?: number | null
           pgr_id?: string | null
           pontuacao_maxima?: number | null
           pontuacao_obtida?: number | null
           projeto_id?: string | null
           pt_id?: string | null
+          qrcode_id?: string | null
           reprovado_por_item_critico?: boolean
           responsavel_id?: string | null
           status?: string
@@ -495,6 +698,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "view_public_forecast_flat"
             referencedColumns: ["projeto_id"]
+          },
+          {
+            foreignKeyName: "checklist_aplicacoes_qrcode_id_fkey"
+            columns: ["qrcode_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_qrcodes"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "checklist_aplicacoes_responsavel_id_fkey"
@@ -584,6 +794,54 @@ export type Database = {
           },
         ]
       }
+      checklist_geolocalizacoes: {
+        Row: {
+          aplicacao_id: string
+          empresa_id: string
+          id: string
+          latitude: number
+          longitude: number
+          momento: string
+          precisao: number | null
+          registrado_em: string
+        }
+        Insert: {
+          aplicacao_id: string
+          empresa_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          momento: string
+          precisao?: number | null
+          registrado_em?: string
+        }
+        Update: {
+          aplicacao_id?: string
+          empresa_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          momento?: string
+          precisao?: number | null
+          registrado_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_geolocalizacoes_aplicacao_id_fkey"
+            columns: ["aplicacao_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_aplicacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_geolocalizacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_itens: {
         Row: {
           created_at: string
@@ -659,16 +917,21 @@ export type Database = {
       checklist_modelos: {
         Row: {
           area_id: string | null
+          bloquear_fora_raio: boolean | null
           categoria: string
           codigo: string | null
           created_at: string
           created_by: string | null
           descricao: string | null
           empresa_id: string
+          exigir_geolocalizacao: string | null
           id: string
+          latitude_alvo: number | null
+          longitude_alvo: number | null
           nome: string
           periodicidade_sugerida: string | null
           projeto_id: string | null
+          raio_permitido_metros: number | null
           responsavel_id: string | null
           status: string
           tipo_aplicacao: string | null
@@ -676,16 +939,21 @@ export type Database = {
         }
         Insert: {
           area_id?: string | null
+          bloquear_fora_raio?: boolean | null
           categoria?: string
           codigo?: string | null
           created_at?: string
           created_by?: string | null
           descricao?: string | null
           empresa_id: string
+          exigir_geolocalizacao?: string | null
           id?: string
+          latitude_alvo?: number | null
+          longitude_alvo?: number | null
           nome: string
           periodicidade_sugerida?: string | null
           projeto_id?: string | null
+          raio_permitido_metros?: number | null
           responsavel_id?: string | null
           status?: string
           tipo_aplicacao?: string | null
@@ -693,16 +961,21 @@ export type Database = {
         }
         Update: {
           area_id?: string | null
+          bloquear_fora_raio?: boolean | null
           categoria?: string
           codigo?: string | null
           created_at?: string
           created_by?: string | null
           descricao?: string | null
           empresa_id?: string
+          exigir_geolocalizacao?: string | null
           id?: string
+          latitude_alvo?: number | null
+          longitude_alvo?: number | null
           nome?: string
           periodicidade_sugerida?: string | null
           projeto_id?: string | null
+          raio_permitido_metros?: number | null
           responsavel_id?: string | null
           status?: string
           tipo_aplicacao?: string | null
@@ -784,6 +1057,53 @@ export type Database = {
             columns: ["responsavel_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_notificacoes: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          entidade_id: string
+          entidade_tipo: string
+          evento: string
+          id: string
+          lida: boolean | null
+          mensagem: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          entidade_id: string
+          entidade_tipo: string
+          evento: string
+          id?: string
+          lida?: boolean | null
+          mensagem: string
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          entidade_id?: string
+          entidade_tipo?: string
+          evento?: string
+          id?: string
+          lida?: boolean | null
+          mensagem?: string
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_notificacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
@@ -902,6 +1222,60 @@ export type Database = {
             columns: ["validado_por_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_qrcodes: {
+        Row: {
+          ativo: boolean | null
+          checklist_modelo_id: string
+          created_at: string
+          empresa_id: string
+          id: string
+          token: string
+          updated_at: string
+          vinculado_id: string | null
+          vinculado_nome: string | null
+          vinculado_tipo: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          checklist_modelo_id: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          token: string
+          updated_at?: string
+          vinculado_id?: string | null
+          vinculado_nome?: string | null
+          vinculado_tipo?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          checklist_modelo_id?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          token?: string
+          updated_at?: string
+          vinculado_id?: string | null
+          vinculado_nome?: string | null
+          vinculado_tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_qrcodes_checklist_modelo_id_fkey"
+            columns: ["checklist_modelo_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_modelos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_qrcodes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
@@ -8655,6 +9029,7 @@ export type Database = {
           id: string
           inspecao_id: string
           item_id: string | null
+          nc_sgsst_id: string | null
           observacao: string | null
           prazo: string | null
           responsavel_id: string | null
@@ -8671,6 +9046,7 @@ export type Database = {
           id?: string
           inspecao_id: string
           item_id?: string | null
+          nc_sgsst_id?: string | null
           observacao?: string | null
           prazo?: string | null
           responsavel_id?: string | null
@@ -8687,6 +9063,7 @@ export type Database = {
           id?: string
           inspecao_id?: string
           item_id?: string | null
+          nc_sgsst_id?: string | null
           observacao?: string | null
           prazo?: string | null
           responsavel_id?: string | null
@@ -8714,6 +9091,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "sgsst_inspecoes_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sgsst_inspecoes_nao_conformidades_nc_sgsst_id_fkey"
+            columns: ["nc_sgsst_id"]
+            isOneToOne: false
+            referencedRelation: "sgsst_nao_conformidades"
             referencedColumns: ["id"]
           },
           {
@@ -12153,6 +12537,7 @@ export type Database = {
         Args: { p_fornecedor_id: string }
         Returns: number
       }
+      checklist_por_qr: { Args: { p_token: string }; Returns: Json }
       count_fotos_periodo: {
         Args: {
           p_data_fim: string
@@ -12266,6 +12651,7 @@ export type Database = {
           sexo: string
         }[]
       }
+      get_public_checklist_qr_info: { Args: { p_token: string }; Returns: Json }
       get_public_signature_verification: {
         Args: { p_request_id: string }
         Returns: Json
@@ -12299,6 +12685,10 @@ export type Database = {
       }
       is_user_approved: { Args: { _user_id: string }; Returns: boolean }
       join_empresa_by_cnpj: { Args: { _cnpj: string }; Returns: string }
+      promover_nc_da_inspecao: {
+        Args: { p_nc_inspecao_id: string; p_payload: Json }
+        Returns: string
+      }
       recalcular_score_fornecedor: {
         Args: { p_fornecedor_id: string }
         Returns: undefined
@@ -12310,6 +12700,20 @@ export type Database = {
       registrar_acesso_ao_link: {
         Args: { p_token: string }
         Returns: undefined
+      }
+      responder_checklist_por_qr: {
+        Args: {
+          p_aplicador_documento: string
+          p_aplicador_nome: string
+          p_latitude?: number
+          p_longitude?: number
+          p_observacoes?: string
+          p_precisao?: number
+          p_respostas: Json
+          p_token: string
+          p_user_agent?: string
+        }
+        Returns: Json
       }
       resumo_rdo_periodo: {
         Args: {
