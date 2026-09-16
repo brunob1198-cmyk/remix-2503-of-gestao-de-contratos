@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { SgsstTreinamento, SgsstTreinamentoInput, CategoriaTreinamento, StatusTreinamento } from "@/hooks/sgsst/useSgsstTreinamentos";
 import { useSgsstFuncoes } from "@/hooks/sgsst/useSgsstFuncoes";
+import { itensParaSelecao, rotuloDoItem } from "@/utils/catalogoAtivo";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -241,9 +242,9 @@ export function TreinamentoFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Todas as Funções --</SelectItem>
-                  {funcoes.map((f) => (
+                  {itensParaSelecao(funcoes, funcaoId).map((f) => (
                     <SelectItem key={f.id} value={f.id}>
-                      {f.nome}
+                      {rotuloDoItem(f.nome, f)}
                     </SelectItem>
                   ))}
                 </SelectContent>

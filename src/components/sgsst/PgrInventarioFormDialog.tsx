@@ -15,6 +15,7 @@ import {
 import { useSgsstGhe } from "@/hooks/sgsst/useSgsstGhe";
 import { funcoesFaltandoDoGrupo } from "@/utils/sgsstGhe";
 import { SgsstRisco } from "@/hooks/sgsst/useSgsstRiscos";
+import { itensParaSelecao, rotuloDoItem } from "@/utils/catalogoAtivo";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -391,9 +392,9 @@ export function PgrInventarioFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Risco Personalizado / Fora do Catálogo --</SelectItem>
-                  {riscosCatalogo.map((r) => (
+                  {itensParaSelecao(riscosCatalogo, riscoCatalogoId).map((r) => (
                     <SelectItem key={r.id} value={r.id}>
-                      [{r.categoria}] {r.nome}
+                      [{r.categoria}] {rotuloDoItem(r.nome, r)}
                     </SelectItem>
                   ))}
                 </SelectContent>

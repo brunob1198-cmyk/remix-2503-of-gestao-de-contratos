@@ -19,6 +19,7 @@ import {
 import { PgrEmitirDialog } from "@/components/sgsst/PgrEmitirDialog";
 import { PgrRevisaoAviso } from "@/components/sgsst/PgrRevisaoAviso";
 import { alineasPendentes } from "@/utils/sgsstPgrInventario";
+import { divergenciaDoCatalogo } from "@/utils/textoDoCatalogo";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -414,11 +415,35 @@ export default function SgsstPgrDetailPage() {
                                 );
                               })()}
                             </span>
-                            {item.risco_catalogo && (
-                              <span className="text-xs text-primary font-mono">
-                                [{item.risco_catalogo.categoria}] {item.risco_catalogo.nome}
-                              </span>
-                            )}
+                            {item.risco_catalogo && (() => {
+                              /*
+                                A linha do catalogo e o nome VIVO; o titulo acima e
+                                a copia que o PDF imprime. Sem rotulo, renomear no
+                                catalogo fazia o mesmo item aparecer com dois nomes
+                                e nada dizia qual ia para o papel.
+                              */
+                              const { divergente, aviso } = divergenciaDoCatalogo({
+                                textoDoDocumento: item.perigo,
+                                nomeNoCatalogo: item.risco_catalogo.nome,
+                              });
+
+                              return (
+                                <span
+                                  className={`text-xs font-mono ${
+                                    divergente ? "text-amber-700" : "text-primary"
+                                  }`}
+                                  title={aviso || undefined}
+                                >
+                                  catálogo: [{item.risco_catalogo.categoria}]{" "}
+                                  {item.risco_catalogo.nome}
+                                  {divergente && (
+                                    <span className="ml-1 font-sans font-semibold">
+                                      — renomeado; o PDF sai com o texto acima
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </TableCell>
                         <TableCell className="max-w-xs truncate text-xs text-muted-foreground">

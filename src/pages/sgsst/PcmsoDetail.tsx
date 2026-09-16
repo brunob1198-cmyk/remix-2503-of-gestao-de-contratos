@@ -14,6 +14,7 @@ import {
 import { useSgsstFuncoes } from "@/hooks/sgsst/useSgsstFuncoes";
 import { useSgsstGhe, useSgsstInventarioParaGhe } from "@/hooks/sgsst/useSgsstGhe";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
+import { itensParaSelecao, rotuloDoItem } from "@/utils/catalogoAtivo";
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { gerarPdfPcmso, pendenciasPcmso } from "@/lib/pcmsoDocumento";
 import { toast } from "sonner";
@@ -650,9 +651,9 @@ export default function SgsstPcmsoDetailPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">-- Todas as Funções --</SelectItem>
-                    {funcoes.map((f) => (
+                    {itensParaSelecao(funcoes, funcaoId).map((f) => (
                       <SelectItem key={f.id} value={f.id}>
-                        {f.nome}
+                        {rotuloDoItem(f.nome, f)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -692,10 +693,10 @@ export default function SgsstPcmsoDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Sem risco específico --</SelectItem>
-                  {riscosCatalogo.map((r) => (
+                  {itensParaSelecao(riscosCatalogo, riscoId).map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.codigo ? `[${r.codigo}] ` : ""}
-                      {r.nome} · {r.categoria}
+                      {rotuloDoItem(r.nome, r)} · {r.categoria}
                     </SelectItem>
                   ))}
                 </SelectContent>

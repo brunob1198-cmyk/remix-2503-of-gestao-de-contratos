@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { SgsstAprRisco, SgsstAprRiscoInput } from "@/hooks/sgsst/useSgsstApr";
 import { SgsstRisco } from "@/hooks/sgsst/useSgsstRiscos";
+import { itensParaSelecao, rotuloDoItem } from "@/utils/catalogoAtivo";
 import { calcularClassificacaoRisco } from "@/utils/sgsstRiscoMatrix";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 
@@ -120,9 +121,9 @@ export function AprRiscoFormDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">-- Risco Específico da APR --</SelectItem>
-                {riscosCatalogo.map((r) => (
+                {itensParaSelecao(riscosCatalogo, riscoCatalogoId).map((r) => (
                   <SelectItem key={r.id} value={r.id}>
-                    [{r.categoria}] {r.nome}
+                    [{r.categoria}] {rotuloDoItem(r.nome, r)}
                   </SelectItem>
                 ))}
               </SelectContent>

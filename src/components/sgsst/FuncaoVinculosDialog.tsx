@@ -24,6 +24,7 @@ import { Trash2, Plus, AlertTriangle, GraduationCap, HardHat, Info } from "lucid
 import { resolveTableState } from "@/components/sgsst/SgsstStateFeedback";
 import type { SgsstFuncao } from "@/hooks/sgsst/useSgsstFuncoes";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
+import { itensParaSelecao } from "@/utils/catalogoAtivo";
 import { useSgsstTreinamentos } from "@/hooks/sgsst/useSgsstTreinamentos";
 import { useSgsstEpis } from "@/hooks/sgsst/useSgsstEpis";
 import {
@@ -111,7 +112,7 @@ export function FuncaoVinculosDialog({
   // chave duplicada é pior que não oferecer.
   const riscosDisponiveis = useMemo(() => {
     const jaVinculados = new Set(riscos.itens.map((r) => r.risco_catalogo_id));
-    return catalogoRiscos.filter((r) => r.status === "ativo" && !jaVinculados.has(r.id));
+    return itensParaSelecao(catalogoRiscos).filter((r) => !jaVinculados.has(r.id));
   }, [catalogoRiscos, riscos.itens]);
 
   const treinamentosDisponiveis = useMemo(() => {
