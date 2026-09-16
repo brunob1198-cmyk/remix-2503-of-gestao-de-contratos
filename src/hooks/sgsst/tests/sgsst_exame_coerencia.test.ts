@@ -86,3 +86,75 @@ describe("realizadosSemData", () => {
     expect(realizadosSemData([])).toBe(0);
   });
 });
+
+/**
+ * Roteiro R4 — encontrado nos dados reais do usuário.
+ *
+ * Um exame PENDENTE, sem data de realização, gravado com classificação NORMAL:
+ * um laudo para um exame que não aconteceu.
+ *
+ * Hoje o relatório analítico da NR-07 não é contaminado, porque ele só conta os
+ * realizados. O dano é adiado: no dia em que alguém marcar aquele exame como
+ * realizado, a classificação velha vai junto, e a estatística de achados passa a
+ * incluir um "normal" que nenhum médico leu.
+ */
+describe("classificação de resultado exige exame realizado", () => {
+  it("classificar sem data de realização IMPEDE a gravação", () => {
+    const r = incoerenciaDoExame({
+      status: "PENDENTE",
+      dataRealizacao: null,
+      classificacao: "NORMAL",
+    });
+    expect(r?.gravidade).toBe("IMPEDE");
+    expect(r?.resumo).toContain("sem data de realização");
+  });
+
+  it.each(["NORMAL", "ALTERADO", "INCONCLUSIVO"])(
+    "vale para qualquer classificação (%s)",
+    (c) => {
+      expect(
+        incoerenciaDoExame({ status: "AGENDADO", dataRealizacao: null, classificacao: c })
+          ?.gravidade
+      ).toBe("IMPEDE");
+    }
+  );
+
+  it("com data de realização, classificar é o esperado", () => {
+    expect(
+      incoerenciaDoExame({
+        status: "REALIZADO",
+        dataRealizacao: "2026-09-10",
+        classificacao: "ALTERADO",
+      })
+    ).toBeNull();
+  });
+
+  it("exame pendente SEM classificação continua coerente", () => {
+    // É o estado normal antes do exame — não pode virar alarme falso.
+    expect(
+      incoerenciaDoExame({ status: "PENDENTE", dataRealizacao: null, classificacao: null })
+    ).toBeNull();
+    expect(
+      incoerenciaDoExame({ status: "PENDENTE", dataRealizacao: null, classificacao: "  " })
+    ).toBeNull();
+  });
+
+  it("a mensagem diz as duas saídas, não só que está errado", () => {
+    const r = incoerenciaDoExame({
+      status: "PENDENTE",
+      dataRealizacao: null,
+      classificacao: "NORMAL",
+    });
+    expect(r?.comoResolver).toContain("Informe a data");
+    expect(r?.comoResolver).toContain("deixe a classificação em branco");
+  });
+
+  it("quem não informa classificação não muda de comportamento", () => {
+    // `realizadosSemData` e a fila de convocação chamam sem o campo novo: a
+    // regra não pode disparar para eles, ou a convocação mudaria de sentido.
+    expect(incoerenciaDoExame({ status: "PENDENTE", dataRealizacao: null })).toBeNull();
+    expect(
+      incoerenciaDoExame({ status: "REALIZADO", dataRealizacao: null })?.resumo
+    ).toContain("realizado sem data");
+  });
+});

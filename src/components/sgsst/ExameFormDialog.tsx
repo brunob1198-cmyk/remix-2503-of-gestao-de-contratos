@@ -56,7 +56,12 @@ export function ExameFormDialog({
   const [horaAgendada, setHoraAgendada] = useState("");
 
   /** Recalculada a cada render: é barata e precisa acompanhar status e data. */
-  const incoerencia = incoerenciaDoExame({ status, dataRealizacao });
+  const incoerencia = incoerenciaDoExame({
+    status,
+    dataRealizacao,
+    // A classificacao entra na conta: laudo sem exame feito e contradicao.
+    classificacao: resultadoClassificacao === "none" ? null : resultadoClassificacao,
+  });
 
   useEffect(() => {
     if (exame) {

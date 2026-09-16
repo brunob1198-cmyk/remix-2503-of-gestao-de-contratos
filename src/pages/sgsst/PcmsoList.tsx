@@ -842,6 +842,7 @@ export default function SgsstPcmsoListPage() {
                                 const inc = incoerenciaDoExame({
                                   status: e.status,
                                   dataRealizacao: e.data_realizacao,
+                                  classificacao: e.resultado_classificacao,
                                 });
                                 if (!inc) return null;
                                 return (
