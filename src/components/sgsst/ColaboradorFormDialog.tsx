@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SgsstColaboradorDados } from "@/hooks/sgsst/useSgsstColaboradores";
 import { useSgsstFuncoes } from "@/hooks/sgsst/useSgsstFuncoes";
+import { itensParaSelecao, rotuloDoItem } from "@/utils/catalogoAtivo";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -446,9 +447,9 @@ export function ColaboradorFormDialog({
                       <SelectValue placeholder="Selecione a função..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {funcoes.map((f) => (
+                      {itensParaSelecao(funcoes, funcaoId).map((f) => (
                         <SelectItem key={f.id} value={f.id}>
-                          {f.nome} {f.cbo ? `(CBO: ${f.cbo})` : ""}
+                          {rotuloDoItem(f.nome, f)} {f.cbo ? `(CBO: ${f.cbo})` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>

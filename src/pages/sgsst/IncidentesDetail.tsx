@@ -21,6 +21,7 @@ import {
 } from "@/hooks/sgsst/useSgsstIncidentes";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { useSgsstRiscos } from "@/hooks/sgsst/useSgsstRiscos";
+import { itensParaSelecao, rotuloDoItem } from "@/utils/catalogoAtivo";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -637,9 +638,9 @@ export default function SgsstIncidentesDetailPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">-- Nenhum Risco Específico --</SelectItem>
-                        {riscosCatalogo.map((r) => (
+                        {itensParaSelecao(riscosCatalogo, riscoCatId).map((r) => (
                           <SelectItem key={r.id} value={r.id}>
-                            [{r.categoria}] {r.nome}
+                            [{r.categoria}] {rotuloDoItem(r.nome, r)}
                           </SelectItem>
                         ))}
                       </SelectContent>

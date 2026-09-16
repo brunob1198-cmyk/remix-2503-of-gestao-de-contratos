@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSgsstGhe, type SgsstGhe } from "@/hooks/sgsst/useSgsstGhe";
 import { useSgsstFuncoes } from "@/hooks/sgsst/useSgsstFuncoes";
+import { itensParaSelecao } from "@/utils/catalogoAtivo";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,10 +95,7 @@ export function GheManager() {
   const [form, setForm] = useState<FormGhe>(FORM_VAZIO);
   const [erroCodigo, setErroCodigo] = useState("");
 
-  const funcoesAtivas = useMemo(
-    () => (todasFuncoes ?? []).filter((f) => f.status !== "inativo"),
-    [todasFuncoes]
-  );
+  const funcoesAtivas = useMemo(() => itensParaSelecao(todasFuncoes), [todasFuncoes]);
 
   const abrirNovo = () => {
     setEditandoId(null);

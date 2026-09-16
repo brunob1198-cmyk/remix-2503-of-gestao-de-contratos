@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstInspecaoNaoConformidade, CriticidadeNC, StatusNC } from "@/hooks/sgsst/useSgsstInspecoes";
 import { SgsstRisco } from "@/hooks/sgsst/useSgsstRiscos";
+import { itensParaSelecao, rotuloDoItem } from "@/utils/catalogoAtivo";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -148,9 +149,9 @@ export function InspecaoNaoConformidadeFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Nenhum Risco Direto --</SelectItem>
-                  {riscosCatalogo.map((r) => (
+                  {itensParaSelecao(riscosCatalogo, riscoCatalogoId).map((r) => (
                     <SelectItem key={r.id} value={r.id}>
-                      [{r.categoria}] {r.nome}
+                      [{r.categoria}] {rotuloDoItem(r.nome, r)}
                     </SelectItem>
                   ))}
                 </SelectContent>
