@@ -3,6 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { getDefaultInspecaoItems, type TipoInspecao } from "@/utils/sgsstInspecaoDefaults";
+import { comoIsoLocal } from "@/utils/dataLocal";
+import {
+  impedimentoDaPromocao,
+  payloadDaPromocao,
+  MENSAGEM_DO_IMPEDIMENTO,
+  type InspecaoDeOrigem,
+} from "@/utils/promocaoDaNcDeInspecao";
 
 export { getDefaultInspecaoItems };
 export type { TipoInspecao };
@@ -78,6 +85,8 @@ export interface SgsstInspecaoNaoConformidade {
   updated_at?: string;
   responsavel?: { id: string; nome: string | null } | null;
   risco_catalogo?: { id: string; nome: string; categoria: string } | null;
+  /** NC do SGSST criada a partir deste achado; nulo enquanto nao foi promovido. */
+  nc_sgsst_id?: string | null;
 }
 
 export interface SgsstInspecaoHistorico {
@@ -541,6 +550,44 @@ export function useSgsstInspecaoNaoConformidades(inspecaoId?: string) {
     },
   });
 
+
+  /**
+   * Leva o achado para o modulo de NC do SGSST.
+   *
+   * A gravacao vai por RPC porque sao duas escritas que precisam valer juntas:
+   * criar a NC e marcar o achado. Feitas daqui, uma falha no meio deixaria NC
+   * orfa E o achado ainda promovivel -- o proximo clique criaria a segunda.
+   *
+   * O mapeamento dos campos fica em `promocaoDaNcDeInspecao`, testado à parte.
+   */
+  const promoverParaNc = useMutation({
+    mutationFn: async ({ nc, inspecao }: { nc: SgsstInspecaoNaoConformidade; inspecao: InspecaoDeOrigem }) => {
+      const impedimento = impedimentoDaPromocao(nc);
+      if (impedimento) throw new Error(MENSAGEM_DO_IMPEDIMENTO[impedimento]);
+
+      const { data, error } = await (supabase.rpc as never as (
+        nome: string,
+        args: Record<string, unknown>
+      ) => Promise<{ data: string | null; error: { message: string } | null }>)(
+        "promover_nc_da_inspecao",
+        {
+          p_nc_inspecao_id: nc.id,
+          p_payload: payloadDaPromocao({ nc, inspecao, hojeIso: comoIsoLocal(new Date()) }),
+        }
+      );
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sgsst_inspecoes_nao_conformidades", inspecaoId] });
+      queryClient.invalidateQueries({ queryKey: ["sgsst_nao_conformidades"] });
+      toast.success("Achado promovido para Nao Conformidade do SGSST.", {
+        description: "O tratamento formal, com plano de acao e verificacao de eficacia, passa a ser cobrado la.",
+      });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
   return {
     naoConformidades,
     isLoading,
@@ -548,6 +595,7 @@ export function useSgsstInspecaoNaoConformidades(inspecaoId?: string) {
     addNaoConformidade,
     updateNaoConformidade,
     removeNaoConformidade,
+    promoverParaNc,
   };
 }
 

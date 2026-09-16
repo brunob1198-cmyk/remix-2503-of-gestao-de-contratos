@@ -50,6 +50,7 @@ import {
   FileDown,
   Loader2,
   Camera,
+  ArrowUpRight,
 } from "lucide-react";
 import { SgsstConfirmDelete } from "@/components/sgsst/SgsstConfirmDelete";
 import { InspecaoFormDialog } from "@/components/sgsst/InspecaoFormDialog";
@@ -76,7 +77,7 @@ export default function SgsstInspecoesDetailPage() {
 
   const { riscos: riscosCatalogo } = useSgsstRiscos();
   const { itens, isLoading: loadingItens, updateRespostaItem, addItem, removeItem } = useSgsstInspecaoItens(inspecaoId);
-  const { naoConformidades, isLoading: loadingNC, addNaoConformidade, updateNaoConformidade, removeNaoConformidade } = useSgsstInspecaoNaoConformidades(inspecaoId);
+  const { naoConformidades, isLoading: loadingNC, addNaoConformidade, updateNaoConformidade, removeNaoConformidade, promoverParaNc } = useSgsstInspecaoNaoConformidades(inspecaoId);
   const { historico } = useSgsstInspecaoHistorico(inspecaoId);
 
   // Dialog States
@@ -509,7 +510,27 @@ export default function SgsstInspecoesDetailPage() {
                   ) : (
                     naoConformidades.map((nc) => (
                       <TableRow key={nc.id}>
-                        <TableCell className="font-medium text-xs max-w-xs">{nc.descricao}</TableCell>
+                        <TableCell className="font-medium text-xs max-w-xs">
+                          {nc.descricao}
+                          {/*
+                            O achado promovido diz isso na própria linha. Sem a
+                            marca, quem confere pergunta "isso foi escalado?" a
+                            cada leitura — e o botão de promover continuaria
+                            convidando a criar a segunda NC do mesmo desvio.
+                          */}
+                          {nc.nc_sgsst_id && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigate(`/medicoes/sgsst/nao-conformidades/${nc.nc_sgsst_id}`)
+                              }
+                              className="mt-1 flex items-center gap-1 text-[11px] font-normal text-primary hover:underline"
+                            >
+                              <ArrowUpRight className="h-3 w-3 shrink-0" />
+                              Promovido para não conformidade do SGSST
+                            </button>
+                          )}
+                        </TableCell>
                         <TableCell>{getCriticidadeBadge(nc.criticidade)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground max-w-xs truncate">{nc.evidencia || "—"}</TableCell>
                         <TableCell className="text-xs">{nc.responsavel?.nome || "—"}</TableCell>
@@ -529,6 +550,26 @@ export default function SgsstInspecoesDetailPage() {
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
+                              {/*
+                                Promover é ação de escalada, não de rotina: nem
+                                todo achado de inspeção merece o ciclo completo
+                                de plano de ação e verificação de eficácia. Por
+                                isso fica aqui, ao lado de editar, e não como
+                                ação em massa da inspeção inteira.
+                              */}
+                              {!nc.nc_sgsst_id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title="Promover para não conformidade do SGSST"
+                                  disabled={promoverParaNc.isPending}
+                                  onClick={() =>
+                                    promoverParaNc.mutate({ nc, inspecao: currentInspecao })
+                                  }
+                                >
+                                  <ArrowUpRight className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
