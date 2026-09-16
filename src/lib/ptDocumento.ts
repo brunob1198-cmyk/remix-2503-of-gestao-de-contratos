@@ -10,6 +10,8 @@ import {
   estilosFotosDocumento,
   type FotosPreparadas,
 } from "@/lib/fotosDoDocumento";
+import { comoIsoLocal } from "@/utils/dataLocal";
+import { avisoDaAprVinculada } from "@/utils/validadeDaApr";
 import {
   avaliarLiberacaoEntrada,
   avaliarMedicao,
@@ -159,6 +161,18 @@ export function pendenciasPt(dados: PtDocumentoDados, hoje = new Date()): string
 
   if (!pt.validade_fim) {
     p.push("Sem fim de validade — a permissão vale para o turno autorizado, não indefinidamente");
+  }
+
+  // A PT é emitida CITANDO a APR: quem assina está dizendo que os riscos desta
+  // atividade estão analisados. Se a análise venceu, a frase deixou de ser
+  // verdadeira — e é aqui, na folha afixada, que alguém lê antes de entrar.
+  if (pt.apr) {
+    const aviso = avisoDaAprVinculada({
+      validade: pt.apr.validade,
+      hojeIso: comoIsoLocal(hoje),
+      identificacao: pt.apr.codigo || pt.apr.titulo,
+    });
+    if (aviso) p.push(aviso.texto);
   }
 
   if (participantes.length === 0) {
@@ -375,6 +389,17 @@ export function montarHtmlPt(dados: PtDocumentoDados, hoje = new Date()): string
   const emitidoEm = new Date().toLocaleString("pt-BR");
   const naoAutoriza = STATUS_NAO_AUTORIZA.has(pt.status);
 
+  // A ressalva sobre a APR sai COLADA na citação dela, e não numa lista ao pé da
+  // folha: quem está no local confere a identificação da análise, e um aviso
+  // longe dali não alcança essa leitura.
+  const avisoDaApr = pt.apr
+    ? avisoDaAprVinculada({
+        validade: pt.apr.validade,
+        hojeIso: comoIsoLocal(hoje),
+        identificacao: pt.apr.codigo || pt.apr.titulo,
+      })
+    : null;
+
   return `
     ${pdfGlobalStyles}
     ${estilosDocumentoSgsst}
@@ -451,7 +476,8 @@ export function montarHtmlPt(dados: PtDocumentoDados, hoje = new Date()): string
               <td class="rot">APR vinculada</td>
               <td>${
                 pt.apr
-                  ? `${esc(pt.apr.codigo) || "APR"} — ${esc(pt.apr.titulo)}`
+                  ? `${esc(pt.apr.codigo) || "APR"} — ${esc(pt.apr.titulo)}` +
+                    (avisoDaApr ? `<br><span class="doc-inapto">${esc(avisoDaApr.texto)}</span>` : "")
                   : faltando("nenhuma")
               }</td>
             </tr>

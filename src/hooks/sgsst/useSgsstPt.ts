@@ -61,7 +61,13 @@ export interface SgsstPt {
   projeto?: { id: string; codigo: string; nome: string } | null;
   site?: { id: string; codigo: string; nome: string } | null;
   area?: { id: string; nome: string } | null;
-  apr?: { id: string; codigo: string | null; titulo: string } | null;
+  apr?: {
+    id: string;
+    codigo: string | null;
+    titulo: string;
+    /** A PT precisa saber se a analise de risco que ela cita ainda vale. */
+    validade?: string | null;
+  } | null;
   responsavel?: { id: string; nome: string | null } | null;
 }
 
@@ -158,7 +164,7 @@ export function useSgsstPtDetail(ptId?: string) {
           projeto:projetos(id, codigo, nome),
           site:sites(id, codigo, nome),
           area:areas(id, nome),
-          apr:sgsst_apr(id, codigo, titulo),
+          apr:sgsst_apr(id, codigo, titulo, validade),
           responsavel:profiles!sgsst_pt_responsavel_id_fkey(id, nome)
         `)
         .eq("id", ptId)
@@ -187,7 +193,7 @@ export function useSgsstPt(params?: { page?: number; pageSize?: number; search?:
           projeto:projetos(id, codigo, nome),
           site:sites(id, codigo, nome),
           area:areas(id, nome),
-          apr:sgsst_apr(id, codigo, titulo),
+          apr:sgsst_apr(id, codigo, titulo, validade),
           responsavel:profiles!sgsst_pt_responsavel_id_fkey(id, nome)
         `, { count: "exact" })
         .order("created_at", { ascending: false });

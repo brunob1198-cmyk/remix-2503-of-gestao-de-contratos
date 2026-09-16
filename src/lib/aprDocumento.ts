@@ -1,4 +1,6 @@
 import { pdfGlobalStyles } from "@/lib/pdfTemplates";
+import { comoIsoLocal } from "@/utils/dataLocal";
+import { situacaoDaApr } from "@/utils/validadeDaApr";
 import {
   estilosDocumentoSgsst,
   escDoc as esc,
@@ -131,7 +133,7 @@ export function somenteEpi(medidas: readonly SgsstAprMedida[]): boolean {
   return medidas.length > 0 && medidas.every((m) => m.tipo === "EPI");
 }
 
-export function pendenciasApr(dados: AprDocumentoDados): string[] {
+export function pendenciasApr(dados: AprDocumentoDados, hoje = new Date()): string[] {
   const { apr, etapas, riscos, participantes } = dados;
   const p: string[] = [];
 
@@ -165,6 +167,13 @@ export function pendenciasApr(dados: AprDocumentoDados): string[] {
 
   if (!apr.validade) {
     p.push("Sem validade definida — análise sem prazo passa a valer indefinidamente");
+  } else if (situacaoDaApr(apr.validade, comoIsoLocal(hoje)) === "VENCIDA") {
+    // A validade era impressa e nunca comparada com hoje: vencida saía idêntica a
+    // vigente. A APR descreve um canteiro que pode não existir mais.
+    p.push(
+      `Validade vencida em ${apr.validade.slice(0, 10)} — a análise não reflete ` +
+        "necessariamente as condições atuais do local"
+    );
   }
 
   if (!dados.empresa?.nome?.trim()) {
