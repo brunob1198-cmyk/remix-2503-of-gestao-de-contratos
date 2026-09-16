@@ -1,4 +1,5 @@
 import { pdfGlobalStyles } from "@/lib/pdfTemplates";
+import { prazoDaCat } from "@/utils/prazoDaCat";
 import {
   estilosDocumentoSgsst,
   escDoc as esc,
@@ -69,6 +70,15 @@ export function pendenciasCat(dados: CatDocumentoDados): string[] {
   if (!empresa?.cnpj?.trim()) p.push("CNPJ da organização não informado");
   if (!cat.projeto_id) p.push("Obra do acidente não vinculada");
 
+  // O prazo do artigo 22 nao era conferido: o documento imprimia as duas datas
+  // lado a lado e quem lia fazia a conta. Prazo de CAT termina em multa.
+  const prazo = prazoDaCat({
+    dataAcidente: cat.data_acidente,
+    dataEmissao: cat.data_emissao,
+    houveObito: cat.houve_obito,
+  });
+  if (prazo.texto) p.push(prazo.texto);
+
   // Óbito é o caso em que a CAT tem prazo próprio e tratamento distinto; sem a
   // data do acidente não há como demonstrar cumprimento de prazo nenhum.
   if (cat.houve_obito && cat.tipo_cat !== "COMUNICACAO_OBITO") {
@@ -81,6 +91,14 @@ export function pendenciasCat(dados: CatDocumentoDados): string[] {
 export function montarHtmlCat(dados: CatDocumentoDados): string {
   const { cat, empresa, geradoPor } = dados;
   const emitidoEm = new Date().toLocaleString("pt-BR");
+
+  // A ressalva do prazo sai COLADA nas duas datas, e não numa lista ao pé da
+  // folha: é a subtração entre elas que o leitor não vai fazer sozinho.
+  const prazoDoDocumento = prazoDaCat({
+    dataAcidente: cat.data_acidente,
+    dataEmissao: cat.data_emissao,
+    houveObito: cat.houve_obito,
+  });
 
   const diasAfastamento = cat.dias_afastamento ?? 0;
 
@@ -125,6 +143,13 @@ export function montarHtmlCat(dados: CatDocumentoDados): string {
             <td class="rot">Data da emissão</td>
             <td>${dataBr(cat.data_emissao)}</td>
           </tr>
+          ${
+            prazoDoDocumento.texto
+              ? `<tr><td class="rot">Prazo legal</td><td colspan="3" class="doc-inapto">${esc(
+                  prazoDoDocumento.texto
+                )}</td></tr>`
+              : ""
+          }
         </table>
       </div>
 

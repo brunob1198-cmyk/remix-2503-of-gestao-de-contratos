@@ -198,3 +198,61 @@ describe("pendenciasCat", () => {
     expect(p.join(" ")).toContain("Obra do acidente");
   });
 });
+
+/**
+ * Roteiro 6.3 — o prazo do artigo 22.
+ *
+ * O documento imprimia a data do acidente e a da emissão lado a lado e nunca as
+ * subtraía. Quem lê tinha de fazer a conta, e o prazo da CAT termina em multa.
+ *
+ * O fixture usa 15/07 (quarta) e 16/07 (quinta): dentro do prazo, e por isso os
+ * casos acima não acusam pendência.
+ */
+describe("prazo legal da CAT", () => {
+  it("o caso do roteiro: comunicada 5 dias depois vira pendência", () => {
+    const p = pendenciasCat(
+      dados({ cat: { ...CAT_COMPLETA, data_acidente: "2026-07-15", data_emissao: "2026-07-20" } })
+    );
+    const linha = p.find((x) => x.includes("art. 22"));
+    expect(linha).toBeDefined();
+    expect(linha).toContain("5 dias");
+  });
+
+  it("a folha impressa mostra a ressalva, colada nas datas", () => {
+    const html = montarHtmlCat(
+      dados({ cat: { ...CAT_COMPLETA, data_acidente: "2026-07-15", data_emissao: "2026-07-20" } })
+    );
+    expect(html).toContain("Prazo legal");
+    expect(html).toContain("art. 22");
+  });
+
+  it("dentro do prazo não gera ressalva nenhuma", () => {
+    // Avisar sobre o que está certo ensina a ignorar avisos.
+    expect(pendenciasCat(dados()).some((x) => x.includes("art. 22"))).toBe(false);
+    expect(montarHtmlCat(dados())).not.toContain("Prazo legal");
+  });
+
+  it("acidente na sexta comunicado na segunda continua no prazo", () => {
+    // 17/07/2026 é sexta; 20/07 é segunda. Uma conta de dias corridos acusaria
+    // injustamente — o prazo é o primeiro dia ÚTIL.
+    const p = pendenciasCat(
+      dados({ cat: { ...CAT_COMPLETA, data_acidente: "2026-07-17", data_emissao: "2026-07-20" } })
+    );
+    expect(p.some((x) => x.includes("art. 22"))).toBe(false);
+  });
+
+  it("óbito cobra comunicação imediata, sem a folga do dia útil", () => {
+    const p = pendenciasCat(
+      dados({
+        cat: {
+          ...CAT_COMPLETA,
+          houve_obito: true,
+          tipo_cat: "COMUNICACAO_OBITO",
+          data_acidente: "2026-07-17",
+          data_emissao: "2026-07-20",
+        },
+      })
+    );
+    expect(p.some((x) => x.includes("imediata"))).toBe(true);
+  });
+});
