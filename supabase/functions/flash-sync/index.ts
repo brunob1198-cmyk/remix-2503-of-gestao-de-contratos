@@ -709,6 +709,17 @@ Deno.serve(async (req) => {
       // O CC vindo da Flash tem prioridade máxima se tiver nome
       let hasName = !!(tx.costCenter?.name ?? tx.costCenter?.description);
 
+      // Marcador de origem do centro de custo, gravado no payload pra tela
+      // poder mostrar "veio da Flash" x "sugestão do sistema" sem precisar
+      // adivinhar depois. Só olha o que a PRÓPRIA transação já trouxe da
+      // Flash (ccId/nome), antes de qualquer fallback abaixo rodar — fica
+      // "flash" mesmo quando só o ID veio e o nome quem resolve é o nosso
+      // catálogo (passo 1): quem atribuiu o centro de custo foi a Flash, a
+      // gente só empresta o rótulo legível. Vira "sugerido" quando a
+      // transação não trouxe nada e o valor final vem de fallback por
+      // funcionário, cross-referência do lote ou consulta ao banco.
+      tx._cc_origem = (ccId || hasName) ? "flash" : "sugerido";
+
       // 1. Enriquece pelo map de centros de custo carregado APENAS se ainda não tiver nome
       if (ccId && !hasName && costCenterMap.has(ccId)) {
         const cc = costCenterMap.get(ccId)!;
