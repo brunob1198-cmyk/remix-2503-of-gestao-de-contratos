@@ -524,3 +524,91 @@ describe("montarHtmlChecklist — selo de localização das fotos", () => {
     expect(html).not.toContain("Foto 1:");
   });
 });
+
+describe("montarHtmlChecklist — a ordem dos itens", () => {
+  /**
+   * Roteiro 15.8. Cada item guarda `ordem`, o formulário do modelo mantém o
+   * número, e o documento não o recebia sequer no tipo. Quem decidia a sequência
+   * do PDF era a ordem física da tabela — que muda quando uma linha é atualizada.
+   *
+   * A carga abaixo chega fora de ordem de propósito: é assim que o PostgREST
+   * devolve quando ninguém pede `order`.
+   */
+  const foraDeOrdem: ChecklistDocumentoDados = dados({
+    secoes: [
+      {
+        id: "s2",
+        titulo: "Segunda seção",
+        ordem: 2,
+        itens: [{ id: "b", titulo: "Soltar o macaco", ordem: 1 }],
+      },
+      {
+        id: "s1",
+        titulo: "Primeira seção",
+        ordem: 1,
+        itens: [
+          { id: "a2", titulo: "Calçar a roda", ordem: 2 },
+          { id: "a1", titulo: "Testar o freio", ordem: 1 },
+        ],
+      },
+    ],
+    respostas: {
+      a1: { item_id: "a1", resposta_valor: "Conforme" },
+      a2: { item_id: "a2", resposta_valor: "Conforme" },
+      b: { item_id: "b", resposta_valor: "Conforme" },
+    },
+  });
+
+  it("imprime os itens na ordem do modelo, não na ordem em que chegaram", () => {
+    const html = montarHtmlChecklist(foraDeOrdem);
+
+    const freio = html.indexOf("Testar o freio");
+    const roda = html.indexOf("Calçar a roda");
+    const macaco = html.indexOf("Soltar o macaco");
+
+    expect(freio).toBeGreaterThan(-1);
+    // Num checklist de campo isto não é estética: é a sequência em que a pessoa
+    // percorre o equipamento. Trocar o freio com o macaco muda o que acontece.
+    expect(freio).toBeLessThan(roda);
+    expect(roda).toBeLessThan(macaco);
+  });
+
+  it("seção também sai na ordem, e não na de chegada", () => {
+    const html = montarHtmlChecklist(foraDeOrdem);
+    expect(html.indexOf("Primeira seção")).toBeLessThan(html.indexOf("Segunda seção"));
+  });
+});
+
+describe("montarHtmlChecklist — a resposta escrita como se lê", () => {
+  const comTipo = (tipo: string, valor: string) =>
+    montarHtmlChecklist(
+      dados({
+        secoes: [
+          {
+            id: "s1",
+            titulo: "Seção",
+            ordem: 1,
+            itens: [{ id: "x", titulo: "Item", ordem: 1, tipo_resposta: tipo }],
+          },
+        ],
+        respostas: { x: { item_id: "x", resposta_valor: valor } },
+      })
+    );
+
+  it("data sai em português, não no ISO em que é guardada", () => {
+    // Guardar em ISO é para ordenar; a folha é lida por gente, no Brasil.
+    const html = comTipo("Data", "2026-09-16");
+    expect(html).toContain("16/09/2026");
+    expect(html).not.toContain("2026-09-16");
+  });
+
+  it("OK / Não OK sai com o vocabulário do próprio tipo", () => {
+    expect(comTipo("OK_NaoOK", "OK")).toContain("OK");
+    expect(comTipo("OK_NaoOK", "NaoOK")).toContain("Não OK");
+  });
+
+  it("valor de escala e de texto livre saem inteiros", () => {
+    expect(comTipo("Escala", "4")).toContain("4");
+    expect(comTipo("Texto", "trinca no montante")).toContain("trinca no montante");
+  });
+});

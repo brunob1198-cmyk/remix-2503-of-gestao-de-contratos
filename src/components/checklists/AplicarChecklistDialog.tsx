@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { itensDoModeloEmOrdem, secoesOrdenadas } from "@/utils/ordemDoChecklist";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,10 @@ import {
   textoDasPendencias,
   calcularPontuacao,
 } from "@/utils/checklistPontuacao";
+import {
+  controleDaResposta,
+  VALOR_NAO_APLICAVEL,
+} from "@/utils/respostaDoChecklist";
 import { gerarPdfChecklist } from "@/lib/checklistDocumento";
 import {
   prepararFotosDoDocumento,
@@ -92,6 +97,125 @@ interface RespostaDraft {
     quanto_custo: number;
     prioridade: "Baixa" | "Media" | "Alta" | "Critica";
   };
+}
+
+/**
+ * O controle que o item pede, conforme o `tipo_resposta` escolhido no modelo.
+ *
+ * Antes eram dois botões para tudo: a tela lia o tipo só para decidir entre
+ * "Sim" e "Conforme" e para saber se mostrava o N/A. Escala, número, texto e
+ * data — quatro dos nove tipos do cadastro — apareciam como Conforme / Não
+ * Conforme, e a escolha de quem montou o modelo não chegava ao campo.
+ */
+export function ControleDeResposta({
+  tipo,
+  valor,
+  isNc,
+  onResponder,
+}: {
+  tipo: string | null | undefined;
+  valor: string;
+  isNc: boolean;
+  onResponder: (valor: string, naoConforme: boolean) => void;
+}) {
+  const controle = controleDaResposta(tipo);
+
+  /**
+   * Nos tipos livres o valor não classifica sozinho.
+   *
+   * `92`, `alta` ou `16/09/2026` só viram desvio diante de um limite que o item
+   * não guarda. Fica desabilitado enquanto não há resposta: marcar desvio em
+   * campo vazio gravaria uma não conformidade que o cálculo descarta por falta
+   * de valor — desvio que some é pior que desvio nenhum.
+   */
+  const botaoDeDesvio = (
+    <Button
+      type="button"
+      size="sm"
+      variant={isNc ? "destructive" : "outline"}
+      disabled={!valor.trim()}
+      onClick={() => onResponder(valor, !isNc)}
+      title={
+        valor.trim()
+          ? "Marque quando o valor registrado representa um desvio."
+          : "Responda primeiro: o desvio é sobre a resposta."
+      }
+      className="text-xs h-8 gap-1"
+    >
+      <XCircle className="h-3.5 w-3.5" /> Desvio
+    </Button>
+  );
+
+  if (controle.formato === "botoes" || controle.formato === "escala") {
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap justify-start sm:justify-end">
+        {controle.opcoes.map((op) => {
+          const escolhida = valor === op.valor;
+          const classe = op.naoConforme
+            ? "text-xs h-8 gap-1"
+            : controle.formato === "escala"
+              ? "text-xs h-8 w-9 px-0"
+              : "text-xs h-8 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white";
+
+          return (
+            <Button
+              key={op.valor}
+              type="button"
+              size="sm"
+              variant={
+                op.naoConforme
+                  ? escolhida
+                    ? "destructive"
+                    : "outline"
+                  : escolhida || controle.formato === "botoes"
+                    ? "default"
+                    : "outline"
+              }
+              onClick={() => onResponder(op.valor, op.naoConforme)}
+              className={classe}
+            >
+              {controle.formato === "botoes" &&
+                (op.naoConforme ? (
+                  <XCircle className="h-3.5 w-3.5" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ))}
+              {op.rotulo}
+            </Button>
+          );
+        })}
+
+        {controle.temNaoAplicavel && (
+          <Button
+            type="button"
+            size="sm"
+            variant={valor === VALOR_NAO_APLICAVEL ? "secondary" : "outline"}
+            onClick={() => onResponder(VALOR_NAO_APLICAVEL, false)}
+            className="text-xs h-8 gap-1"
+          >
+            <HelpCircle className="h-3.5 w-3.5" /> N/A
+          </Button>
+        )}
+
+        {controle.desvioEhMarcadoAMao && botaoDeDesvio}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap justify-start sm:justify-end">
+      <Input
+        type={
+          controle.formato === "numero" ? "number" : controle.formato === "data" ? "date" : "text"
+        }
+        value={valor}
+        placeholder={controle.dicaDoCampo}
+        onChange={(e) => onResponder(e.target.value, e.target.value.trim() ? isNc : false)}
+        className="h-8 text-xs w-44"
+      />
+      {botaoDeDesvio}
+    </div>
+  );
 }
 
 export function AplicarChecklistDialog({
@@ -443,7 +567,7 @@ export function AplicarChecklistDialog({
      * mesmo com as três marcadas. Configuração que não obriga é pior que
      * configuração ausente, porque quem monta o modelo acredita ter travado algo.
      */
-    const itensDoModelo = (modelo.secoes || []).flatMap((secao) => secao.itens || []);
+    const itensDoModelo = itensDoModeloEmOrdem(modelo.secoes);
 
     const pendencias = pendenciasDaAplicacao({
       itens: itensDoModelo,
@@ -651,7 +775,7 @@ export function AplicarChecklistDialog({
    * a aplicação, com o peso de cada item à vista.
    */
   const emitirPdf = async () => {
-    const itensDoModelo = (modelo.secoes || []).flatMap((secao) => secao.itens || []);
+    const itensDoModelo = itensDoModeloEmOrdem(modelo.secoes);
 
     const pontuacao = calcularPontuacao(
       itensDoModelo.map((item) => ({
@@ -721,7 +845,7 @@ export function AplicarChecklistDialog({
         modeloCodigo: modelo.codigo ?? null,
         categoria: modelo.categoria ?? null,
         aplicacaoCodigo: resultSummary?.codigo ?? null,
-        secoes: (modelo.secoes || []).map((secao) => ({
+        secoes: secoesOrdenadas(modelo.secoes).map((secao) => ({
           id: secao.id,
           titulo: secao.titulo,
           ordem: secao.ordem,
@@ -912,7 +1036,7 @@ export function AplicarChecklistDialog({
         {/* STEP 2: EXECUTION / QUESTIONS */}
         {step === "execution" && (
           <div className="space-y-6 py-2 text-xs">
-            {(modelo.secoes || []).map((secao) => (
+            {secoesOrdenadas(modelo.secoes).map((secao) => (
               <div key={secao.id} className="space-y-3">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 bg-slate-100 p-2 rounded border">
                   {secao.titulo}
@@ -930,44 +1054,34 @@ export function AplicarChecklistDialog({
                             <div className="font-semibold text-xs text-foreground flex items-center gap-1.5">
                               <span>{item.titulo}</span>
                               {item.obrigatorio && <span className="text-red-500 font-bold">*</span>}
+                              {/*
+                                O item crítico reprova o checklist inteiro. A marca
+                                já saía no PDF e no veredito final, e faltava
+                                justamente onde a pessoa responde: sem ela, quem
+                                está em campo não sabe qual item veta tudo.
+                              */}
+                              {item.critico && (
+                                <Badge
+                                  variant="destructive"
+                                  className="text-[9px] px-1.5 py-0 h-4 font-bold"
+                                  title="Não conformidade neste item reprova o checklist inteiro."
+                                >
+                                  CRÍTICO
+                                </Badge>
+                              )}
                             </div>
                             {item.descricao && <p className="text-[11px] text-muted-foreground pt-0.5">{item.descricao}</p>}
                           </div>
 
-                          {/* Quick Answer Buttons */}
-                          <div className="flex items-center gap-1.5 min-w-max">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={resp.resposta_valor === "Conforme" || resp.resposta_valor === "Sim" || resp.resposta_valor === "OK" ? "default" : "outline"}
-                              onClick={() => handleSetAnswer(item.id, item.tipo_resposta.startsWith("Sim") ? "Sim" : "Conforme", false)}
-                              className="text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" /> Conforme
-                            </Button>
-
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={isNc ? "destructive" : "outline"}
-                              onClick={() => handleSetAnswer(item.id, item.tipo_resposta.startsWith("Sim") ? "Nao" : "NaoConforme", true)}
-                              className="text-xs h-8 gap-1"
-                            >
-                              <XCircle className="h-3.5 w-3.5" /> Não Conforme
-                            </Button>
-
-                            {item.tipo_resposta.includes("NA") && (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={resp.resposta_valor === "NA" ? "secondary" : "outline"}
-                                onClick={() => handleSetAnswer(item.id, "NA", false)}
-                                className="text-xs h-8 gap-1"
-                              >
-                                <HelpCircle className="h-3.5 w-3.5" /> N/A
-                              </Button>
-                            )}
-                          </div>
+                          {/* O controle da resposta, conforme o tipo do modelo. */}
+                          <ControleDeResposta
+                            tipo={item.tipo_resposta}
+                            valor={resp.resposta_valor ?? ""}
+                            isNc={isNc}
+                            onResponder={(valor, naoConforme) =>
+                              handleSetAnswer(item.id, valor, naoConforme)
+                            }
+                          />
                         </div>
 
                         {/* Non-Conform Extra Fields: Comments, Photos, 5W2H Plan of Action */}
