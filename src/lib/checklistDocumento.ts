@@ -1,4 +1,5 @@
 import { pdfGlobalStyles } from "@/lib/pdfTemplates";
+import { secoesOrdenadas } from "@/utils/ordemDoChecklist";
 import {
   estilosDocumentoSgsst,
   escDoc as esc,
@@ -11,6 +12,7 @@ import {
   type FotoPreparada,
 } from "@/lib/fotosDoDocumento";
 import { pesoEfetivo, type PontuacaoAplicacao } from "@/utils/checklistPontuacao";
+import { rotuloDaResposta } from "@/utils/respostaDoChecklist";
 import { seloDaFoto, type OrigemFoto } from "@/utils/fotoGeolocalizada";
 
 /**
@@ -40,9 +42,25 @@ import { seloDaFoto, type OrigemFoto } from "@/utils/fotoGeolocalizada";
 export interface ItemDoDocumento {
   id: string;
   titulo: string;
+  /**
+   * A posição do item dentro da seção.
+   *
+   * O campo existe no banco e no formulário do modelo desde sempre; o documento
+   * é que não o recebia — e por isso o PDF saía na ordem física da tabela, que
+   * muda sozinha quando uma linha é atualizada. Num checklist de campo a ordem é
+   * a sequência em que a pessoa percorre o equipamento.
+   */
+  ordem?: number | null;
   descricao?: string | null;
   peso_pontuacao?: number | null;
   obrigatorio?: boolean | null;
+  /**
+   * O tipo de resposta do modelo.
+   *
+   * Serve para escrever a resposta como gente le: data guardada em ISO sairia
+   * `2026-09-16` numa folha em portugues.
+   */
+  tipo_resposta?: string | null;
   /** Item impeditivo: nao conformidade nele reprova o checklist inteiro. */
   critico?: boolean | null;
 }
@@ -111,20 +129,6 @@ export interface ChecklistDocumentoDados {
   geradoPor?: string | null;
 }
 
-const RESPOSTA_LABEL: Record<string, string> = {
-  Conforme: "Conforme",
-  NaoConforme: "Não conforme",
-  Nao_Conforme: "Não conforme",
-  Sim: "Sim",
-  Nao: "Não",
-  OK: "OK",
-  NaoOK: "Não OK",
-  Nao_OK: "Não OK",
-  NA: "Não aplicável",
-  "N/A": "Não aplicável",
-  NaoAplicavel: "Não aplicável",
-};
-
 function faltando(rotulo: string): string {
   return `<span class="doc-falta">${esc(rotulo)}</span>`;
 }
@@ -154,7 +158,7 @@ function numerosDasFotos(
   const inicioPorItem = new Map<string, number>();
   let proximo = 1;
 
-  for (const secao of [...secoes].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))) {
+  for (const secao of secoesOrdenadas(secoes)) {
     for (const item of secao.itens) {
       const quantas = respostas[item.id]?.evidencias?.length ?? 0;
       if (quantas === 0) continue;
@@ -180,10 +184,10 @@ function linhaDoItem(
   const textoResposta = !respondido
     ? faltando("não respondido")
     : naoConforme
-      ? `<span class="doc-inapto">${esc(RESPOSTA_LABEL[valor] ?? valor)}</span>`
+      ? `<span class="doc-inapto">${esc(rotuloDaResposta(valor, item.tipo_resposta))}</span>`
       : na
-        ? `<span class="doc-neutro">${esc(RESPOSTA_LABEL[valor] ?? valor)}</span>`
-        : esc(RESPOSTA_LABEL[valor] ?? valor);
+        ? `<span class="doc-neutro">${esc(rotuloDaResposta(valor, item.tipo_resposta))}</span>`
+        : esc(rotuloDaResposta(valor, item.tipo_resposta));
 
   // O que acompanha a não conformidade sai ao lado dela, não em outra seção.
   const detalhe: string[] = [];
@@ -276,7 +280,9 @@ export function montarHtmlChecklist(dados: ChecklistDocumentoDados): string {
 
   const emitidoEm = new Date().toLocaleString("pt-BR");
 
-  const ordenadas = [...secoes].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  // Seções E itens: antes só as seções eram ordenadas, e a sequência dos itens
+  // ficava por conta da ordem física da tabela.
+  const ordenadas = secoesOrdenadas(secoes);
 
   const naoRespondidos = ordenadas
     .flatMap((s) => s.itens)

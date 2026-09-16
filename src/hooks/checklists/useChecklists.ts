@@ -326,6 +326,23 @@ export function useChecklistModelos() {
         codigo: null,
         descricao: orig.descricao,
         periodicidade_sugerida: orig.periodicidade_sugerida,
+        /*
+          A CERCA VINHA JUNTO? NÃO VINHA.
+
+          A duplicação copiava nome, categoria, seções, itens, pesos e críticos, e
+          largava a configuração de geolocalização para trás. O modelo copiado
+          nascia SEM exigir localização — e a pessoa que duplicou justamente para
+          não remontar tudo não tem por que desconfiar.
+
+          Some a trava, não o preenchimento: a cópia continua aceitando aplicação
+          de qualquer lugar, e ninguém vê falta nenhuma na tela.
+        */
+        tipo_aplicacao: orig.tipo_aplicacao,
+        exigir_geolocalizacao: orig.exigir_geolocalizacao,
+        latitude_alvo: orig.latitude_alvo,
+        longitude_alvo: orig.longitude_alvo,
+        raio_permitido_metros: orig.raio_permitido_metros,
+        bloquear_fora_raio: orig.bloquear_fora_raio,
         secoes: (orig.secoes || []).map((sec: any) => ({
           titulo: sec.titulo,
           ordem: sec.ordem,

@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Plus, Trash2, Layers, HelpCircle, CheckSquare, Settings2, FolderCheck, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { problemaNaCerca } from "@/utils/cercaDoChecklist";
+import { secoesOrdenadas } from "@/utils/ordemDoChecklist";
 
 interface ChecklistModeloFormDialogProps {
   open: boolean;
@@ -142,7 +143,7 @@ export function ChecklistModeloFormDialog({
 
       if (modeloToEdit.secoes && modeloToEdit.secoes.length > 0) {
         setSecoes(
-          modeloToEdit.secoes.map((s) => ({
+          secoesOrdenadas(modeloToEdit.secoes).map((s) => ({
             id: s.id,
             titulo: s.titulo,
             ordem: s.ordem,
