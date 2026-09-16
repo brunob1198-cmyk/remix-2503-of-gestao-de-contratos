@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import type { TamanhosDoColaborador } from "@/utils/tamanhoDoEpi";
 import { toast } from "sonner";
 
 export interface SgsstColaboradorTreinamento {
@@ -318,6 +319,8 @@ export interface SgsstColaboradorResumoItem {
   funcao?: string | null;
   profile?: { id: string; nome: string | null } | null;
   recurso?: { id: string; nome: string } | null;
+  /** Tamanhos cadastrados na ficha: a entrega de EPI os mostra na hora de entregar. */
+  tamanhos?: TamanhosDoColaborador;
 }
 
 export function useSgsstColaboradoresResumo() {
@@ -331,7 +334,10 @@ export function useSgsstColaboradoresResumo() {
     queryFn: async (): Promise<SgsstColaboradorResumoItem[]> => {
       const { data, error } = await supabase
         .from("sgsst_colaborador_dados" as any)
-        .select("id, nome, cpf, profile:profiles(id, nome), recurso:recursos(id, nome), funcao:sgsst_funcoes(id, nome)")
+        .select(
+          "id, nome, cpf, tamanho_calcado, tamanho_camisa, tamanho_calca, " +
+            "profile:profiles(id, nome), recurso:recursos(id, nome), funcao:sgsst_funcoes(id, nome)"
+        )
         .eq("status", "ativo")
         .order("nome", { ascending: true });
 
@@ -345,6 +351,11 @@ export function useSgsstColaboradoresResumo() {
         funcao: c.funcao?.nome,
         profile: c.profile,
         recurso: c.recurso,
+        tamanhos: {
+          calcado: c.tamanho_calcado,
+          camisa: c.tamanho_camisa,
+          calca: c.tamanho_calca,
+        },
       }));
     },
   });
