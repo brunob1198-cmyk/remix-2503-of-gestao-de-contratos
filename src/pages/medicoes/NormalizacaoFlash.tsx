@@ -89,6 +89,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -132,6 +133,39 @@ const statusBadge = (status: string | undefined) => {
     default:
       return <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-300">Pendente</Badge>;
   }
+};
+
+/**
+ * Badge que diz se o Centro de Custo veio preenchido pela própria Flash
+ * (o usuário escolheu no app dela) ou foi sugerido pelo critério de fallback
+ * do nosso sistema (funcionário, cross-referência do lote ou banco). Sem essa
+ * distinção visual, os dois casos ficavam idênticos na tela — ver
+ * flash_cost_center_origem em useFlashNormalizacao.ts.
+ */
+const costCenterOrigemBadge = (origem: "flash" | "sugerido" | null | undefined) => {
+  if (!origem) return null;
+  if (origem === "flash") {
+    return (
+      <Badge
+        variant="outline"
+        className="h-4 shrink-0 gap-0.5 border-sky-500/40 px-1 text-[9px] font-medium leading-none text-sky-600 dark:text-sky-300"
+        title="Centro de custo preenchido no lançamento da Flash"
+      >
+        <Zap className="h-2.5 w-2.5" />
+        Flash
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      variant="outline"
+      className="h-4 shrink-0 gap-0.5 border-violet-500/40 px-1 text-[9px] font-medium leading-none text-violet-600 dark:text-violet-300"
+      title="Centro de custo sugerido pelo sistema (funcionário, cross-referência ou banco)"
+    >
+      <Sparkles className="h-2.5 w-2.5" />
+      Sugerido
+    </Badge>
+  );
 };
 
 interface OptionSelectProps {
@@ -208,18 +242,21 @@ function EditableCostCenter({
     const hasCostCenter = row.flash_cost_center && row.flash_cost_center !== "—";
     const showRed = hasCostCenter && isInSaas === false;
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className={cn("block truncate", showRed ? "text-red-600 font-medium" : "text-muted-foreground")}>
-            {row.flash_cost_center}
-          </span>
-        </TooltipTrigger>
-        {showRed && (
-          <TooltipContent>
-            <p>Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
+      <div className="flex items-center gap-1 min-w-0">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={cn("block truncate flex-1", showRed ? "text-red-600 font-medium" : "text-muted-foreground")}>
+              {row.flash_cost_center}
+            </span>
+          </TooltipTrigger>
+          {showRed && (
+            <TooltipContent>
+              <p>Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+        {costCenterOrigemBadge(row.flash_cost_center_origem)}
+      </div>
     );
   }
 
@@ -227,29 +264,30 @@ function EditableCostCenter({
   const showRed = hasCostCenter && isInSaas === false;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="flex items-center gap-1 w-full group text-left outline-none"
-              title="Clique para editar o centro de custo"
-            >
-              <span className={cn("truncate flex-1", showRed && "text-red-600 font-medium")}>
-                {row.flash_cost_center}
-              </span>
-              <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-            </button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-        {showRed && (
-          <TooltipContent>
-            <p>Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
-      <PopoverContent className="w-[300px] p-0" align="start">
+    <div className="flex items-center gap-1 min-w-0">
+      <Popover open={open} onOpenChange={setOpen}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1 flex-1 min-w-0 group text-left outline-none"
+                title="Clique para editar o centro de custo"
+              >
+                <span className={cn("truncate flex-1", showRed && "text-red-600 font-medium")}>
+                  {row.flash_cost_center}
+                </span>
+                <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              </button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          {showRed && (
+            <TooltipContent>
+              <p>Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+        <PopoverContent className="w-[300px] p-0" align="start">
         <Command>
           <CommandInput 
             placeholder="Buscar centro de custo..." 
@@ -293,7 +331,9 @@ function EditableCostCenter({
           </CommandList>
         </Command>
       </PopoverContent>
-    </Popover>
+      </Popover>
+      {costCenterOrigemBadge(row.flash_cost_center_origem)}
+    </div>
   );
 }
 

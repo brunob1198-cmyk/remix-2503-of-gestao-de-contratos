@@ -30,6 +30,11 @@ export interface FlashTransactionRow {
   flash_type: string;
   flash_category: string;
   flash_cost_center: string;
+  /** "flash" = a própria Flash já mandou o centro de custo nesta transação
+   *  (id e/ou nome); "sugerido" = veio vazio e foi resolvido por fallback do
+   *  nosso sistema (funcionário, cross-referência do lote ou banco). `null`
+   *  quando não há centro de custo nenhum. Ver mapTransactionRow. */
+  flash_cost_center_origem: "flash" | "sugerido" | null;
   comentarios: string;
   flash_prestacao_contas: string;
   // normalization
@@ -177,13 +182,32 @@ const mapTransactionRow = (raw: any): FlashTransactionRow => {
   };
   const flash_prestacao_contas = statusMap[flash_prestacao_contas_raw] || flash_prestacao_contas_raw;
   const rawDate = raw.transaction_date || pickPayloadValue(p, ["date", "data", "transaction_date", "created_at", "datetime"]);
+  const flash_cost_center = pickPayloadValue(p, ["costCenter.name", "cost_center.name", "costCenter.code", "costCenter.externalId", "costCenter.id", "costCenterId", "cost_center_id", "employee.costCenter.name", "user.costCenter.name", "expense.costCenter.name", "accountability.costCenter.name", "transaction.costCenter.name", "centro_custo", "centroCusto", "costCenter", "cost_center", "employee.costCenter"]) || "—";
+
+  // "flash" x "sugerido": ver flash-sync/index.ts (marcador `_cc_origem`,
+  // gravado na sincronização). Dado sincronizado ANTES desse marcador existir
+  // não tem `_cc_origem` — nesse caso, melhor esforço olhando só os campos
+  // "achatados" (costCenterId, cost_center_id, ...) que o fallback do nosso
+  // sistema NUNCA sobrescreve. O objeto `costCenter` aninhado não serve de
+  // sinal sozinho pra dado antigo: tanto o CC vindo da Flash quanto o
+  // resolvido por fallback acabam morando nele.
+  const ccOrigemGravado = p._cc_origem;
+  const flash_cost_center_origem: FlashTransactionRow["flash_cost_center_origem"] =
+    flash_cost_center === "—"
+      ? null
+      : ccOrigemGravado === "flash" || ccOrigemGravado === "sugerido"
+        ? ccOrigemGravado
+        : (p.costCenterId || p.cost_center_id || p.project?.costCenter?.id || p.department?.costCenter?.id || p.employee?.costCenterId || p.employee?.costCenter?.id)
+          ? "flash"
+          : "sugerido";
+
   return {
     id: raw.id, external_id: raw.external_id, payload_json: p, created_at: raw.created_at, data: parseFlashDate(rawDate),
     descricao: pickPayloadValue(p, ["transaction.description", "description", "descricao", "merchant", "establishment.name", "establishment", "name"]) || "—",
     valor: pickPayloadNumber(p, ["amount", "value", "valor", "total"]) / 100,
     usuario: pickPayloadValue(p, ["employee.name", "user.name", "user.email", "usuario", "user_name"]) || "—",
     flash_type, flash_category, flash_prestacao_contas,
-    flash_cost_center: pickPayloadValue(p, ["costCenter.name", "cost_center.name", "costCenter.code", "costCenter.externalId", "costCenter.id", "costCenterId", "cost_center_id", "employee.costCenter.name", "user.costCenter.name", "expense.costCenter.name", "accountability.costCenter.name", "transaction.costCenter.name", "centro_custo", "centroCusto", "costCenter", "cost_center", "employee.costCenter"]) || "—",
+    flash_cost_center, flash_cost_center_origem,
     comentarios: pickPayloadValue(p, ["comments", "comment", "observacao", "note", "notes", "memo", "remarks", "justification", "justificativa", "reason", "motivo", "accounting.comments", "receipt.comments", "expense.comments", "accountability.comments", "transaction.comments"]) || "—",
   };
 };
