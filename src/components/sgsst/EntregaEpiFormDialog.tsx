@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SgsstEpiEntregaInput, MotivoEntregaEpi, useSgsstEpis } from "@/hooks/sgsst/useSgsstEpis";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { PackageCheck, AlertTriangle } from "lucide-react";
+import { resumoDosTamanhos, tamanhoSugerido } from "@/utils/tamanhoDoEpi";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface EntregaEpiFormDialogProps {
@@ -37,6 +38,8 @@ export function EntregaEpiFormDialog({
   // padrao e falso de proposito — marcar por padrao transformaria a exigencia da
   // norma em texto decorativo que ninguem le.
   const [orientacaoUso, setOrientacaoUso] = useState(false);
+  // Digitou algo? Entao a sugestao automatica para de mexer no campo.
+  const [tamanhoTocado, setTamanhoTocado] = useState(false);
 
   useEffect(() => {
     setColaboradorId("");
@@ -47,10 +50,35 @@ export function EntregaEpiFormDialog({
     setTamanhoModelo("");
     setObservacao("");
     setOrientacaoUso(false);
+    setTamanhoTocado(false);
   }, [open]);
 
   const selectedEpi = epis.find((e) => e.id === epiId);
   const caVencido = selectedEpi?.statusValidadeCa === "VENCIDO";
+
+  const selectedColaborador = colaboradores.find((c) => c.id === colaboradorId);
+  const tamanhosCadastrados = resumoDosTamanhos(selectedColaborador?.tamanhos);
+
+  /**
+   * Trocar o EPI destrava a sugestão.
+   *
+   * Sem isto, quem digitasse "42" para uma bota e depois trocasse o equipamento
+   * por um capacete levaria o 42 junto — um tamanho que não é de ninguém, preso
+   * ao registro por ter sido digitado antes da troca.
+   */
+  useEffect(() => {
+    setTamanhoTocado(false);
+  }, [epiId]);
+
+  /**
+   * Sugere o tamanho só onde o mapeamento é seguro — calçado, para EPI de pé.
+   * Não sobrescreve o que a pessoa digitou: `tamanhoTocado` trava a sugestão.
+   */
+  useEffect(() => {
+    if (tamanhoTocado) return;
+    const sugerido = tamanhoSugerido(selectedEpi?.categoria, selectedColaborador?.tamanhos);
+    setTamanhoModelo(sugerido ?? "");
+  }, [tamanhoTocado, selectedEpi?.categoria, selectedColaborador?.tamanhos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,8 +201,21 @@ export function EntregaEpiFormDialog({
               id="tam"
               placeholder="Ex: Tamanho P, M, G, Calçado N° 41"
               value={tamanhoModelo}
-              onChange={(e) => setTamanhoModelo(e.target.value)}
+              onChange={(e) => {
+                setTamanhoTocado(true);
+                setTamanhoModelo(e.target.value);
+              }}
             />
+            {/*
+              A ficha do trabalhador já guarda calçado, camisa e calça. Mostrar aqui
+              evita digitar de memória — bota folgada torce tornozelo, e o dado
+              estava no sistema o tempo todo, a duas telas de distância.
+            */}
+            {tamanhosCadastrados && (
+              <p className="text-xs text-muted-foreground">
+                Cadastrado na ficha: {tamanhosCadastrados}
+              </p>
+            )}
           </div>
 
           {/* NR-06 6.6.1 alínea "d" */}
