@@ -20,6 +20,7 @@ import {
   GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon, HeartPulse, GraduationCap, Shield, FolderArchive, FileBarChart, ClipboardCheck
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -140,6 +141,7 @@ export function MedicoesSidebar() {
   const { state, isPinned, setIsPinned } = useSidebar();
   const collapsed = state === "collapsed";
   const { profile, role, signOut } = useAuth();
+  const { empresa } = useEmpresaAtual();
   const { canView } = usePermissions();
   const avatarUrl = profile?.avatar_url;
 
@@ -305,7 +307,17 @@ export function MedicoesSidebar() {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{profile?.nome || "Usuário"}</p>
-                <p className="text-xs text-muted-foreground capitalize">{role || "—"}</p>
+                {/*
+                  Roteiro 0.1: "confirmar qual empresa esta selecionada". O papel
+                  ja aparecia aqui; a EMPRESA nao aparecia em lugar nenhum da
+                  interface. O proprio roteiro explica por que isso custa caro:
+                  "Metade dos 'sumiu tudo' e empresa errada ou permissao
+                  faltando" — e as duas metades do diagnostico moram nesta linha.
+                */}
+                <p className="text-xs text-muted-foreground truncate">
+                  <span className="capitalize">{role || "sem papel"}</span>
+                  {empresa?.nome ? ` · ${empresa.nome}` : ""}
+                </p>
               </div>
             )}
             <Button variant="ghost" size="icon" onClick={signOut} title="Sair">

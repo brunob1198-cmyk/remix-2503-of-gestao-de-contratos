@@ -105,6 +105,22 @@ export function esquecerDonoDoCache(): void {
  * não captura nada do React e por isso não tem como ficar com uma referência
  * velha de um render anterior.
  */
+/**
+ * Chave da cópia de leitura do logotipo da empresa.
+ *
+ * O valor definitivo mora em `empresas.logo_url`; esta cópia existe porque o
+ * RDO e o detalhe da medição montam HTML fora do React e leem a chave direto.
+ */
+export const CHAVE_COPIA_DO_LOGOTIPO = "custom_logo_url";
+
+function esquecerCopiaDoLogotipo(): void {
+  try {
+    localStorage.removeItem(CHAVE_COPIA_DO_LOGOTIPO);
+  } catch {
+    // Armazenamento bloqueado: nada a limpar, e falhar aqui derrubaria o login.
+  }
+}
+
 export function aplicarPoliticaDoCache(
   queryClient: QueryClient,
   usuarioId: string | null,
@@ -117,6 +133,17 @@ export function aplicarPoliticaDoCache(
   // O persistidor grava de forma assíncrona; não há o que esperar aqui, e uma
   // falha ao apagar não pode derrubar o login.
   void Promise.resolve(indexedDBPersister.removeClient()).catch(() => undefined);
+
+  /*
+    A cópia de leitura do logotipo entra na limpeza pelo mesmo motivo do resto:
+    ela é da EMPRESA, e trocar de usuário pode trocar de empresa. Deixada para
+    trás, o logotipo da empresa anterior apareceria no cabeçalho e, pior, no PDF
+    que o RDO monta — que lê esta chave direto, fora do React.
+
+    O valor definitivo está em `empresas.logo_url`; apagar aqui só força o
+    próximo login a buscá-lo de novo.
+  */
+  esquecerCopiaDoLogotipo();
 
   if (usuarioId) gravarDonoDoCache(usuarioId);
   else esquecerDonoDoCache();

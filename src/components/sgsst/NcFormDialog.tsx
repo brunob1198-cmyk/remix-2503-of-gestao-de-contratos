@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { AlertOctagon } from "lucide-react";
+import { OpcoesOuAviso, SEM_OBRA_CADASTRADA } from "@/components/sgsst/SelecaoVazia";
 
 interface NcFormDialogProps {
   open: boolean;
@@ -257,11 +258,13 @@ export function NcFormDialog({
                   <SelectValue placeholder="Selecione a obra..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {projetos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      [{p.codigo}] {p.nome}
-                    </SelectItem>
-                  ))}
+                  <OpcoesOuAviso itens={projetos} aviso={SEM_OBRA_CADASTRADA}>
+                    {(p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        [{p.codigo}] {p.nome}
+                      </SelectItem>
+                    )}
+                  </OpcoesOuAviso>
                 </SelectContent>
               </Select>
             </div>

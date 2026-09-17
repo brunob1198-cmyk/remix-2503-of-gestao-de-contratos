@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Switch } from "@/components/ui/switch";
 import { ShieldCheck, Wind } from "lucide-react";
 import { campoLocalDoIso, isoDoCampoLocal } from "@/utils/dataHoraLocal";
+import { OpcoesOuAviso, SEM_OBRA_CADASTRADA } from "@/components/sgsst/SelecaoVazia";
 
 interface PtFormDialogProps {
   open: boolean;
@@ -258,11 +259,13 @@ export function PtFormDialog({
                   <SelectValue placeholder="Selecione a obra..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {projetos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      [{p.codigo}] {p.nome}
-                    </SelectItem>
-                  ))}
+                  <OpcoesOuAviso itens={projetos} aviso={SEM_OBRA_CADASTRADA}>
+                    {(p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        [{p.codigo}] {p.nome}
+                      </SelectItem>
+                    )}
+                  </OpcoesOuAviso>
                 </SelectContent>
               </Select>
             </div>
