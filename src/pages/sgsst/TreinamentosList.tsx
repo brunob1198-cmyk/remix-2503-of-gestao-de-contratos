@@ -65,7 +65,13 @@ import { TurmaFormDialog } from "@/components/sgsst/TurmaFormDialog";
 import { ParticipanteFormDialog } from "@/components/sgsst/ParticipanteFormDialog";
 import { TreinamentoPanoramaPanel } from "@/components/sgsst/TreinamentoPanoramaPanel";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format, parseISO } from "date-fns";
 
 export default function SgsstTreinamentosListPage() {
@@ -1035,14 +1041,41 @@ export default function SgsstTreinamentosListPage() {
       {/* Modal Gerenciar Alunos da Turma Selecionada */}
       {selectedTurmaForPart && (
         <Dialog open={!!selectedTurmaForPart} onOpenChange={(open) => !open && setSelectedTurmaForPart(null)}>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <div className="flex items-center justify-between pr-4">
-                <DialogTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Alunos da Turma: {selectedTurmaForPart.codigo_turma || selectedTurmaForPart.treinamento?.nome}
+          {/*
+            O CABEÇALHO EMPILHA, EM VEZ DE DIVIDIR A LINHA
+
+            O título e os quatro botões dividiam uma linha de 700 px com
+            "justify-between" e sem "flex-wrap". Os botões ficavam com o que
+            precisavam — cerca de 520 px — e o título era espremido no resto,
+            quebrando em quatro linhas de duas palavras; o último botão ainda
+            transbordava a borda direita.
+
+            Título em cima, barra de ações embaixo: é a ordem em que se lê, e cada
+            um fica com a largura inteira. A barra passa a quebrar em duas linhas
+            quando não cabe, em vez de empurrar o vizinho.
+          */}
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] flex flex-col gap-0">
+            <DialogHeader className="space-y-3">
+              <div className="space-y-1 pr-8">
+                <DialogTitle className="flex items-center gap-2 text-base">
+                  <Users className="h-5 w-5 shrink-0 text-primary" />
+                  <span className="truncate">
+                    Alunos da turma {selectedTurmaForPart.codigo_turma || "sem código"}
+                  </span>
                 </DialogTitle>
-                <div className="flex items-center gap-2">
+                {/*
+                  O curso não aparecia: o título mostrava o código da turma, e o
+                  nome do treinamento só entrava como alternativa quando o código
+                  faltava. São as duas coisas que identificam a turma.
+                */}
+                <DialogDescription className="text-xs">
+                  {selectedTurmaForPart.treinamento?.nome ?? "Treinamento não identificado"}
+                  {turmaParticipantes.length > 0 &&
+                    ` · ${turmaParticipantes.length} aluno(s) inscrito(s)`}
+                </DialogDescription>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
                     variant="outline"
@@ -1103,11 +1136,19 @@ export default function SgsstTreinamentosListPage() {
                       <Plus className="h-3.5 w-3.5 mr-1" /> Matricular Aluno
                     </Button>
                   )}
-                </div>
               </div>
             </DialogHeader>
 
-            <div className="space-y-3 py-2">
+            {/*
+              A ROLAGEM É DA TABELA, E NÃO DA CAIXA
+
+              Com "overflow-y-auto" no DialogContent, a tabela larga empurrava a
+              caixa inteira e nascia uma barra de rolagem horizontal no rodapé do
+              diálogo — que arrastava o cabeçalho e os botões junto ao deslizar.
+              Aqui o cabeçalho fica parado e só a tabela se move.
+            */}
+            <div className="flex-1 overflow-y-auto py-2">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1174,6 +1215,7 @@ export default function SgsstTreinamentosListPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
