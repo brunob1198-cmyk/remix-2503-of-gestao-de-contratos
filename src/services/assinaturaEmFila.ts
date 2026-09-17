@@ -296,21 +296,36 @@ export async function assinarPorToken(params: {
   return { assinou: true, filaConcluida: true, arquivoAssinado };
 }
 
-/**
- * Gera a folha de assinaturas e marca a solicitação como concluída.
- *
- * A folha sai só no fim, com todos. Gerar a cada assinatura produziria N versões
- * do mesmo documento, e a penúltima pareceria final para quem a baixasse.
- */
-async function fecharSolicitacao(params: {
+export interface FechamentoDaSolicitacao {
   token: string;
   solicitacaoId: string;
   titulo: string;
   empresaNome: string;
   arquivoOriginal: string | null;
   fila: readonly SignatarioDaFila[];
-}): Promise<string | null> {
-  try {
+}
+
+/**
+ * Gera a folha de assinaturas e marca a solicitação como concluída.
+ *
+ * A folha sai só no fim, com todos. Gerar a cada assinatura produziria N versões
+ * do mesmo documento, e a penúltima pareceria final para quem a baixasse.
+ *
+ * ESTA VERSÃO DEIXA O ERRO SUBIR
+ *
+ * Quem assina não pode ver erro depois de ter assinado com sucesso — ele tentaria
+ * assinar de novo à toa —, então o caminho automático engole a falha. Mas engolir
+ * em silêncio foi como a fila ficou "Concluída" sem documento: a montagem falhava
+ * e ninguém ficava sabendo.
+ *
+ * Então a falha some num lugar só, o automático. O reparo manual, disparado por
+ * quem está olhando a Central, precisa dizer o que deu errado — é a diferença
+ * entre "não incomode quem já terminou" e "esconda o problema do dono".
+ */
+export async function montarEFecharSolicitacao(
+  params: FechamentoDaSolicitacao
+): Promise<string> {
+  {
     const verificationUrl =
       typeof window !== "undefined"
         ? `${window.location.origin}/verificar-assinatura/${params.solicitacaoId}`
@@ -360,14 +375,26 @@ async function fecharSolicitacao(params: {
     });
 
     if (!r?.ok) {
-      console.error("Não foi possível fechar a solicitação:", r?.erro);
+      throw new Error(r?.erro ?? "O banco recusou o fechamento da solicitação.");
     }
 
     return arquivoUrl;
+  }
+}
+
+/**
+ * O fechamento do caminho automático: mesma montagem, sem assustar quem assinou.
+ */
+async function fecharSolicitacao(params: FechamentoDaSolicitacao): Promise<string | null> {
+  try {
+    return await montarEFecharSolicitacao(params);
   } catch (e) {
     // A assinatura já foi gravada; só a montagem do arquivo falhou. Deixar a
     // exceção subir faria o signatário ver erro depois de ter assinado com
     // sucesso, e ele tentaria assinar de novo sem necessidade.
+    //
+    // O preço disso é a Central mostrar "Concluída" sem documento — e por isso
+    // ela passou a oferecer o reparo, em vez de o dono só descobrir a falta.
     console.error("Falha ao montar o documento assinado:", e);
     return null;
   }
