@@ -24,6 +24,21 @@ export type StatusExameOcupacional = "PENDENTE" | "AGENDADO" | "REALIZADO" | "CA
 export type NaturezaExame = "CLINICO" | "COMPLEMENTAR";
 
 /**
+ * Como a natureza do exame aparece escrita.
+ *
+ * O rótulo existia em dois lugares, cada um com seu texto: o formulário escrevia
+ * "Clínico (consulta médica)" e a guia de encaminhamento, "clínico". A lista não
+ * mostrava natureza nenhuma — para conferir era preciso abrir exame por exame.
+ *
+ * A distinção não é cosmética: é ela que separa a alínea "a" (consultas médicas)
+ * da "b" (exames de apoio) no relatório analítico anual da NR-07.
+ */
+export const NATUREZA_EXAME_LABEL: Record<NaturezaExame, string> = {
+  CLINICO: "Clínico",
+  COMPLEMENTAR: "Complementar",
+};
+
+/**
  * Classificação contável do achado. O `resultado` em texto livre continua para o
  * detalhe clínico — a classificação é para estatística, não substitui o laudo.
  */
