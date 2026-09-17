@@ -45,6 +45,32 @@ describe("alinhamento vertical das células", () => {
   });
 });
 
+/**
+ * O trecho da folha de estilos que lista o que não pode ser fatiado.
+ *
+ * Isolado porque a pergunta certa é "está DENTRO desta regra", e não "aparece em
+ * algum lugar do CSS": toda classe aparece pelo menos uma vez, na declaração de
+ * estilo dela.
+ */
+function regraDeQuebra(): string {
+  const inicio = estilosDocumentoSgsst.indexOf(".doc p, .doc-aviso");
+  const trecho = estilosDocumentoSgsst.slice(
+    inicio,
+    estilosDocumentoSgsst.indexOf("}", inicio)
+  );
+
+  /*
+    Sem os comentários.
+
+    A regra é longa e cada entrada carrega a explicação de por que entrou — e
+    essas explicações CITAM as classes. Medido: removendo `.doc-cards` do
+    seletor, o teste continuava passando, porque o comentário logo acima diz
+    ".doc-cards é usada também pelo dossiê". O teste estava lendo a própria
+    justificativa como se fosse a regra.
+  */
+  return trecho.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
 describe("quebra de página", () => {
   it("a fileira da tabela não é cortada ao meio pela quebra", () => {
     expect(estilosDocumentoSgsst).toContain("table.doc-tabela tr { page-break-inside: avoid");
@@ -68,15 +94,82 @@ describe("quebra de página", () => {
       "h3.doc-grupo",
       ".doc-bloco > .tit",
       "table.doc-tabela thead",
+      // Achados na emissão real de um PGR: a faixa de cartões do "Panorama do
+      // inventário" saiu fatiada na horizontal, com os números cortados ao meio.
+      ".doc-cards",
+      ".doc-card",
+      // Auditando a partir dali: `table.doc-tabela tr` estava protegida e
+      // `table.doc-opcoes` não. É a tabela das caixas de aptidão do ASO.
+      "table.doc-opcoes tr",
     ]) {
-      expect(estilosDocumentoSgsst, alvo).toContain(alvo);
+      /*
+        Dentro da REGRA, e não em qualquer lugar do CSS.
+
+        A versão anterior fazia `toContain(alvo)` sobre a folha inteira — e
+        `.doc-cards` aparece lá de qualquer jeito, na própria declaração de
+        estilo dela. O teste passava com a classe desprotegida, que foi
+        exatamente o estado em que o PGR saiu quebrado.
+      */
+      expect(regraDeQuebra(), alvo).toContain(alvo);
     }
 
-    const regra = estilosDocumentoSgsst.slice(
-      estilosDocumentoSgsst.indexOf(".doc p, .doc-aviso"),
-      estilosDocumentoSgsst.indexOf("}", estilosDocumentoSgsst.indexOf(".doc p, .doc-aviso"))
+    expect(regraDeQuebra()).toContain("page-break-inside: avoid");
+  });
+
+  it("todo bloco com caixa própria está protegido, e não só os que já quebraram", () => {
+    /*
+      A lista acima cresceu por relato de usuário — cada vez com o documento já
+      impresso torto. Este teste inverte a ordem: percorre o CSS atrás de blocos
+      que PODEM ser fatiados e exige que cada um esteja protegido.
+
+      O critério é o que dá altura própria na rasterização: ter borda de 1px ou
+      ser caixa flex. Modificador de cor e de alinhamento fica de fora — vive
+      dentro de um pai já protegido e não tem altura sua.
+    */
+    const semComentarios = estilosDocumentoSgsst.replace(/\/\*[\s\S]*?\*\//g, "");
+
+    const inicioDaRegra = semComentarios.indexOf(".doc p, .doc-aviso");
+    const regraDeProtecao = semComentarios.slice(
+      inicioDaRegra,
+      semComentarios.indexOf("}", inicioDaRegra)
     );
-    expect(regra).toContain("page-break-inside: avoid");
+
+    const protegido = (classe: string) =>
+      regraDeProtecao.includes(`.${classe}`) ||
+      new RegExp(`\\.${classe}[^{]*\\{[^}]*page-break-inside:\\s*avoid`).test(semComentarios);
+
+    const desprotegidos: string[] = [];
+
+    for (const bloco of semComentarios.matchAll(/([^{}\n][^{}]*)\{([^{}]*)\}/g)) {
+      const seletor = bloco[1].trim();
+      const corpo = bloco[2];
+
+      /*
+        `inline-block` fica de fora, e não por conveniência: ele flui DENTRO de
+        uma linha de texto, então quem tem altura própria na rasterização é o
+        parágrafo ou a célula que o contém — e esses já estão protegidos.
+
+        O caso concreto é `.doc-marca`, a caixinha de 9×9 px das opções do ASO.
+        Ela tem borda de 1px e a varredura a apontou; nove pixels não se partem
+        ao meio de forma que importe, e a linha que a carrega já é indivisível.
+      */
+      if (/display:\s*inline-block/.test(corpo)) continue;
+
+      const temCaixaPropria = /border:\s*1px/.test(corpo) || /display:\s*flex/.test(corpo);
+      if (!temCaixaPropria) continue;
+
+      const classes = [...seletor.matchAll(/\.([a-z][a-z0-9-]*)/g)].map((m) => m[1]);
+      if (classes.length === 0) continue;
+
+      if (!classes.some(protegido)) desprotegidos.push(seletor);
+    }
+
+    expect(
+      desprotegidos,
+      `Bloco com caixa própria e sem "page-break-inside: avoid":\n  ` +
+        `${desprotegidos.join("\n  ")}\n\n` +
+        `Ele pode sair fatiado ao meio na virada da folha.`
+    ).toEqual([]);
   });
 
   it("nao usa page-break-after: avoid, que a biblioteca ignora", () => {
