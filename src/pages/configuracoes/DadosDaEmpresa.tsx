@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { useAuth } from "@/contexts/AuthContext";
 import { LogoWithUpload } from "@/components/LogoUploader";
+import { useCustomLogo } from "@/hooks/useCustomLogo";
+import { mascararTelefone } from "@/utils/mascaraDeTelefone";
 import {
   faltasNoTimbre,
   linhaDeContato,
@@ -40,6 +42,7 @@ import {
  */
 export default function DadosDaEmpresaPage() {
   const { empresa, isLoading, salvarEmpresa } = useEmpresaAtual();
+  const { customLogo: logoExibida } = useCustomLogo();
   // A RLS de `empresas` so deixa o admin atualizar; a tela reflete a mesma
   // regra em vez de inventar outra, e o hook ainda confere o que o banco fez.
   const { role } = useAuth();
@@ -57,7 +60,9 @@ export default function DadosDaEmpresaPage() {
     setNome(empresa.nome ?? "");
     setCnpj(empresa.cnpj ?? "");
     setEndereco(empresa.endereco ?? "");
-    setTelefone(empresa.telefone ?? "");
+    // Também na carga: número gravado antes da máscara (ou digitado em outra
+    // tela) aparece formatado, em vez de "6233001148" no meio do formulário.
+    setTelefone(mascararTelefone(empresa.telefone ?? ""));
     setEmail(empresa.email ?? "");
     setSite(empresa.site ?? "");
   }, [empresa]);
@@ -73,6 +78,14 @@ export default function DadosDaEmpresaPage() {
     site,
     logoUrl: empresa?.logo_url ?? null,
   };
+
+  /*
+    A logo aparece no cabeçalho vindo de `useCustomLogo`, que ainda aceita a
+    cópia local como alternativa. Se ela existe lá e não existe em
+    `empresas.logo_url`, o que a pessoa vê e o que o PDF recebe são coisas
+    diferentes — e é isso que o aviso acima explica.
+  */
+  const logoSoNoNavegador = !!logoExibida && !empresa?.logo_url;
 
   const faltas = faltasNoTimbre(emEdicao);
   const contato = linhaDeContato(emEdicao);
@@ -128,13 +141,41 @@ export default function DadosDaEmpresaPage() {
         <CardHeader className="py-3 border-b">
           <CardTitle className="text-sm font-semibold">Logotipo</CardTitle>
         </CardHeader>
-        <CardContent className="p-4 flex items-center gap-4">
-          <LogoWithUpload className="h-14" />
-          <p className="text-xs text-muted-foreground">
-            Aparece no topo de cada página dos PDFs <strong>e</strong> no cabeçalho
-            das telas. Clique para enviar; PNG ou JPEG, até 5 MB.
-            {!podeEditar && " O envio também é restrito ao administrador."}
-          </p>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-4">
+            <LogoWithUpload className="h-14" />
+            <p className="text-xs text-muted-foreground">
+              Aparece no topo de cada página dos PDFs <strong>e</strong> no cabeçalho
+              das telas. Clique para enviar; PNG ou JPEG, até 5 MB.
+              {!podeEditar && " O envio também é restrito ao administrador."}
+            </p>
+          </div>
+
+          {/*
+            O CASO EM QUE A LOGO APARECE E MESMO ASSIM FALTA
+
+            Até setembro de 2026 o envio gravava a URL só no `localStorage`, e
+            nunca em `empresas.logo_url`. Logo enviada antes daquela correção
+            continua aparecendo AQUI — o cabeçalho lê a cópia local — e some no
+            PDF, que lê a empresa.
+
+            Sem este aviso a tela pareceria errada: uma logo na cara da pessoa e
+            a lista dizendo que ela falta. É o contrário — a lista está certa, e
+            o que está guardado é uma cópia que só existe neste navegador.
+          */}
+          {logoSoNoNavegador && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50/60 p-3 text-xs dark:border-amber-900 dark:bg-amber-950/20">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <span className="text-amber-900 dark:text-amber-200">
+                Esta logo está guardada <strong>só neste navegador</strong>, de um
+                envio anterior à correção de setembro. Ela não sai nos PDFs e seus
+                colegas não a veem.{" "}
+                {podeEditar
+                  ? "Clique nela e envie o arquivo de novo — aí vale para a empresa toda."
+                  : "Peça ao administrador para reenviá-la."}
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -170,10 +211,11 @@ export default function DadosDaEmpresaPage() {
               <Label htmlFor="telefone">Telefone</Label>
               <Input
                 id="telefone"
-                placeholder="(00) 0000-0000"
+                placeholder="(62) 3300-1148"
+                inputMode="tel"
                 value={telefone}
                 disabled={!podeEditar}
-                onChange={(e) => setTelefone(e.target.value)}
+                onChange={(e) => setTelefone(mascararTelefone(e.target.value))}
               />
             </div>
 
