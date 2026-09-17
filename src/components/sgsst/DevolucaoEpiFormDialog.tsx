@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CondicaoDevolucaoEpi, useSgsstEpiEntregas } from "@/hooks/sgsst/useSgsstEpis";
+import { tetoDaDevolucao } from "@/utils/movimentacaoDeEpi";
 import { RotateCcw } from "lucide-react";
 
 interface DevolucaoEpiFormDialogProps {
@@ -103,7 +104,7 @@ export function DevolucaoEpiFormDialog({
                 id="qtdDev"
                 type="number"
                 min={1}
-                max={selectedEntrega?.quantidade || 100}
+                max={tetoDaDevolucao(selectedEntrega)}
                 value={quantidadeDevolvida}
                 onChange={(e) => setQuantidadeDevolvida(Number(e.target.value))}
                 required

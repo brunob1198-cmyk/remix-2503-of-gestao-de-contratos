@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstEpiEntregaInput, MotivoEntregaEpi, useSgsstEpis } from "@/hooks/sgsst/useSgsstEpis";
+import { impedimentoDaEntrega, tetoDaEntrega } from "@/utils/movimentacaoDeEpi";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { PackageCheck, AlertTriangle } from "lucide-react";
 import { resumoDosTamanhos, tamanhoSugerido } from "@/utils/tamanhoDoEpi";
@@ -54,7 +55,12 @@ export function EntregaEpiFormDialog({
   }, [open]);
 
   const selectedEpi = epis.find((e) => e.id === epiId);
-  const caVencido = selectedEpi?.statusValidadeCa === "VENCIDO";
+  /*
+    O que impede a entrega, em uma frase. Antes so o CA vencido era tratado
+    aqui; estoque zerado passava direto e o campo de quantidade ainda oferecia
+    teto cem, porque `estoque_atual || 100` le zero como ausencia.
+  */
+  const impedimento = impedimentoDaEntrega(selectedEpi);
 
   const selectedColaborador = colaboradores.find((c) => c.id === colaboradorId);
   const tamanhosCadastrados = resumoDosTamanhos(selectedColaborador?.tamanhos);
@@ -82,7 +88,7 @@ export function EntregaEpiFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!colaboradorId || !epiId || caVencido) return;
+    if (!colaboradorId || !epiId || impedimento) return;
 
     await onSave({
       colaborador_id: colaboradorId,
@@ -145,10 +151,10 @@ export function EntregaEpiFormDialog({
             </Select>
           </div>
 
-          {caVencido && (
+          {impedimento && (
             <div className="bg-red-50 text-red-800 p-3 rounded border border-red-300 text-xs flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
-              <span>O CA deste EPI está vencido! A regulamentação da NR-6 proíbe a entrega de equipamentos com CA vencido.</span>
+              <span>{impedimento}</span>
             </div>
           )}
 
@@ -159,7 +165,7 @@ export function EntregaEpiFormDialog({
                 id="qtd"
                 type="number"
                 min={1}
-                max={selectedEpi?.estoque_atual || 100}
+                max={tetoDaEntrega(selectedEpi)}
                 value={quantidade}
                 onChange={(e) => setQuantidade(Number(e.target.value))}
                 required
@@ -252,7 +258,7 @@ export function EntregaEpiFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || !colaboradorId || !epiId || caVencido}>
+            <Button type="submit" disabled={isLoading || !colaboradorId || !epiId || !!impedimento}>
               {isLoading ? "Salvando..." : "Confirmar & Registrar Entrega"}
             </Button>
           </DialogFooter>
