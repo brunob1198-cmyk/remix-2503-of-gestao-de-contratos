@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Trash2, Check, X, PackageCheck, History } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Check, X, PackageCheck, History } from "lucide-react";
 import { parseLocalDate } from "@/lib/utils";
 import { RequisitionTimeline } from "./RequisitionTimeline";
 import { DataTable, DataTableColumnHeader, DataTableColumnFilter, multiSelectFilter } from "@/components/ui/data-table";
@@ -46,7 +46,7 @@ export function RequisicoesTab({
   filter?: string;
   onNavigate?: (tab: string, filter?: string) => void;
 }) {
-  const { requisicoes: allRequisicoes, isLoading, create, updateStatus, remove } = useRequisicoes();
+  const { requisicoes: allRequisicoes, isLoading, create, update, updateStatus, remove } = useRequisicoes();
   const { projetos } = useProjetos();
   const [scItensSearch, setScItensSearch] = useState("");
   const debouncedScItensSearch = useDebounce(scItensSearch, 250);
@@ -56,6 +56,8 @@ export function RequisicoesTab({
   const [open, setOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<any>(null);
+  /** null = criando; caso contrário, id da requisição em edição (mesmo modal do "Nova Requisição"). */
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     projeto_id: "",
@@ -85,16 +87,45 @@ export function RequisicoesTab({
   };
 
   const handleSave = () => {
-    create.mutate({
+    const payload = {
       ...form,
       // Vazio vira NULL: a alçada sem tipo (que vale para qualquer um) é quem cobre
       // a requisição não classificada.
       tipo_compra: form.tipo_compra || null,
       data_necessidade: form.data_necessidade || null,
       itens: itemRows.filter(r => r.descricao_livre || r.sc_item_id)
-    }, {
-      onSuccess: () => { setOpen(false); resetForm(); }
+    };
+    if (editingId) {
+      update.mutate({ id: editingId, ...payload }, {
+        onSuccess: () => { setOpen(false); resetForm(); setEditingId(null); }
+      });
+    } else {
+      create.mutate(payload, {
+        onSuccess: () => { setOpen(false); resetForm(); }
+      });
+    }
+  };
+
+  const handleEdit = (r: any) => {
+    setEditingId(r.id);
+    setForm({
+      projeto_id: r.projeto_id || "",
+      prioridade: r.prioridade || "normal",
+      tipo_compra: r.tipo_compra || "",
+      data_necessidade: r.data_necessidade || "",
+      justificativa: r.justificativa || "",
     });
+    setItemRows(
+      r.itens && r.itens.length > 0
+        ? r.itens.map((i: any) => ({
+            sc_item_id: i.sc_item_id || "",
+            descricao_livre: i.descricao_livre || "",
+            quantidade: i.quantidade ?? 1,
+            unidade: i.unidade || "UN",
+          }))
+        : [{ sc_item_id: "", descricao_livre: "", quantidade: 1, unidade: "UN" }]
+    );
+    setOpen(true);
   };
 
   const addItemRow = () => setItemRows(p => [...p, { sc_item_id: "", descricao_livre: "", quantidade: 1, unidade: "UN" }]);
@@ -234,11 +265,15 @@ export function RequisicoesTab({
         return (
           <div className="flex justify-end gap-1">
             <Button variant="ghost" size="icon" title="Ver Detalhes" onClick={() => { setSelected(r); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
-            
+
             {normalizarEstadoRequisicao(r.workflow_status) === "DRAFT" && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button variant="ghost" size="icon" title="Editar" onClick={() => handleEdit(r)}><Pencil className="h-4 w-4" /></Button>
+            )}
+
+            {normalizarEstadoRequisicao(r.workflow_status) === "DRAFT" && (
+              <Button
+                variant="ghost"
+                size="sm"
                 className="text-primary hover:text-primary hover:bg-primary/10"
                 onClick={() => updateStatus.mutate({ id: r.id, workflow_status: "SUBMITTED", observacoes: "Requisição enviada para o setor de compras." })}
               >
@@ -313,12 +348,12 @@ export function RequisicoesTab({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Requisições de Compra</CardTitle>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { resetForm(); setEditingId(null); } }}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova Requisição</Button>
+            <Button size="sm" onClick={() => { setEditingId(null); resetForm(); }}><Plus className="h-4 w-4 mr-1" /> Nova Requisição</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Nova Requisição de Compra</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingId ? "Editar Requisição de Compra" : "Nova Requisição de Compra"}</DialogTitle></DialogHeader>
             <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -417,8 +452,8 @@ export function RequisicoesTab({
                 ))}
               </div>
 
-              <Button onClick={handleSave} disabled={create.isPending || itemRows.every(i => !i.descricao_livre && !i.sc_item_id)}>
-                Criar Requisição
+              <Button onClick={handleSave} disabled={create.isPending || update.isPending || itemRows.every(i => !i.descricao_livre && !i.sc_item_id)}>
+                {editingId ? "Salvar Alterações" : "Criar Requisição"}
               </Button>
             </div>
           </DialogContent>
