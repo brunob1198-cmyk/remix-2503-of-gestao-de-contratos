@@ -89,6 +89,38 @@ export const estilosDocumentoSgsst = `
        desiste dele (guarda "nPages <= 1" na fonte da biblioteca) e os filhos
        ficavam sem proteção própria. */
     .doc-cab, .doc-rodape,
+    /* A FAIXA DE CARTOES, e o cartao dentro dela.
+
+       Achado na emissao real de um PGR (print do dono, 17/09/2026): a faixa do
+       "Panorama do inventario" caiu na virada da folha e foi fatiada na
+       horizontal — a metade de cima dos quatro cartoes no pe de uma pagina, a de
+       baixo no topo da seguinte, com os numeros cortados ao meio.
+
+       Nao era defeito do PGR: ".doc-cards" e usada tambem pelo dossie, pelo
+       checklist, pela inspecao, pelo incidente e pelo relatorio analitico. O PGR
+       so foi o primeiro em que o conteudo acima somou a altura exata para a
+       faixa cair na dobra.
+
+       A FAIXA vem primeiro: protegendo so o cartao, a linha poderia partir com
+       dois cartoes em cada folha, e eles sao lidos como uma tira so. O cartao
+       tambem entra, para o caso de a faixa quebrar em duas linhas e uma delas
+       cair na dobra. */
+    .doc-cards, .doc-card,
+    /* A CAIXA DO VEREDITO.
+
+       Achada pela varredura que o teste de estilos passou a fazer, e nao por
+       relato: e a moldura que traz "APROVADO" ou "REPROVADO" no checklist e a
+       conclusao na PT, no dossie e no incidente. Cortada ao meio, o documento
+       afirma o veredito pela metade — que e a unica linha que alguem procura
+       quando pega a folha. */
+    .doc-conclusao,
+    /* As linhas da tabela de opcoes do ASO.
+
+       "table.doc-tabela tr" ja estava protegida; "table.doc-opcoes" e outra
+       tabela e ficou de fora. Ela carrega as caixas de aptidao — "apto", "apto
+       com restricao", "inapto" —, e uma linha dessas cortada ao meio e a pior
+       de todas: e a declaracao que o documento existe para fazer. */
+    table.doc-opcoes tr,
     .doc-assin > div, .doc-assin .nome, .doc-assin .papel { page-break-inside: avoid; }
 
     /* Por que .doc-bloco INTEIRO entra na lista.
