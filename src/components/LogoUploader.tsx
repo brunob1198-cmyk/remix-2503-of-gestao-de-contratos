@@ -24,6 +24,25 @@ export function LogoWithUpload({ className = "h-10" }: { className?: string }) {
     e.target.value = "";
   };
 
+  /*
+    A remoção agora fala com o banco, então pode falhar — por falta de permissão,
+    por exemplo. Antes era um `localStorage.removeItem`, que não falha nunca, e o
+    clique podia ignorar o resultado sem prejuízo.
+  */
+  const handleRemove = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await removeLogo();
+      toast({ title: "Logo removido" });
+    } catch (err) {
+      toast({
+        title: "Não foi possível remover o logo",
+        description: err instanceof Error ? err.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="relative group flex items-center">
       {customLogo ? (
@@ -44,7 +63,7 @@ export function LogoWithUpload({ className = "h-10" }: { className?: string }) {
       </div>
       {customLogo && (
         <button
-          onClick={(e) => { e.stopPropagation(); removeLogo(); }}
+          onClick={handleRemove}
           className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <X className="h-3 w-3" />

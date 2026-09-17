@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { GraduationCap } from "lucide-react";
+import { OpcoesOuAviso, SEM_OBRA_CADASTRADA } from "@/components/sgsst/SelecaoVazia";
 
 interface TreinamentoFormDialogProps {
   open: boolean;
@@ -259,11 +260,13 @@ export function TreinamentoFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">-- Geral da Empresa --</SelectItem>
-                  {projetos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      [{p.codigo}] {p.nome}
-                    </SelectItem>
-                  ))}
+                  <OpcoesOuAviso itens={projetos} aviso={SEM_OBRA_CADASTRADA}>
+                    {(p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        [{p.codigo}] {p.nome}
+                      </SelectItem>
+                    )}
+                  </OpcoesOuAviso>
                 </SelectContent>
               </Select>
             </div>
