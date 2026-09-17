@@ -5,6 +5,10 @@ import {
   montarDocumentoAssinado,
 } from "@/services/pdfSignatureService";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
+import {
+  leituraDaResposta,
+  type CorpoDoServidor,
+} from "@/utils/respostaDoDocumentoGuardado";
 // `situacaoDaFila` saiu daqui de propósito: quem decide se a fila fechou é o
 // banco, dentro de `assinar_por_token`. Manter a função importada sugeriria que a
 // decisão ainda mora no cliente — e foi essa suposição que deixou a assinatura
@@ -365,21 +369,66 @@ export async function montarEFecharSolicitacao(
         // nada. O caso não deveria ocorrer; se ocorrer, fica no log.
         { arquivo: folha.pdfFile, hashAssinado: folha.hashAssinado };
 
-    const arquivoUrl = await uploadImage(arquivo);
+    /*
+      O ARMAZENAMENTO E O FECHAMENTO ACONTECEM NO SERVIDOR
 
-    const r = await rpc<{ ok: boolean; erro?: string }>("fechar_solicitacao_por_token", {
-      p_token: params.token,
-      p_arquivo_assinado: arquivoUrl,
-      p_hash_original: folha.hashOriginal,
-      p_hash_assinado: hashAssinado,
+      Antes eram duas chamadas daqui: `uploadImage` e a RPC. O upload exige sessão
+      do Supabase, e quem assina por link público não tem nenhuma — então a
+      montagem terminava e o arquivo não ia a lugar nenhum, justamente para o
+      signatário externo, que é quem a fila existe para atender.
+
+      A Edge Function tem a credencial do servidor e faz as duas coisas. Este
+      navegador só precisa produzir os bytes, que é o que ele sabe fazer mesmo sem
+      sessão.
+    */
+    return await guardarDocumentoAssinado({
+      token: params.token,
+      arquivo,
+      hashOriginal: folha.hashOriginal,
+      hashAssinado,
     });
-
-    if (!r?.ok) {
-      throw new Error(r?.erro ?? "O banco recusou o fechamento da solicitação.");
-    }
-
-    return arquivoUrl;
   }
+}
+
+/** A URL da função, montada da mesma origem que o cliente Supabase usa. */
+function urlDaFuncao(nome: string): string {
+  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
+  return `${base.replace(/\/+$/, "")}/functions/v1/${nome}`;
+}
+
+/**
+ * Envia os bytes prontos e devolve o endereço do arquivo guardado.
+ *
+ * O corpo é o PDF cru, e não um JSON com base64: base64 infla o envio em um
+ * terço, e num documento de alguns megabytes isso é a diferença entre passar e
+ * estourar o limite da requisição.
+ */
+async function guardarDocumentoAssinado(params: {
+  token: string;
+  arquivo: File;
+  hashOriginal: string;
+  hashAssinado: string;
+}): Promise<string> {
+  const resposta = await fetch(urlDaFuncao("guardar-documento-assinado"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/pdf",
+      "x-assinatura-token": params.token,
+      "x-hash-original": params.hashOriginal,
+      "x-hash-assinado": params.hashAssinado,
+    },
+    body: await params.arquivo.arrayBuffer(),
+  });
+
+  const corpo = (await resposta.json().catch(() => null)) as CorpoDoServidor | null;
+
+  // A leitura mora em `respostaDoDocumentoGuardado` porque 409 aqui significa
+  // duas coisas opostas — documento já guardado, ou fechamento recusado — e a
+  // diferença entre elas é a diferença entre avisar e não avisar o usuário.
+  const leitura = leituraDaResposta(resposta.status, corpo);
+  if (leitura.tipo === "FALHA") throw new Error(leitura.erro);
+
+  return leitura.url;
 }
 
 /**

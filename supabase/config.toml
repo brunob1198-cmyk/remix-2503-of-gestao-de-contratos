@@ -2,3 +2,10 @@ project_id = "xqdhyukmeklfczwiipen"
 
 [functions.powerbi-data]
 verify_jwt = false
+
+# Quem assina por link publico nao tem sessao no sistema — e e justamente para
+# essa pessoa que a fila de assinaturas existe. Exigir JWT aqui reintroduziria o
+# defeito que a funcao fecha. A credencial e o token do signatario, conferido
+# dentro dela contra a tabela.
+[functions.guardar-documento-assinado]
+verify_jwt = false
