@@ -521,6 +521,38 @@ export function useRequisicoes() {
     onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
+  /**
+   * Edição restrita a rascunho pela tela (nenhuma checagem aqui): a partir de
+   * SUBMITTED a requisição já pode ter cotações referenciando os itens, e apagar
+   * e recriar `requisicao_itens` (abaixo) órfãos essas linhas.
+   */
+  const update = useMutation({
+    mutationFn: async ({ id, itens, ...fields }: any) => {
+      const { error } = await supabase
+        .from("requisicoes_compra")
+        .update(fields)
+        .eq("id", id);
+      if (error) throw error;
+
+      if (itens) {
+        const { error: delErr } = await supabase.from("requisicao_itens").delete().eq("requisicao_id", id);
+        if (delErr) throw delErr;
+
+        if (itens.length > 0) {
+          const { error: itemErr } = await supabase
+            .from("requisicao_itens")
+            .insert(itens.map((i: any) => ({ ...i, requisicao_id: id })));
+          if (itemErr) throw itemErr;
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["requisicoes_compra"] });
+      toast({ title: "Requisição atualizada!" });
+    },
+    onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
+  });
+
   const updateStatus = useMutation({
     mutationFn: async ({ id, workflow_status, observacoes }: { id: string; workflow_status: string; observacoes?: string }) => {
       // Get current workflow_status for history
@@ -579,7 +611,7 @@ export function useRequisicoes() {
     onError: (e: Error) => toast({ title: "Erro", description: mensagemDeErroSupabase(e), variant: "destructive" }),
   });
 
-  return { requisicoes, isLoading, create, updateStatus, remove };
+  return { requisicoes, isLoading, create, update, updateStatus, remove };
 }
 
 // ─── Cotações ───
