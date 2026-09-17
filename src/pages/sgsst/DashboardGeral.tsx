@@ -220,6 +220,27 @@ export default function SgsstDashboardGeralPage() {
             </CardHeader>
             <CardContent className="px-3 pb-3">
               <div className="text-2xl font-bold text-blue-600">{metrics?.pgrAtivos || 0}</div>
+              {/*
+                As duas faixas da revisao, abaixo da contagem.
+                Vencida em vermelho e a vencer em ambar: a diferenca entre "esta
+                irregular hoje" e "comece a organizar" e a informacao inteira —
+                um numero so as juntaria de novo.
+              */}
+              {((metrics?.pgrRevisaoVencida ?? 0) > 0 ||
+                (metrics?.pgrRevisaoAVencer ?? 0) > 0) && (
+                <div className="mt-1 flex flex-wrap gap-x-2 text-[11px] leading-tight">
+                  {(metrics?.pgrRevisaoVencida ?? 0) > 0 && (
+                    <span className="font-semibold text-red-600">
+                      {metrics!.pgrRevisaoVencida} com revisão vencida
+                    </span>
+                  )}
+                  {(metrics?.pgrRevisaoAVencer ?? 0) > 0 && (
+                    <span className="font-semibold text-amber-600">
+                      {metrics!.pgrRevisaoAVencer} a vencer em 90 dias
+                    </span>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

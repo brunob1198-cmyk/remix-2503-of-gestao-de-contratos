@@ -15,6 +15,10 @@ export interface SgsstAlertaItem {
 export interface SgsstDashboardMetrics {
   // Segurança
   pgrAtivos: number;
+  /** Revisao do PGR ja vencida — NR-01 1.5.4.4.5. */
+  pgrRevisaoVencida: number;
+  /** Revisao vencendo dentro de 90 dias: ainda valido, ja precisa comecar. */
+  pgrRevisaoAVencer: number;
   aprEmAndamento: number;
   ptEmExecucao: number;
   inspecoesPendentes: number;
@@ -81,6 +85,8 @@ export function useSgsstDashboard(projetoId?: string, dataInicial?: string, data
 
       return {
         pgrAtivos: Number(rawMetrics.pgrAtivos || 0),
+        pgrRevisaoVencida: Number(rawMetrics.pgrRevisaoVencida || 0),
+        pgrRevisaoAVencer: Number(rawMetrics.pgrRevisaoAVencer || 0),
         aprEmAndamento: Number(rawMetrics.aprEmAndamento || 0),
         ptEmExecucao: Number(rawMetrics.ptEmExecucao || 0),
         inspecoesPendentes: Number(rawMetrics.inspecoesPendentes || 0),
