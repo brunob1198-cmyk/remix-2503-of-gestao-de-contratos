@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useAssinaturas, type SolicitacaoDeAssinatura } from "@/hooks/useAssinaturas";
-import { urlDeAssinatura } from "@/services/assinaturaEmFila";
+import { montarEFecharSolicitacao, urlDeAssinatura } from "@/services/assinaturaEmFila";
+import { estadoDoDocumento } from "@/utils/reparoDoDocumentoAssinado";
+import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +32,8 @@ import {
   Search,
   ShieldCheck,
   XCircle,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,7 +63,41 @@ export default function CentralAssinaturasPage() {
   const [filtro, setFiltro] = useState("todos");
   const [aberta, setAberta] = useState<string | null>(null);
   const [novaAberta, setNovaAberta] = useState(false);
+  const [reparandoId, setReparandoId] = useState<string | null>(null);
   const { profile } = useAuth();
+  const { empresa } = useEmpresaAtual();
+
+  /*
+    REFAZ A MONTAGEM DO DOCUMENTO ASSINADO
+
+    Rodando daqui, de uma sessão que existe — que é o que faltava quando o último
+    da fila assinou por link público. As assinaturas já estão gravadas; isto só
+    junta o original com a folha, carimba os nomes e envia o arquivo.
+  */
+  const repararDocumento = async (s: SolicitacaoDeAssinatura, token: string) => {
+    setReparandoId(s.id);
+    try {
+      await montarEFecharSolicitacao({
+        token,
+        solicitacaoId: s.id,
+        titulo: s.documento_id || s.entidade_tipo || "Documento",
+        empresaNome: empresa?.nome ?? "",
+        arquivoOriginal: s.documento?.arquivo_original ?? null,
+        fila: s.signatarios,
+      });
+
+      toast.success("Documento assinado gerado. Ele já aparece para download.");
+      await refetch();
+    } catch (e) {
+      // Diferente do caminho automático, aqui o erro APARECE: quem clicou está
+      // olhando, e precisa saber por que não deu.
+      toast.error(
+        e instanceof Error ? e.message : "Não foi possível gerar o documento assinado."
+      );
+    } finally {
+      setReparandoId(null);
+    }
+  };
 
   const filtradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -224,6 +262,8 @@ export default function CentralAssinaturasPage() {
               dataBr={dataBr}
               mensagem={mensagem}
               copiar={copiar}
+              reparando={reparandoId === s.id}
+              onReparar={repararDocumento}
             />
           ))}
         </div>
@@ -259,6 +299,8 @@ function LinhaDaSolicitacao({
   dataBr,
   mensagem,
   copiar,
+  reparando,
+  onReparar,
 }: {
   solicitacao: SolicitacaoDeAssinatura;
   aberta: boolean;
@@ -266,7 +308,16 @@ function LinhaDaSolicitacao({
   dataBr: (v?: string | null) => string;
   mensagem: (nome: string, url: string) => string;
   copiar: (texto: string) => void;
+  reparando: boolean;
+  onReparar: (s: SolicitacaoDeAssinatura, token: string) => void;
 }) {
+  const estado = estadoDoDocumento({
+    situacao: s.progresso.situacao,
+    arquivoAssinado: s.documento?.arquivo_assinado,
+    arquivoOriginal: s.documento?.arquivo_original,
+    tokens: s.signatarios.map((x) => x.token),
+  });
+
   const selo =
     s.progresso.situacao === "CONCLUIDA" ? (
       <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 gap-1">
@@ -317,7 +368,7 @@ function LinhaDaSolicitacao({
 
           {selo}
 
-          {s.documento?.arquivo_assinado && (
+          {estado.tipo === "PRONTO" && s.documento?.arquivo_assinado && (
             <Button size="sm" variant="outline" asChild>
               <a
                 href={resolveFileUrl(s.documento.arquivo_assinado)}
@@ -328,7 +379,42 @@ function LinhaDaSolicitacao({
               </a>
             </Button>
           )}
+
+          {estado.tipo === "REPARAVEL" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-300 text-amber-800 hover:bg-amber-50"
+              disabled={reparando}
+              onClick={() => onReparar(s, estado.token)}
+            >
+              {reparando ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              ) : (
+                <FileDown className="h-3.5 w-3.5 mr-1" />
+              )}
+              {reparando ? "Gerando..." : "Gerar documento assinado"}
+            </Button>
+          )}
         </div>
+
+        {/*
+          A FILA FECHOU E O ARQUIVO NAO EXISTE
+
+          A tela dizia "Concluída" e simplesmente não mostrava o botão de baixar —
+          sem nenhuma explicação. Quem assinou por link público não tem sessão no
+          sistema, e o envio do arquivo final exige uma: quando o último da fila é
+          alguém de fora, a montagem falha e ninguém fica sabendo.
+
+          O aviso diz o que houve e que as assinaturas estão a salvo, para a
+          reação não ser refazer a solicitação e pedir tudo de novo.
+        */}
+        {(estado.tipo === "REPARAVEL" || estado.tipo === "SEM_REPARO") && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50/60 p-2.5 text-xs dark:border-amber-900 dark:bg-amber-950/20">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+            <span className="text-amber-900 dark:text-amber-200">{estado.aviso}</span>
+          </div>
+        )}
 
         {aberta && (
           <div className="space-y-2 pt-2 border-t">
