@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { indexedDBPersister } from "@/lib/queryClient";
+import { esquecerTimbreDaEmpresa } from "@/lib/timbreDaEmpresa";
 
 /**
  * De quem é o cache que está no disco?
@@ -144,6 +145,14 @@ export function aplicarPoliticaDoCache(
     próximo login a buscá-lo de novo.
   */
   esquecerCopiaDoLogotipo();
+
+  /*
+    Os dados do timbre também são da EMPRESA e ficam guardados em módulo enquanto
+    a sessão dura. Sem esta linha, o primeiro PDF emitido depois de trocar de
+    usuário sairia com o CNPJ e o endereço da empresa anterior — que é o defeito
+    que o timbre por empresa existe para fechar.
+  */
+  esquecerTimbreDaEmpresa();
 
   if (usuarioId) gravarDonoDoCache(usuarioId);
   else esquecerDonoDoCache();

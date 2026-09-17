@@ -1,4 +1,7 @@
 import { getPdfOptions } from "@/lib/pdfTemplates";
+import { dadosDoTimbre } from "@/lib/timbreDaEmpresa";
+import { linhaDeContato, linhaDeEndereco } from "@/utils/linhasDoTimbre";
+import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import {
   serializarAncoras,
   type Ancora,
@@ -37,20 +40,29 @@ import {
  *    cabeçalho nem rodapé por conta própria.
  */
 
-/** Dados da organização, transcritos do rodapé do papel timbrado oficial. */
-export const ORGANIZACAO_TIMBRE = {
-  site: "aivxtech.com",
-  cnpj: "58.106.347/0001-01",
-  endereco: "Rua C-152, n.478 — Jardim América, Goiânia – GO, 74.275-120",
-  telefone: "(62) 3300-1148",
-  email: "aivx@aivxtech.com",
-} as const;
+/*
+  O TIMBRE E DE CADA EMPRESA, E NAO MAIS FIXO
 
-const LOGO_URL = "/papel-timbrado/logo-aivx.png";
+  Ate 17/09/2026 o site, o CNPJ, o endereco, o telefone, o e-mail e o logotipo
+  estavam escritos aqui, da AIVX: o PDF de todo cliente saia com o timbre da
+  fabricante da ferramenta. Agora vem de `empresas`, por decisao do dono, e o
+  que nao estiver preenchido simplesmente nao sai — ver linhasDoTimbre.ts.
+
+  A marca d'agua continua sendo ativo da aplicacao: ela e textura de fundo, nao
+  identificacao de quem emitiu.
+*/
 const MARCA_DAGUA_URL = "/papel-timbrado/marca-dagua.png";
 
-/** Proporção original do logo (2500 × 505), para não distorcer ao redimensionar. */
-const LOGO_PROPORCAO = 505 / 2500;
+/**
+ * A CAIXA do logo no cabeçalho: largura em LOGO_LARGURA_MM, altura aqui.
+ *
+ * O valor é o que a geometria antiga já reservava — 42 mm de largura na
+ * proporção da logo da AIVX (2500 × 505) dão 8,484 mm de altura. Mantido igual
+ * de propósito: mudar a altura do cabeçalho mexeria na área útil da página e,
+ * por tabela, na contagem de páginas e no corte do raster. A logo de cada
+ * empresa passa a CABER nesta caixa, em vez de a caixa seguir uma proporção.
+ */
+const LOGO_ALTURA_MAXIMA_MM = (42 * 505) / 2500;
 
 const MM_PARA_PT = 72 / 25.4;
 
@@ -98,7 +110,10 @@ const LOGO_LARGURA_MM = 42;
  * fio, não texto que possa ser encoberto.
  */
 export function alturaCabecalhoPt(): number {
-  return (LOGO_BORDA_TOPO_MM + LOGO_LARGURA_MM * LOGO_PROPORCAO) * MM_PARA_PT;
+  // Conta pela ALTURA MAXIMA da caixa do logo, e nao pela proporcao de uma logo
+  // especifica: cada empresa envia a sua, e a margem do conteudo nao pode
+  // depender do formato do arquivo que alguem subiu.
+  return (LOGO_BORDA_TOPO_MM + LOGO_ALTURA_MAXIMA_MM) * MM_PARA_PT;
 }
 
 /** Respiro entre o timbre e a primeira/última linha do conteúdo. */
@@ -215,6 +230,35 @@ export function geometriaDaFolha(): GeometriaDaFolha {
 const cacheAtivos = new Map<string, ArrayBuffer | null>();
 
 /**
+ * Embute a imagem pelo tipo real, e nao pela extensao do nome.
+ *
+ * O envio aceita qualquer imagem e o nome do arquivo nao e garantia de nada.
+ * PNG comeca com 0x89 'P' 'N' 'G'; JPEG, com 0xFF 0xD8. Formato que nao seja
+ * nenhum dos dois devolve `null` — o documento sai sem logo, e nao quebra.
+ */
+async function embutirImagem<Imagem>(
+  // Generico sobre o retorno do proprio pdf-lib: nomear `PDFDocument` aqui
+  // traria a biblioteca para o pacote principal so por causa da anotacao, e uma
+  // interface propria perderia o que `drawImage` precisa.
+  pdf: {
+    embedPng: (b: ArrayBuffer) => Promise<Imagem>;
+    embedJpg: (b: ArrayBuffer) => Promise<Imagem>;
+  },
+  bytes: ArrayBuffer
+): Promise<Imagem | null> {
+  const inicio = new Uint8Array(bytes.slice(0, 4));
+
+  try {
+    if (inicio[0] === 0x89 && inicio[1] === 0x50) return await pdf.embedPng(bytes);
+    if (inicio[0] === 0xff && inicio[1] === 0xd8) return await pdf.embedJpg(bytes);
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+/**
  * Busca um ativo do timbre.
  *
  * Devolve `null` em falha em vez de lançar: documento sem logo continua sendo
@@ -285,8 +329,15 @@ export async function aplicarPapelTimbrado(
   const fonte = await pdf.embedFont(StandardFonts.Helvetica);
   const fonteNegrito = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  const logoBytes = await buscarAtivo(LOGO_URL);
-  const logo = logoBytes ? await pdf.embedPng(logoBytes) : null;
+  /*
+    A logo vem do cadastro da empresa e pode ser PNG ou JPEG — o envio aceita
+    qualquer imagem. `embedPng` num JPEG lanca, e derrubaria a emissao inteira
+    por causa da identidade visual, entao o tipo e detectado pelos primeiros
+    bytes e a falha vira "sem logo", nao "sem documento".
+  */
+  const timbre = await dadosDoTimbre();
+  const logoBytes = timbre.logoUrl ? await buscarAtivo(resolveFileUrl(timbre.logoUrl)) : null;
+  const logo = logoBytes ? await embutirImagem(pdf, logoBytes) : null;
 
   const paginas = pdf.getPages();
   const total = paginas.length;
@@ -302,8 +353,19 @@ export async function aplicarPapelTimbrado(
     const { width, height } = pagina.getSize();
 
     if (logo) {
-      const larguraLogo = LOGO_LARGURA_MM * MM_PARA_PT;
-      const alturaLogo = larguraLogo * LOGO_PROPORCAO;
+      /*
+        Cabe na CAIXA, sem distorcer.
+
+        A versao anterior tinha a proporcao da logo da AIVX fixa em constante.
+        Logo de cliente vem em qualquer formato — quadrada, alta, muito larga —
+        e impor uma proporcao esticaria a marca de quem emite o documento.
+      */
+      const larguraMaxima = LOGO_LARGURA_MM * MM_PARA_PT;
+      const alturaMaxima = LOGO_ALTURA_MAXIMA_MM * MM_PARA_PT;
+      const escala = Math.min(larguraMaxima / logo.width, alturaMaxima / logo.height);
+      const larguraLogo = logo.width * escala;
+      const alturaLogo = logo.height * escala;
+
       pagina.drawImage(logo, {
         x: margemLateral,
         y: height - LOGO_BORDA_TOPO_MM * MM_PARA_PT - alturaLogo,
@@ -334,27 +396,34 @@ export async function aplicarPapelTimbrado(
       color: rgb(0.85, 0.88, 0.92),
     });
 
-    const linha1 = `${ORGANIZACAO_TIMBRE.site}  ·  CNPJ ${ORGANIZACAO_TIMBRE.cnpj}  ·  ${ORGANIZACAO_TIMBRE.telefone}  ·  ${ORGANIZACAO_TIMBRE.email}`;
-    const tamanho1 = 6.5;
-    const largura1 = fonte.widthOfTextAtSize(linha1, tamanho1);
-    pagina.drawText(linha1, {
-      x: (width - largura1) / 2,
-      y: yRodape + RODAPE_CONTATO_PT,
-      size: tamanho1,
-      font: fonte,
-      color: tinta,
-    });
+    // Linha vazia nao e desenhada: empresa que ainda nao preencheu o contato
+    // emite documento com o rodape mais curto, e nao com um espaco em branco no
+    // lugar onde havia o dado de outra empresa.
+    const linha1 = linhaDeContato(timbre);
+    if (linha1) {
+      const tamanho1 = 6.5;
+      const largura1 = fonte.widthOfTextAtSize(linha1, tamanho1);
+      pagina.drawText(linha1, {
+        x: (width - largura1) / 2,
+        y: yRodape + RODAPE_CONTATO_PT,
+        size: tamanho1,
+        font: fonte,
+        color: tinta,
+      });
+    }
 
-    const linha2 = ORGANIZACAO_TIMBRE.endereco;
-    const tamanho2 = 6;
-    const largura2 = fonte.widthOfTextAtSize(linha2, tamanho2);
-    pagina.drawText(linha2, {
-      x: (width - largura2) / 2,
-      y: yRodape + RODAPE_ENDERECO_PT,
-      size: tamanho2,
-      font: fonte,
-      color: tintaSuave,
-    });
+    const linha2 = linhaDeEndereco(timbre);
+    if (linha2) {
+      const tamanho2 = 6;
+      const largura2 = fonte.widthOfTextAtSize(linha2, tamanho2);
+      pagina.drawText(linha2, {
+        x: (width - largura2) / 2,
+        y: yRodape + RODAPE_ENDERECO_PT,
+        size: tamanho2,
+        font: fonte,
+        color: tintaSuave,
+      });
+    }
 
     // Numeração à direita e identificação do documento à esquerda: uma folha
     // solta que caiu do grampo precisa dizer de qual documento veio.
