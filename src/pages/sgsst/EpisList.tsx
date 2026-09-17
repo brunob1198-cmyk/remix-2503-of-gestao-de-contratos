@@ -366,7 +366,9 @@ export default function SgsstEpisListPage() {
   };
 
   const handleSaveEntrega = async (data: any) => {
-    await createEntrega.mutateAsync(data);
+    // Devolve a entrega criada: o formulário precisa do id para ligar as fotos
+    // capturadas durante o preenchimento.
+    return await createEntrega.mutateAsync(data);
   };
 
   const handleSaveDevolucao = async (data: any) => {

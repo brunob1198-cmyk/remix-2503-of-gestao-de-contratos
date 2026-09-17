@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, Trash2, ExternalLink, MapPin, MapPinOff, Loader2 } from "lucide-react";
 import { CapturaFotoCampo, type FotoCapturada } from "@/components/comum/CapturaFotoCampo";
 import { uploadImage } from "@/services/uploadImage";
+import { payloadDaEvidencia } from "@/utils/evidenciaDaFoto";
 import { resolveFileUrl } from "@/utils/fileUrlResolver";
 import { SgsstErrorState } from "@/components/sgsst/SgsstStateFeedback";
 import { seloDaFoto, linkDoMapa } from "@/utils/fotoGeolocalizada";
@@ -70,21 +71,9 @@ export function SgsstEvidenciasPanel({
       const url = await uploadImage(foto.arquivo);
       if (!url) throw new Error("O envio não retornou o endereço do arquivo.");
 
-      await adicionar.mutateAsync({
-        entidade,
-        entidade_id: entidadeId,
-        r2_key: url,
-        r2_url: url,
-        nome_arquivo: foto.arquivo.name,
-        tipo_mime: foto.arquivo.type || null,
-        tamanho: foto.arquivo.size || null,
-        latitude: foto.coordenada?.latitude ?? null,
-        longitude: foto.coordenada?.longitude ?? null,
-        precisao_metros: foto.coordenada?.precisao ?? null,
-        capturada_em: foto.capturadaEm,
-        origem_captura: foto.origem,
-        motivo_sem_geo: foto.motivoSemGeo,
-      });
+      await adicionar.mutateAsync(
+        payloadDaEvidencia({ entidade, entidadeId, foto, url })
+      );
     } catch (e) {
       toast.error(`Erro ao anexar a foto: ${(e as Error).message}`);
     } finally {

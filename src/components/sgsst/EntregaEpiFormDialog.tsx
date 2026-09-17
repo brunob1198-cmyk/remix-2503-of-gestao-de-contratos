@@ -7,15 +7,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SgsstEpiEntregaInput, MotivoEntregaEpi, useSgsstEpis } from "@/hooks/sgsst/useSgsstEpis";
 import { impedimentoDaEntrega, tetoDaEntrega } from "@/utils/movimentacaoDeEpi";
+import { CapturaFotoCampo, type FotoCapturada } from "@/components/comum/CapturaFotoCampo";
+import { payloadDaEvidencia, avisoDeFotoNaoEnviada } from "@/utils/evidenciaDaFoto";
+import { useSgsstEvidencias } from "@/hooks/sgsst/useSgsstEvidencias";
+import { uploadImage } from "@/services/uploadImage";
+import { toast } from "sonner";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
-import { PackageCheck, AlertTriangle } from "lucide-react";
+import { PackageCheck, AlertTriangle, Camera, MapPin, MapPinOff, Trash2 } from "lucide-react";
 import { resumoDosTamanhos, tamanhoSugerido } from "@/utils/tamanhoDoEpi";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface EntregaEpiFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (data: SgsstEpiEntregaInput) => Promise<void>;
+  /**
+   * Devolve a entrega criada. As fotos so podem ser ligadas DEPOIS que a linha
+   * existe -- o `entidade_id` da evidencia e o id dela.
+   */
+  onSave: (data: SgsstEpiEntregaInput) => Promise<{ id: string } | void>;
   isLoading?: boolean;
 }
 
@@ -86,11 +95,31 @@ export function EntregaEpiFormDialog({
     setTamanhoModelo(sugerido ?? "");
   }, [tamanhoTocado, selectedEpi?.categoria, selectedColaborador?.tamanhos]);
 
+  /*
+    Fotos escolhidas antes de a entrega existir.
+
+    Ficam aqui em memoria e sobem depois da gravacao, porque a evidencia
+    precisa do id da entrega. O botao de camera na linha do registro continua
+    valendo para acrescentar depois; isto cobre o momento em que a foto
+    interessa -- a entrega do equipamento, com ele na mao.
+  */
+  /*
+    Só a mutation interessa aqui: a consulta de evidências existentes fica
+    desligada porque, no momento em que este formulário está aberto, a entrega
+    ainda não existe e não há `entidade_id` a consultar.
+  */
+  const { adicionar: adicionarEvidencia } = useSgsstEvidencias("EPI_ENTREGA", undefined, {
+    enabled: false,
+  });
+
+  const [fotos, setFotos] = useState<FotoCapturada[]>([]);
+  const [enviandoFotos, setEnviandoFotos] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!colaboradorId || !epiId || impedimento) return;
 
-    await onSave({
+    const criada = await onSave({
       colaborador_id: colaboradorId,
       epi_id: epiId,
       quantidade: Number(quantidade) || 1,
@@ -102,6 +131,41 @@ export function EntregaEpiFormDialog({
       orientacao_uso: orientacaoUso,
     });
 
+    const entregaId = criada && "id" in criada ? criada.id : null;
+
+    if (fotos.length > 0 && entregaId) {
+      setEnviandoFotos(true);
+      let falharam = 0;
+
+      for (const foto of fotos) {
+        try {
+          const url = await uploadImage(foto.arquivo);
+          if (!url) throw new Error("O envio nao devolveu o endereco do arquivo.");
+
+          await adicionarEvidencia.mutateAsync(
+            payloadDaEvidencia({
+              entidade: "EPI_ENTREGA",
+              entidadeId: entregaId,
+              foto,
+              url,
+            })
+          );
+        } catch {
+          falharam += 1;
+        }
+      }
+
+      setEnviandoFotos(false);
+
+      /*
+        A entrega NAO e desfeita quando a foto falha: ela moveu estoque e o
+        equipamento ja esta com o trabalhador. Desfaze-la trocaria um problema
+        pequeno por um grande. O aviso diz o que faltou e onde completar.
+      */
+      if (falharam > 0) toast.warning(avisoDeFotoNaoEnviada(falharam));
+    }
+
+    setFotos([]);
     onOpenChange(false);
   };
 
@@ -254,12 +318,71 @@ export function EntregaEpiFormDialog({
             />
           </div>
 
+          {/*
+            A captura fica no fim, depois da observacao de recebimento: a foto
+            documenta o estado do EPI que acabou de ser descrito acima.
+          */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Camera className="h-3.5 w-3.5" /> Foto do EPI entregue
+            </Label>
+            <p className="text-[11px] text-muted-foreground">
+              Registra o estado do equipamento no momento da entrega. Cada foto entra
+              com data, hora e coordenada da captura, e sai na ficha do colaborador.
+            </p>
+
+            <CapturaFotoCampo
+              disabled={isLoading || enviandoFotos}
+              onCapturar={(foto) => setFotos((atual) => [...atual, foto])}
+            />
+
+            {fotos.length > 0 && (
+              <ul className="space-y-1">
+                {fotos.map((f, i) => (
+                  <li
+                    key={`${f.arquivo.name}-${f.capturadaEm}-${i}`}
+                    className="flex items-center justify-between gap-2 text-[11px] bg-muted/50 rounded px-2 py-1.5"
+                  >
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      {f.coordenada ? (
+                        <MapPin className="h-3 w-3 text-emerald-600 shrink-0" />
+                      ) : (
+                        <MapPinOff className="h-3 w-3 text-amber-600 shrink-0" />
+                      )}
+                      <span className="truncate">{f.arquivo.name}</span>
+                      {!f.coordenada && (
+                        <span className="text-amber-700 shrink-0">sem coordenada</span>
+                      )}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      disabled={enviandoFotos}
+                      onClick={() => setFotos((atual) => atual.filter((_, j) => j !== i))}
+                    >
+                      <Trash2 className="h-3 w-3 text-red-500" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || !colaboradorId || !epiId || !!impedimento}>
-              {isLoading ? "Salvando..." : "Confirmar & Registrar Entrega"}
+            <Button
+              type="submit"
+              disabled={isLoading || enviandoFotos || !colaboradorId || !epiId || !!impedimento}
+            >
+              {enviandoFotos
+                ? "Enviando fotos..."
+                : isLoading
+                  ? "Salvando..."
+                  : "Confirmar & Registrar Entrega"}
             </Button>
           </DialogFooter>
         </form>
