@@ -20,6 +20,8 @@ import {
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { useSgsstPcmso } from "@/hooks/sgsst/useSgsstPcmso";
 import { useSgsstExames } from "@/hooks/sgsst/useSgsstAsosAndExames";
+import { useSgsstRiscosDaObra } from "@/hooks/sgsst/useSgsstRiscosDaObra";
+import { sugestaoDaCategoria } from "@/utils/sugestaoDeRiscosDoAso";
 import { Stethoscope, AlertTriangle } from "lucide-react";
 import { addYears, format } from "date-fns";
 
@@ -46,6 +48,22 @@ export function AsoFormDialog({
   const { exames } = useSgsstExames();
 
   const [colaboradorId, setColaboradorId] = useState("");
+
+  /*
+    O QUE O PGR DA OBRA JA SABE
+
+    Decisao do dono: SUGERIR SEM MARCAR. O ASO e do TRABALHADOR e o inventario e
+    da OBRA -- o pedreiro e o vigia da mesma obra nao tem a mesma exposicao.
+    Pre-marcar empurraria o medico a aceitar uma lista que nao e exatamente a
+    daquela pessoa, e a assinatura no ASO e dele.
+
+    Por isso isto so alimenta TEXTO ao lado das caixas. Nao toca em
+    `riscosMarcados`.
+  */
+  const colaboradorEscolhido = colaboradores.find((c) => c.id === colaboradorId);
+  const { sugestao: sugestaoDoPgr, semInventario } = useSgsstRiscosDaObra(
+    colaboradorEscolhido?.projeto_id
+  );
   const [exameId, setExameId] = useState("none");
   const [pcmsoId, setPcmsoId] = useState("none");
   const [numeroDocumento, setNumeroDocumento] = useState("");
@@ -534,12 +552,42 @@ export function AsoFormDialog({
               <div className="space-y-2">
                 <Label>Perigos e fatores de risco identificados *</Label>
 
+                {sugestaoDoPgr.total > 0 && (
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    O PGR desta obra inventariou{" "}
+                    <strong>{sugestaoDoPgr.total} risco(s)</strong>. Eles aparecem
+                    abaixo, ao lado da categoria — <strong>nada vem marcado</strong>:
+                    o inventário é da obra, e o ASO é deste trabalhador.
+                  </p>
+                )}
+
+                {semInventario && (
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    O PGR desta obra não tem riscos inventariados, ou a obra não tem
+                    PGR ativo. Marque a partir da avaliação do trabalhador.
+                  </p>
+                )}
+
                 <div className="space-y-2 rounded-md border bg-background p-2 max-h-64 overflow-y-auto">
                   {CATEGORIAS_RISCO_ASO.map((categoria) => (
                     <div key={categoria}>
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                         {CATEGORIA_RISCO_ASO_LABEL[categoria]}
                       </p>
+                      {/*
+                        O nome como o PGR o escreve, para quem preenche encontrar
+                        o agente correspondente na ficha. Nao ha tentativa de
+                        casar texto livre com os 42 agentes de vocabulario
+                        fechado: acertaria na maioria e erraria em alguns, e
+                        agente sugerido errado num documento de saude e pior que
+                        sugestao nenhuma.
+                      */}
+                      {sugestaoDaCategoria(sugestaoDoPgr, categoria).length > 0 && (
+                        <p className="text-[11px] leading-snug text-amber-700 dark:text-amber-500">
+                          PGR da obra:{" "}
+                          {sugestaoDaCategoria(sugestaoDoPgr, categoria).join(" · ")}
+                        </p>
+                      )}
                       <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
                         {agentesDaCategoria(categoria).map((agente) => (
                           <label
@@ -567,6 +615,15 @@ export function AsoFormDialog({
                     </div>
                   ))}
                 </div>
+
+                {sugestaoDoPgr.semCategoria.length > 0 && (
+                  <p className="text-[11px] leading-snug text-amber-700 dark:text-amber-500">
+                    <strong>Sem categoria na ficha do ASO:</strong>{" "}
+                    {sugestaoDoPgr.semCategoria.join(" · ")}. O PGR os lista, mas a
+                    ficha não tem caixa correspondente — descreva no complemento em
+                    texto, abaixo.
+                  </p>
+                )}
 
                 <label className="flex items-center gap-2 text-xs font-medium">
                   <Checkbox

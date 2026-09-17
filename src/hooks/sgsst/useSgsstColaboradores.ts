@@ -321,6 +321,13 @@ export interface SgsstColaboradorResumoItem {
   recurso?: { id: string; nome: string } | null;
   /** Tamanhos cadastrados na ficha: a entrega de EPI os mostra na hora de entregar. */
   tamanhos?: TamanhosDoColaborador;
+  /**
+   * A obra do trabalhador.
+   *
+   * É por ela que o ASO chega ao inventário de riscos do PGR daquela obra, para
+   * SUGERIR — sem marcar — os perigos que o programa já identificou ali.
+   */
+  projeto_id?: string | null;
 }
 
 export function useSgsstColaboradoresResumo() {
@@ -335,7 +342,7 @@ export function useSgsstColaboradoresResumo() {
       const { data, error } = await supabase
         .from("sgsst_colaborador_dados" as any)
         .select(
-          "id, nome, cpf, tamanho_calcado, tamanho_camisa, tamanho_calca, " +
+          "id, nome, cpf, projeto_id, tamanho_calcado, tamanho_camisa, tamanho_calca, " +
             "profile:profiles(id, nome), recurso:recursos(id, nome), funcao:sgsst_funcoes(id, nome)"
         )
         .eq("status", "ativo")
@@ -349,6 +356,7 @@ export function useSgsstColaboradoresResumo() {
         displayNome: c.nome || c.profile?.nome || c.recurso?.nome || "Colaborador sem nome",
         cpf: c.cpf,
         funcao: c.funcao?.nome,
+        projeto_id: c.projeto_id,
         profile: c.profile,
         recurso: c.recurso,
         tamanhos: {
