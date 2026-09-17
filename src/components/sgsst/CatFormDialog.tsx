@@ -244,6 +244,17 @@ export function CatFormDialog({
                 value={diasAfastamento}
                 onChange={(e) => setDiasAfastamento(e.target.value)}
               />
+              {/*
+                Decisao do dono: o INCIDENTE continua sendo a fonte unica da taxa
+                de gravidade. Este campo registra o que foi comunicado ao INSS.
+                Somar os dois dobraria a conta, porque a CAT costuma estar ligada
+                a um incidente que ja lancou os mesmos dias.
+              */}
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Registro do que foi comunicado ao INSS. A taxa de gravidade é
+                calculada pelos dias perdidos lançados no <strong>incidente</strong>,
+                para o mesmo afastamento não ser contado duas vezes.
+              </p>
             </div>
 
             <label className="flex items-start gap-2 pt-6 cursor-pointer">

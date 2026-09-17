@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { NATUREZA_EXAME_LABEL } from "@/hooks/sgsst/useSgsstAsosAndExames";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -274,7 +275,7 @@ export function GuiaExameDialog({
                   <Badge key={e.id} variant="secondary" className="text-xs">
                     {e.nome_exame}
                     <span className="ml-1 text-muted-foreground">
-                      ({e.natureza === "CLINICO" ? "clínico" : "complementar"})
+                      ({NATUREZA_EXAME_LABEL[e.natureza ?? "COMPLEMENTAR"].toLowerCase()})
                     </span>
                   </Badge>
                 ))}

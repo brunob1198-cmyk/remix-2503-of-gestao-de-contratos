@@ -18,6 +18,7 @@ import {
   TipoExameOcupacional,
   StatusExameOcupacional,
   calculateVencimentoAso,
+  NATUREZA_EXAME_LABEL,
 } from "@/hooks/sgsst/useSgsstAsosAndExames";
 import { useSgsstColaboradoresResumo } from "@/hooks/sgsst/useSgsstColaboradores";
 import { gerarPdfAso, pendenciasAso } from "@/lib/asoDocumento";
@@ -808,6 +809,11 @@ export default function SgsstPcmsoListPage() {
                     <TableHead>Nome do Exame</TableHead>
                     <TableHead>Colaborador</TableHead>
                     <TableHead>Tipo Exame</TableHead>
+                    {/*
+                      Natureza ao lado do tipo: as duas classificam o exame, e é a
+                      natureza que separa a alinea "a" da "b" no relatorio da NR-07.
+                    */}
+                    <TableHead>Natureza</TableHead>
                     <TableHead>Solicitação</TableHead>
                     <TableHead>Realização</TableHead>
                     <TableHead>Status</TableHead>
@@ -816,9 +822,9 @@ export default function SgsstPcmsoListPage() {
                 </TableHeader>
                 <TableBody>
                   {loadingExames ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Carregando exames ocupacionais...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Carregando exames ocupacionais...</TableCell></TableRow>
                   ) : exames.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum exame cadastrado.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum exame cadastrado.</TableCell></TableRow>
                   ) : (
                     exames.map((e) => {
                       const colabNome = e.colaborador?.profile?.nome || e.colaborador?.recurso?.nome || e.colaborador?.nome || "Sem Nome";
@@ -827,6 +833,13 @@ export default function SgsstPcmsoListPage() {
                           <TableCell className="font-semibold text-xs sm:text-sm">{e.nome_exame}</TableCell>
                           <TableCell className="text-xs">{colabNome}</TableCell>
                           <TableCell><Badge variant="outline" className="text-xs">{e.tipo}</Badge></TableCell>
+                          <TableCell className="text-xs">
+                            {e.natureza ? (
+                              NATUREZA_EXAME_LABEL[e.natureza]
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-xs font-mono">{formatDateStr(e.data_solicitacao)}</TableCell>
                           <TableCell className="text-xs font-mono">{formatDateStr(e.data_realizacao)}</TableCell>
                           <TableCell>

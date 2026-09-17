@@ -48,6 +48,31 @@ export default function SgsstPgrDetailPage() {
   const { inventario, isLoading: loadingInventario, createInventarioItem, updateInventarioItem, removeInventarioItem } = useSgsstPgrInventario(pgrId);
 
   const [selectedInventarioId, setSelectedInventarioId] = useState<string | null>(null);
+
+  /*
+    ADOTAR O TEXTO DO CATALOGO, POR ITEM
+
+    O inventario guarda uma COPIA do nome do risco, de proposito: renomear no
+    catalogo nao pode reescrever um PGR ja emitido, e o campo `perigo` costuma
+    ser detalhado a mao. Mas quando o catalogo muda porque o nome anterior estava
+    errado, refazer a digitacao em cada item e trabalho a toa.
+
+    Este botao so aparece quando os dois textos divergem, e troca UM item. E a
+    pessoa que decide em qual deles o nome novo se aplica.
+  */
+  const [adotandoId, setAdotandoId] = useState<string | null>(null);
+
+  const adotarTextoDoCatalogo = async (item: SgsstPgrInventario) => {
+    const nome = item.risco_catalogo?.nome?.trim();
+    if (!nome) return;
+
+    setAdotandoId(item.id);
+    try {
+      await updateInventarioItem.mutateAsync({ id: item.id, perigo: nome });
+    } finally {
+      setAdotandoId(null);
+    }
+  };
   const [abaAtiva, setAbaAtiva] = useState("inventario");
   const { medidas, isLoading: loadingMedidas, createMedida, updateMedida, removeMedida } = useSgsstPgrMedidasControle(selectedInventarioId || undefined);
 
@@ -440,6 +465,24 @@ export default function SgsstPgrDetailPage() {
                                     <span className="ml-1 font-sans font-semibold">
                                       — renomeado; o PDF sai com o texto acima
                                     </span>
+                                  )}
+                                  {/*
+                                    Decisao do dono: o texto continua CONGELADO, e
+                                    a adocao e por item. Automatizar apagaria o
+                                    detalhamento deliberado -- "Ruido da serra do
+                                    patio B" onde o catalogo diz so "Ruido".
+                                  */}
+                                  {divergente && allowEdit && (
+                                    <Button
+                                      type="button"
+                                      variant="link"
+                                      size="sm"
+                                      disabled={adotandoId === item.id}
+                                      className="ml-1 h-auto p-0 align-baseline text-xs font-sans"
+                                      onClick={() => adotarTextoDoCatalogo(item)}
+                                    >
+                                      {adotandoId === item.id ? "adotando..." : "adotar este texto"}
+                                    </Button>
                                   )}
                                 </span>
                               );
