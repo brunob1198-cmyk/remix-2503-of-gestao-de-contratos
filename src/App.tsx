@@ -47,6 +47,7 @@ const PlanejamentoObraPage = lazyWithRetry(() => import("./pages/medicoes/Planej
 const PowerBIPage = lazyWithRetry(() => import("./pages/medicoes/PowerBI"));
 const MkpParametrosPage = lazyWithRetry(() => import("./pages/configuracoes/MkpParametros"));
 const ConfigImpostosPage = lazyWithRetry(() => import("./pages/configuracoes/ConfigImpostos"));
+const DadosDaEmpresaPage = lazyWithRetry(() => import("./pages/configuracoes/DadosDaEmpresa"));
 const SgsstFuncoesPage = lazyWithRetry(() => import("./pages/sgsst/Funcoes"));
 const SgsstColaboradoresPage = lazyWithRetry(() => import("./pages/sgsst/Colaboradores"));
 const SgsstRiscosPage = lazyWithRetry(() => import("./pages/sgsst/Riscos"));
@@ -157,6 +158,7 @@ const App = () => {
                 <Route path="normalizacao-flash" element={<Navigate to="/medicoes/integracao?tab=normalizacao" replace />} />
                 <Route path="rdo" element={<RdoPage />} />
                 <Route path="usuarios" element={<GerenciarUsuariosPage />} />
+                <Route path="empresa" element={<DadosDaEmpresaPage />} />
                 <Route path="planejamento" element={<PlanejamentoObraPage />} />
                 <Route path="supply-chain" element={<SupplyChainPage />} />
                 

@@ -1,4 +1,30 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+
+/*
+  A EMPRESA DE TESTE
+
+  Ate 17/09/2026 estes testes afirmavam o CNPJ, o site e o endereco da AIVX no
+  PDF -- porque eles estavam escritos no modulo e saiam no documento de TODO
+  cliente. Com o timbre passando a ser de cada empresa, o que se testa mudou:
+  nao e mais "sai este CNPJ", e sim "sai O CNPJ DA EMPRESA, e nada quando nao
+  ha".
+*/
+const EMPRESA_DE_TESTE = {
+  nome: "Construtora de Teste LTDA" as string | null,
+  cnpj: "11.222.333/0001-44" as string | null,
+  endereco: "Rua da Prova, 77 — Centro, Anapolis – GO" as string | null,
+  telefone: "(62) 4002-8922" as string | null,
+  email: "contato@construtoradeteste.com.br" as string | null,
+  site: "construtoradeteste.com.br" as string | null,
+  logoUrl: null as string | null,
+};
+
+let timbreAtual = { ...EMPRESA_DE_TESTE };
+
+vi.mock("@/lib/timbreDaEmpresa", () => ({
+  dadosDoTimbre: async () => timbreAtual,
+  esquecerTimbreDaEmpresa: () => {},
+}));
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -6,7 +32,6 @@ import {
   alturaPaginaEmPixels,
   cssMarcaDagua,
   opcoesPdfTimbrado,
-  ORGANIZACAO_TIMBRE,
   alturaCabecalhoPt,
   alturaRodapePt,
   MARGEM_SUPERIOR_MM,
@@ -151,12 +176,26 @@ describe("ativos do papel timbrado", () => {
     expect(existsSync(MARCA), `marca d'água ausente em ${MARCA}`).toBe(true);
   });
 
-  it("os dados da organização batem com o papel timbrado oficial", () => {
-    expect(ORGANIZACAO_TIMBRE.cnpj).toBe("58.106.347/0001-01");
-    expect(ORGANIZACAO_TIMBRE.site).toBe("aivxtech.com");
-    expect(ORGANIZACAO_TIMBRE.email).toBe("aivx@aivxtech.com");
-    expect(ORGANIZACAO_TIMBRE.telefone).toBe("(62) 3300-1148");
-    expect(ORGANIZACAO_TIMBRE.endereco).toContain("Goiânia");
+  it("o timbre não tem mais dados de organização escritos no código", () => {
+    /*
+      Este teste afirmava que o CNPJ, o site, o e-mail, o telefone e o endereço
+      da AIVX estavam no módulo — e estavam mesmo, saindo no PDF de TODO cliente.
+
+      Por decisão do dono (17/09/2026) o timbre passou a ser montado do cadastro
+      de cada empresa. O teste inverteu: agora ele guarda a ausência, para que
+      um valor padrão não volte "para o rodapé não ficar vazio". Rodapé curto é
+      um problema visível; rodapé com o CNPJ de outra empresa só aparece na
+      auditoria.
+    */
+    const fonte = readFileSync(
+      resolve(process.cwd(), "src/lib/sgsstPapelTimbrado.ts"),
+      "utf8"
+    );
+
+    expect(fonte).not.toContain("58.106.347/0001-01");
+    expect(fonte).not.toContain("aivxtech.com");
+    expect(fonte).not.toContain("(62) 3300-1148");
+    expect(fonte).not.toMatch(/ORGANIZACAO_TIMBREs*=/);
   });
 });
 
@@ -312,8 +351,10 @@ describe("aplicarPapelTimbrado", () => {
 
     expect(paginas).toHaveLength(3);
     for (const [i, texto] of paginas.entries()) {
-      expect(texto, `página ${i + 1} sem CNPJ no rodapé`).toContain("58.106.347/0001-01");
-      expect(texto, `página ${i + 1} sem endereço`).toContain("Goi");
+      expect(texto, `página ${i + 1} sem CNPJ no rodapé`).toContain(
+        EMPRESA_DE_TESTE.cnpj!
+      );
+      expect(texto, `página ${i + 1} sem endereço`).toContain("Anapolis");
     }
   }, TEMPO_PDF);
 
@@ -352,23 +393,65 @@ describe("aplicarPapelTimbrado", () => {
     const stream = (await textoPorPagina(await aplicarPapelTimbrado(await pdfDeTeste(1))))[0];
 
     const posConteudo = stream.indexOf("CONTEUDO-ORIGINAL-PAGINA-1");
-    const posRodape = stream.indexOf("58.106.347/0001-01");
+    const posRodape = stream.indexOf(EMPRESA_DE_TESTE.cnpj!);
 
     expect(posConteudo).toBeGreaterThan(-1);
     expect(posRodape).toBeGreaterThan(-1);
     expect(posConteudo).toBeLessThan(posRodape);
   }, TEMPO_PDF);
 
-  it("embute o logo uma vez e o referencia em cada página", async () => {
-    const saida = await aplicarPapelTimbrado(await pdfDeTeste(3));
-    const paginas = await textoPorPagina(saida);
+  it("empresa SEM logotipo emite documento, só que sem imagem no topo", async () => {
+    /*
+      Antes o logo era ativo da aplicação e estava sempre lá. Agora vem do
+      cadastro, e empresa que não enviou emite documento sem imagem nenhuma no
+      cabeçalho — o que não pode é a emissão quebrar, nem aparecer a logo de
+      outra empresa.
+    */
+    timbreAtual = { ...EMPRESA_DE_TESTE, logoUrl: null };
 
-    // Os nomes de XObject do pdf-lib levam hífen (`/Image-7098480789`), então o
-    // padrão precisa aceitá-lo — sem isso o teste não achava desenho nenhum.
+    const paginas = await textoPorPagina(await aplicarPapelTimbrado(await pdfDeTeste(3)));
+
+    expect(paginas).toHaveLength(3);
     for (const [i, stream] of paginas.entries()) {
       const desenhos = [...stream.matchAll(/\/([A-Za-z0-9-]+)\s+Do\b/g)];
-      expect(desenhos.length, `página ${i + 1} sem o logo`).toBeGreaterThanOrEqual(1);
+      expect(
+        desenhos.length,
+        `página ${i + 1} desenhou imagem sem logo cadastrado`
+      ).toBe(0);
+      // O rodapé é texto e continua saindo.
+      expect(stream).toContain(EMPRESA_DE_TESTE.cnpj!);
     }
+  }, TEMPO_PDF);
+
+  it("empresa sem NENHUM dado não inventa rodapé", async () => {
+    /*
+      O caso que a decisão existe para proteger. A saída fácil seria cair num
+      valor padrão "para o rodapé não ficar vazio" — e o padrão disponível eram
+      os dados da AIVX, que é exatamente o defeito que estava em produção.
+    */
+    timbreAtual = {
+      nome: null,
+      cnpj: null,
+      endereco: null,
+      telefone: null,
+      email: null,
+      site: null,
+      logoUrl: null,
+    };
+
+    const { PDFDocument } = await import("pdf-lib");
+    const saida = await aplicarPapelTimbrado(await pdfDeTeste(2));
+
+    expect((await PDFDocument.load(saida)).getPageCount()).toBe(2);
+
+    const texto = await textoDesenhado(saida);
+    expect(texto).not.toContain("58.106.347/0001-01");
+    expect(texto).not.toContain("aivxtech");
+    expect(texto).not.toContain("CNPJ");
+    // A paginação é do documento, não da empresa: continua.
+    expect(texto).toContain("gina 1 de 2");
+
+    timbreAtual = { ...EMPRESA_DE_TESTE };
   }, TEMPO_PDF);
 
   it("gera documento válido mesmo se os ativos não puderem ser carregados", async () => {
@@ -384,7 +467,7 @@ describe("aplicarPapelTimbrado", () => {
 
       expect(pdf.getPageCount()).toBe(2);
       // O rodapé é texto, não imagem: continua saindo.
-      expect((await textoDesenhado(saida))).toContain("58.106.347/0001-01");
+      expect((await textoDesenhado(saida))).toContain(EMPRESA_DE_TESTE.cnpj!);
     } finally {
       globalThis.fetch = stubAnterior;
     }

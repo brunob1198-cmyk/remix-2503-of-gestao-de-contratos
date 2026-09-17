@@ -5,7 +5,7 @@ import {
   escDoc as esc,
   dataBrDoc as dataBr,
 } from "@/lib/sgsstDocumentoEstilos";
-import { emitirPdfTimbrado, ORGANIZACAO_TIMBRE } from "@/lib/sgsstPapelTimbrado";
+import { emitirPdfTimbrado } from "@/lib/sgsstPapelTimbrado";
 import {
   blocoDeFotos,
   estilosFotosDocumento,
@@ -89,6 +89,15 @@ export function pendenciasCat(dados: CatDocumentoDados): string[] {
 }
 
 export function montarHtmlCat(dados: CatDocumentoDados): string {
+  /*
+    O RODAPÉ DO CORPO NÃO REPETE O SITE
+
+    Ele saía aqui fixo, da AIVX. Com o timbre passando a ser de cada empresa, o
+    site foi retirado em vez de virar mais um parâmetro: o rodapé do papel
+    timbrado já traz o site de quem emitiu, e o mesmo dado duas vezes na mesma
+    folha só ocupa espaço. O que esta linha tem de dizer é quando, por quem, e o
+    que o documento NÃO é.
+  */
   const { cat, empresa, geradoPor } = dados;
   const emitidoEm = new Date().toLocaleString("pt-BR");
 
@@ -246,7 +255,6 @@ export function montarHtmlCat(dados: CatDocumentoDados): string {
 
       <div class="doc-rodape">
         Emitido em ${esc(emitidoEm)}${geradoPor ? ` por ${esc(geradoPor)}` : ""} ·
-        ${esc(ORGANIZACAO_TIMBRE.site)} ·
         Registro interno — a comunicação oficial do acidente é feita no sistema do INSS.
       </div>
     </div>

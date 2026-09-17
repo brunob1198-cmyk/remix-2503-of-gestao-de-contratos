@@ -18,7 +18,7 @@ import {
   Pin, PinOff,
   Percent, Settings2, Activity,
   GripVertical, ShieldCheck, Briefcase, UserCheck, AlertTriangle, FileCheck, SearchCheck, Siren, AlertOctagon, HeartPulse, GraduationCap, Shield, FolderArchive, FileBarChart, ClipboardCheck
-} from "lucide-react";
+, Building2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEmpresaAtual } from "@/hooks/useEmpresaAtual";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -77,6 +77,10 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
   { id: "usuarios", title: "Gerenciar Usuários", url: "/medicoes/usuarios", icon: Users, adminOnly: true, group: "gestao" },
   { id: "assinaturas", title: "Central de Assinaturas", url: "/medicoes/assinaturas", icon: ShieldCheck, telaId: "assinaturas", group: "gestao" },
   { id: "perfil", title: "Meu Perfil", url: "/medicoes/perfil", icon: UserCircle, group: "gestao" },
+  // Sem `adminOnly`: a decisão é "visível para todos, editável pelo admin". Quem
+  // não é admin precisa poder CONFERIR o que sai no documento que ele emite — a
+  // tela bloqueia os campos e diz de quem é a caneta.
+  { id: "empresa", title: "Dados da Empresa", url: "/medicoes/empresa", icon: Building2, group: "gestao" },
 
   // SGSST PRO
   { id: "sgsst-dashboard", title: "SGSST - Dashboard", url: "/medicoes/sgsst/dashboard", icon: Activity, telaId: "sgsst-dashboard", group: "sgsst" },
