@@ -1115,10 +1115,11 @@ export default function SgsstTreinamentosListPage() {
                   </Button>
 
                   {/*
-                    A mesma folha, pela via eletrônica. Os participantes entram todos
-                    na posição 1 — assinam em paralelo, porque numa turma de trinta
-                    uma fila sequencial levaria semanas — e o instrutor na 2, depois
-                    deles: é ele quem atesta a frequência que acabou de coletar.
+                    A mesma folha, pela via eletrônica. Os participantes entram
+                    todos na posição 1 — assinam em paralelo, porque numa turma de
+                    trinta uma fila sequencial levaria semanas. Instrutor e
+                    responsável técnico vêm na 2, depois deles: atestam a
+                    frequência que acabou de ser coletada.
                   */}
                   <Button
                     size="sm"
@@ -1262,7 +1263,7 @@ export default function SgsstTreinamentosListPage() {
             });
           }}
           signatariosSugeridos={[
-            // Participantes em paralelo, instrutor depois. Ver o comentário do botão.
+            // Participantes em paralelo; instrutor e RT depois. Ver o comentário do botão.
             ...turmaParticipantes.map((p) => ({
               nome: nomeDoParticipante(p),
               ordem: 1,
@@ -1275,6 +1276,26 @@ export default function SgsstTreinamentosListPage() {
                     nome: turmaParaAssinatura.instrutor,
                     ordem: 2,
                     cargo: turmaParaAssinatura.instrutor_qualificacao || "Instrutor",
+                  },
+                ]
+              : []),
+            /*
+              O responsável técnico assina na mesma onda do instrutor.
+
+              O documento sempre teve a linha dele, e ele nunca era oferecido como
+              signatário: a linha só podia ser preenchida à mão, o que obriga a
+              imprimir uma folha que já estava eletrônica.
+
+              Onda 2, e não 3: instrutor e RT atestam coisas diferentes e nenhum
+              depende do outro, então uma terceira etapa só faria a fila demorar
+              mais sem mudar o que cada um está afirmando.
+            */
+            ...(turmaParaAssinatura.responsavel_tecnico
+              ? [
+                  {
+                    nome: turmaParaAssinatura.responsavel_tecnico,
+                    ordem: 2,
+                    cargo: "Responsável técnico",
                   },
                 ]
               : []),

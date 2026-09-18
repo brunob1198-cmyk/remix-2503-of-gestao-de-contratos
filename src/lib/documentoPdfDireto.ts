@@ -8,6 +8,7 @@ import { paginarFatias, totalDePaginas, type Fatia } from "@/utils/pdfPaginacao"
 import { alturaDeLinhas, quebrarTexto, truncarEmUmaLinha } from "@/utils/pdfTexto";
 import type { Ancora } from "@/utils/ancoraDeAssinatura";
 import { chaveDoTexto } from "@/utils/ancoraDeAssinatura";
+import { ancoraDoCampo, geometriaDoBloco } from "@/utils/blocoDeAssinaturaPdf";
 
 // WOFF, e não WOFF2 — ver a nota em `embutirFontes`.
 import interRegular from "@fontsource/inter/files/inter-latin-400-normal.woff?url";
@@ -577,14 +578,39 @@ function fatiasDoBloco(bloco: Bloco, ctx: Contexto): FatiaDesenhavel[] {
 
     case "assinaturas": {
       const larguraDoCampo = largura / Math.max(1, bloco.campos.length);
-      const altura = alturaDeLinhas(3, CORPO.corpo) + ESPACO.entreBlocos + 14;
+      const geo = geometriaDoBloco({
+        corpo: CORPO.corpo,
+        nota: CORPO.nota,
+        entreBlocos: ESPACO.entreBlocos,
+      });
+
       return [
         {
-          altura,
+          altura: geo.altura,
           desenhar: (p, topo) => {
             bloco.campos.forEach((campo, i) => {
               const centro = p.esquerda + larguraDoCampo * (i + 0.5);
               const meia = Math.min(larguraDoCampo, 190) / 2;
+
+              // A âncora é o espaço ACIMA do traço — o mesmo espaço que a mão
+              // usaria. Registrada aqui porque é aqui que se sabe onde o campo
+              // caiu depois da paginação.
+              const ancora = ancoraDoCampo({
+                nome: campo.nome,
+                jaUsadas: ctx.ancoras.map((a) => a.chave),
+                pagina: p.indiceDaPagina,
+                x: centro - meia,
+                y: p.y(topo + geo.topoDaLinha),
+                largura: meia * 2,
+              });
+              if (ancora) ctx.ancoras.push(ancora);
+
+              linhaHorizontal(p, {
+                x1: centro - meia,
+                x2: centro + meia,
+                topo: topo + geo.topoDaLinha,
+                cor: cores.linhaForte,
+              });
 
               if (campo.nome) {
                 const t = truncarEmUmaLinha({
@@ -596,19 +622,12 @@ function fatiasDoBloco(bloco: Bloco, ctx: Contexto): FatiaDesenhavel[] {
                 escrever(p, {
                   texto: t,
                   x: centro - medirNormal(t, CORPO.corpo) / 2,
-                  topo: topo + 10,
+                  topo: topo + geo.topoDoNome,
                   corpo: CORPO.corpo,
                   fonte: fontes.normal,
                   cor: cores.texto,
                 });
               }
-
-              linhaHorizontal(p, {
-                x1: centro - meia,
-                x2: centro + meia,
-                topo: topo + 10 + alturaDeLinhas(1, CORPO.corpo) + 2,
-                cor: cores.linhaForte,
-              });
 
               const papel = truncarEmUmaLinha({
                 texto: campo.papel,
@@ -619,7 +638,7 @@ function fatiasDoBloco(bloco: Bloco, ctx: Contexto): FatiaDesenhavel[] {
               escrever(p, {
                 texto: papel,
                 x: centro - medirNormal(papel, CORPO.nota) / 2,
-                topo: topo + 10 + alturaDeLinhas(1, CORPO.corpo) + 6,
+                topo: topo + geo.topoDoPapel,
                 corpo: CORPO.nota,
                 fonte: fontes.normal,
                 cor: cores.textoFraco,
