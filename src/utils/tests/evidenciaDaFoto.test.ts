@@ -131,7 +131,7 @@ describe("avisoDeFotoNaoEnviada", () => {
 describe("payloadDaEvidencia — município e UF", () => {
   it("leva o nome do lugar junto com a coordenada", () => {
     const p = payloadDaEvidencia({
-      entidade: "epi_entrega",
+      entidade: "EPI_ENTREGA",
       entidadeId: "e1",
       foto: foto(),
       url: "https://r2/f.jpg",
@@ -143,7 +143,7 @@ describe("payloadDaEvidencia — município e UF", () => {
   it("foto sem localidade apurada vai com os campos nulos", () => {
     // Obra sem sinal, serviço fora do ar: a evidência entra do mesmo jeito.
     const p = payloadDaEvidencia({
-      entidade: "epi_entrega",
+      entidade: "EPI_ENTREGA",
       entidadeId: "e1",
       foto: foto({ localidade: null }),
       url: "https://r2/f.jpg",
@@ -155,7 +155,7 @@ describe("payloadDaEvidencia — município e UF", () => {
   it("foto sem coordenada não leva município", () => {
     // O banco recusa município sem latitude: o nome deriva da coordenada.
     const p = payloadDaEvidencia({
-      entidade: "epi_entrega",
+      entidade: "EPI_ENTREGA",
       entidadeId: "e1",
       foto: foto({ coordenada: null, localidade: null, motivoSemGeo: "permissão negada" }),
       url: "https://r2/f.jpg",
