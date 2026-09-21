@@ -380,6 +380,9 @@ export default function DiarioObraPage() {
           // Excludente com a coordenada no banco: o motivo só vai quando de fato
           // não houve ponto.
           motivo_sem_geo: foto.coordenada ? null : foto.motivoSemGeo,
+          // O banco recusa municipio sem coordenada: o nome deriva dela.
+          municipio: foto.coordenada ? foto.localidade?.municipio ?? null : null,
+          uf: foto.coordenada ? foto.localidade?.uf ?? null : null,
         });
         setUploadProgress(prev => (prev ? { ...prev, current: prev.current + 1 } : null));
       } catch (err) {

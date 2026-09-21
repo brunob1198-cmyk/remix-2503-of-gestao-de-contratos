@@ -523,6 +523,8 @@ export function useChecklistAplicacoes(params?: { page?: number; pageSize?: numb
           longitude?: number | null;
           precisao?: number | null;
           motivoSemGeo?: string | null;
+          municipio?: string | null;
+          uf?: string | null;
         }>;
       }>;
       planos_acao: Array<{
@@ -606,6 +608,9 @@ export function useChecklistAplicacoes(params?: { page?: number; pageSize?: numb
                 // A coluna é excludente com a coordenada no banco: só vai o motivo
                 // quando de fato não houve ponto.
                 motivo_sem_geo: ev.latitude ? null : ev.motivoSemGeo ?? null,
+                // O banco recusa municipio sem coordenada: o nome deriva dela.
+                municipio: ev.latitude ? ev.municipio ?? null : null,
+                uf: ev.latitude ? ev.uf ?? null : null,
               }));
 
               const legado = (r.evidencias_urls ?? []).map((url) => ({

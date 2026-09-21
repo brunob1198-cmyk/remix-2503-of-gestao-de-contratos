@@ -7,6 +7,7 @@ import {
   type OrigemFoto,
   type CoordenadaFoto,
 } from "@/utils/fotoGeolocalizada";
+import { buscarLocalidade, type LocalidadeDaFoto } from "@/utils/localidadeDaFoto";
 
 /**
  * Captura de foto de campo, com câmera e com geolocalização no instante da foto.
@@ -39,6 +40,8 @@ export interface FotoCapturada {
   origem: OrigemFoto;
   capturadaEm: string;
   coordenada: CoordenadaFoto | null;
+  /** Município e UF apurados no instante da foto. Nulo quando não deu para saber. */
+  localidade: LocalidadeDaFoto | null;
   motivoSemGeo: string | null;
 }
 
@@ -86,24 +89,40 @@ export function CapturaFotoCampo({
   const capturarCoordenada = async (): Promise<{
     coordenada: CoordenadaFoto | null;
     motivo: string | null;
+    localidade: LocalidadeDaFoto | null;
   }> => {
-    if (!comGeolocalizacao) return { coordenada: null, motivo: null };
+    if (!comGeolocalizacao) return { coordenada: null, motivo: null, localidade: null };
 
     try {
       const coords = await getCurrentDeviceLocation();
-      return {
-        coordenada: {
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          precisao: coords.accuracy ?? null,
-        },
-        motivo: null,
+      const coordenada: CoordenadaFoto = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        precisao: coords.accuracy ?? null,
       };
+
+      /*
+        O NOME DO MUNICÍPIO É APURADO AQUI, E GUARDADO COM A FOTO.
+
+        Coordenada não se lê: ninguém reconhece `-14.524700, -49.140800` como
+        Uruaçu. Resolver o nome na hora de EXIBIR faria uma lista de cinquenta
+        fotos disparar cinquenta chamadas externas, e deixaria o PDF sem os nomes
+        quando fosse montado sem rede.
+
+        A busca tem teto de quatro segundos e nunca falha: sem resposta, a foto
+        sai com a coordenada apenas — exatamente como saía antes disto existir.
+      */
+      const localidade = await buscarLocalidade({
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      });
+
+      return { coordenada, motivo: null, localidade };
     } catch (e) {
       // A mensagem de `getCurrentDeviceLocation` já distingue permissão negada,
       // sinal indisponível e tempo esgotado — e essa distinção é o que faz a
       // ausência ser interpretável depois.
-      return { coordenada: null, motivo: (e as Error).message };
+      return { coordenada: null, motivo: (e as Error).message, localidade: null };
     }
   };
 
@@ -114,7 +133,7 @@ export function CapturaFotoCampo({
     try {
       // Uma única leitura de coordenada para o lote: fotos escolhidas juntas foram
       // tiradas no mesmo lugar, e pedir o GPS uma vez por arquivo só atrasaria.
-      const { coordenada, motivo } = await capturarCoordenada();
+      const { coordenada, motivo, localidade } = await capturarCoordenada();
       const capturadaEm = new Date().toISOString();
 
       for (const arquivo of Array.from(arquivos)) {
@@ -123,12 +142,13 @@ export function CapturaFotoCampo({
           origem,
           capturadaEm,
           coordenada,
+          localidade,
           motivoSemGeo: motivo,
         });
       }
 
       setUltimoSelo(
-        seloDaFoto({ coord: coordenada, capturadaEm, origem, motivoSemCoordenada: motivo })
+        seloDaFoto({ coord: coordenada, capturadaEm, origem, motivoSemCoordenada: motivo, localidade })
       );
     } finally {
       setOcupado(false);

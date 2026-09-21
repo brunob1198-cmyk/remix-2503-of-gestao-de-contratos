@@ -1,3 +1,4 @@
+import { rotuloDaLocalidade, type LocalidadeDaFoto } from "@/utils/localidadeDaFoto";
 import { calculateHaversineDistanceMeters } from "@/utils/geolocationUtils";
 
 /**
@@ -130,8 +131,10 @@ export function seloDaFoto(params: {
   origem?: OrigemFoto | null;
   /** Motivo de não haver coordenada, quando conhecido. */
   motivoSemCoordenada?: string | null;
+  /** Município e UF apurados no momento da foto. */
+  localidade?: LocalidadeDaFoto | null;
 }): SeloDaFoto {
-  const { coord, capturadaEm, origem, motivoSemCoordenada } = params;
+  const { coord, capturadaEm, origem, motivoSemCoordenada, localidade } = params;
   const qualidade = qualidadeDaCoordenada(coord);
 
   const partes: string[] = [];
@@ -144,6 +147,18 @@ export function seloDaFoto(params: {
     );
   } else {
     partes.push(formatarCoordenada(coord));
+
+    /*
+      O NOME VEM LOGO DEPOIS DA COORDENADA, E ANTES DA PRECISÃO.
+
+      É a ordem em que a pergunta se faz: onde foi, com que confiança, quando.
+      Quem lê a folha reconhece "Uruaçu-GO" e para de procurar; a precisão só
+      interessa a quem já sabe o lugar e quer saber se o ponto aponta o andaime
+      ou o bairro.
+    */
+    const ondeFoi = rotuloDaLocalidade(localidade);
+    if (ondeFoi) partes.push(ondeFoi);
+
     if (coord?.precisao !== null && coord?.precisao !== undefined) {
       partes.push(`±${Math.round(coord.precisao)} m`);
     }
