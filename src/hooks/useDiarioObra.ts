@@ -696,7 +696,7 @@ export function useDiarioObra(siteId?: string, data?: string) {
           // A geolocalização entra na seleção porque o selo é montado dela — tanto
           // na miniatura da tela quanto debaixo da foto no relatório emitido.
           .select(
-            "id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, created_at, ordem, latitude, longitude, precisao_metros, capturada_em, origem_captura, motivo_sem_geo"
+            "id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, created_at, ordem, latitude, longitude, precisao_metros, capturada_em, origem_captura, motivo_sem_geo, municipio, uf"
           )
           .eq("diario_id", diario.id)
           .order("ordem", { ascending: true })
@@ -729,6 +729,8 @@ export function useDiarioObra(siteId?: string, data?: string) {
       capturada_em?: string | null;
       origem_captura?: OrigemFoto | null;
       motivo_sem_geo?: string | null;
+      municipio?: string | null;
+      uf?: string | null;
     }) => {
       // `as never` porque as colunas de geolocalização são novas e o `types.ts`
       // gerado ainda não as conhece. O trigger do banco valida a coerência.

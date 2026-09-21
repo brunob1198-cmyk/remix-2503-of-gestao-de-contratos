@@ -19,6 +19,7 @@ const foto = (over: Partial<FotoCapturada> = {}): FotoCapturada => ({
   origem: "CAMERA",
   capturadaEm: "2026-09-17T08:30:00.000Z",
   coordenada: { latitude: -16.68, longitude: -49.25, precisao: 12 },
+  localidade: { municipio: "Goiânia", uf: "GO" },
   motivoSemGeo: null,
   ...over,
 });
@@ -124,5 +125,42 @@ describe("avisoDeFotoNaoEnviada", () => {
   it("nenhuma falha não gera aviso", () => {
     expect(avisoDeFotoNaoEnviada(0)).toBe("");
     expect(avisoDeFotoNaoEnviada(-1)).toBe("");
+  });
+});
+
+describe("payloadDaEvidencia — município e UF", () => {
+  it("leva o nome do lugar junto com a coordenada", () => {
+    const p = payloadDaEvidencia({
+      entidade: "EPI_ENTREGA",
+      entidadeId: "e1",
+      foto: foto(),
+      url: "https://r2/f.jpg",
+    });
+    expect(p.municipio).toBe("Goiânia");
+    expect(p.uf).toBe("GO");
+  });
+
+  it("foto sem localidade apurada vai com os campos nulos", () => {
+    // Obra sem sinal, serviço fora do ar: a evidência entra do mesmo jeito.
+    const p = payloadDaEvidencia({
+      entidade: "EPI_ENTREGA",
+      entidadeId: "e1",
+      foto: foto({ localidade: null }),
+      url: "https://r2/f.jpg",
+    });
+    expect(p.municipio).toBeNull();
+    expect(p.uf).toBeNull();
+  });
+
+  it("foto sem coordenada não leva município", () => {
+    // O banco recusa município sem latitude: o nome deriva da coordenada.
+    const p = payloadDaEvidencia({
+      entidade: "EPI_ENTREGA",
+      entidadeId: "e1",
+      foto: foto({ coordenada: null, localidade: null, motivoSemGeo: "permissão negada" }),
+      url: "https://r2/f.jpg",
+    });
+    expect(p.municipio).toBeNull();
+    expect(p.latitude).toBeNull();
   });
 });

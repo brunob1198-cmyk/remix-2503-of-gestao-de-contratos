@@ -51,6 +51,9 @@ export function payloadDaEvidencia(params: {
     capturada_em: foto.capturadaEm,
     origem_captura: foto.origem,
     motivo_sem_geo: foto.motivoSemGeo,
+    // O nome do lugar anda junto com a coordenada: sem ela, o banco recusa.
+    municipio: foto.localidade?.municipio ?? null,
+    uf: foto.localidade?.uf ?? null,
   };
 }
 

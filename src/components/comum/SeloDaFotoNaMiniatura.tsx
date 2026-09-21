@@ -23,6 +23,8 @@ export interface FotoComGeolocalizacao {
   capturada_em?: string | null;
   origem_captura?: "CAMERA" | "ARQUIVO" | null;
   motivo_sem_geo?: string | null;
+  municipio?: string | null;
+  uf?: string | null;
 }
 
 /** Verdadeiro quando a foto foi gravada por uma versão que registra captura. */
@@ -52,6 +54,7 @@ export const SeloDaFotoNaMiniatura = React.memo(function SeloDaFotoNaMiniatura({
     },
     capturadaEm: foto.capturada_em,
     origem: foto.origem_captura,
+    localidade: foto.municipio ? { municipio: foto.municipio, uf: foto.uf } : null,
     motivoSemCoordenada: foto.motivo_sem_geo,
   });
 

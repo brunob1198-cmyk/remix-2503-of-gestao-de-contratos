@@ -22,6 +22,8 @@ export interface RdoFoto {
   capturada_em?: string | null;
   origem_captura?: "CAMERA" | "ARQUIVO" | null;
   motivo_sem_geo?: string | null;
+  municipio?: string | null;
+  uf?: string | null;
 }
 
 export interface RdoDiarioResumo {
@@ -93,7 +95,7 @@ export function useRdo(siteIds?: string[], dataInicio?: string, dataFim?: string
           const { data, error } = await supabase
             .from("diario_fotos")
             .select(
-              "id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, latitude, longitude, precisao_metros, capturada_em, origem_captura, motivo_sem_geo"
+              "id, url, thumb_url, thumb_600_url, classificacao, legenda, diario_producao_id, diario_id, latitude, longitude, precisao_metros, capturada_em, origem_captura, motivo_sem_geo, municipio, uf"
             )
             .in("diario_id", chunk)
             .limit(MAX_PHOTOS - all.length);

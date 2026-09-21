@@ -254,6 +254,7 @@ function gerarRelatorioDiaHtml(diario: RdoDiarioResumo, isCliente: boolean, clie
                   },
                   capturadaEm: f.capturada_em,
                   origem: f.origem_captura,
+                  localidade: f.municipio ? { municipio: f.municipio, uf: f.uf } : null,
                   motivoSemCoordenada: f.motivo_sem_geo,
                 })
               : null;

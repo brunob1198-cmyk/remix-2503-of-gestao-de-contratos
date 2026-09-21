@@ -127,6 +127,7 @@ export function SgsstEvidenciasPanel({
               },
               capturadaEm: ev.capturada_em,
               origem: ev.origem_captura,
+              localidade: ev.municipio ? { municipio: ev.municipio, uf: ev.uf } : null,
               motivoSemCoordenada: ev.motivo_sem_geo,
             });
 

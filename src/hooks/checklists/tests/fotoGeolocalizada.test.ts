@@ -246,3 +246,59 @@ describe("conferirNoLocal", () => {
     expect(new Set(rotulos).size).toBe(rotulos.length);
   });
 });
+
+/**
+ * O município no selo.
+ *
+ * Coordenada não se lê: ninguém abre a folha e reconhece `-14.524700,
+ * -49.140800` como Uruaçu. Quem confere o documento precisa saber a cidade sem
+ * abrir um mapa.
+ */
+describe("seloDaFoto — município e UF", () => {
+  const coord = { latitude: -14.5247, longitude: -49.1408, precisao: 6 };
+
+  it("o nome entra logo depois da coordenada, antes da precisão", () => {
+    // É a ordem em que a pergunta se faz: onde foi, com que confiança, quando.
+    const r = seloDaFoto({
+      coord,
+      capturadaEm: "2026-09-21T18:40:13.000Z",
+      origem: "CAMERA",
+      localidade: { municipio: "Uruaçu", uf: "GO" },
+    });
+
+    expect(r.texto).toContain("Uruaçu-GO");
+    expect(r.texto.indexOf("Uruaçu-GO")).toBeGreaterThan(r.texto.indexOf("-14.524700"));
+    expect(r.texto.indexOf("Uruaçu-GO")).toBeLessThan(r.texto.indexOf("±6 m"));
+  });
+
+  it("sem município, o selo sai exatamente como saía antes", () => {
+    // Serviço fora do ar, obra sem sinal, foto antiga: a ausência do nome é um
+    // estado normal, e não pode deixar buraco nem separador sobrando.
+    const sem = seloDaFoto({ coord, capturadaEm: "2026-09-21T18:40:13.000Z", origem: "CAMERA" });
+    expect(sem.texto).toContain("-14.524700, -49.140800");
+    expect(sem.texto).toContain("±6 m");
+    expect(sem.texto).not.toContain("··");
+    expect(sem.texto).not.toMatch(/·\s*·/);
+  });
+
+  it("foto sem coordenada não ganha município", () => {
+    // O nome deriva da coordenada. Sem ela, um município no selo estaria
+    // afirmando um lugar que nada apurou.
+    const r = seloDaFoto({
+      coord: null,
+      motivoSemCoordenada: "permissão negada",
+      localidade: { municipio: "Uruaçu", uf: "GO" },
+    });
+    expect(r.texto).not.toContain("Uruaçu");
+    expect(r.texto).toContain("Sem localização");
+  });
+
+  it("o município não muda o alerta do selo", () => {
+    // O alerta fala da qualidade da evidência. Saber a cidade não torna uma
+    // coordenada imprecisa em precisa.
+    const ruim = { latitude: -14.5247, longitude: -49.1408, precisao: 800 };
+    const r = seloDaFoto({ coord: ruim, localidade: { municipio: "Uruaçu", uf: "GO" } });
+    expect(r.qualidade).toBe("RUIM");
+    expect(r.alerta).toBe(true);
+  });
+});

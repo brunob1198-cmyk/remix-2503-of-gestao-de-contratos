@@ -70,6 +70,8 @@ export interface SgsstEvidencia {
   capturada_em?: string | null;
   origem_captura?: OrigemFoto | null;
   motivo_sem_geo?: string | null;
+  municipio?: string | null;
+  uf?: string | null;
   created_by?: string | null;
   created_at?: string;
   // Joined
@@ -91,6 +93,8 @@ export interface SgsstEvidenciaInput {
   capturada_em?: string | null;
   origem_captura?: OrigemFoto | null;
   motivo_sem_geo?: string | null;
+  municipio?: string | null;
+  uf?: string | null;
 }
 
 /** Teto por registro. Um desvio rende algumas fotos, não centenas. */
@@ -158,6 +162,7 @@ export function evidenciaParaDocumento(
     capturadaEm: ev.capturada_em,
     origem: ev.origem_captura,
     motivoSemGeo: ev.motivo_sem_geo,
+    localidade: ev.municipio ? { municipio: ev.municipio, uf: ev.uf } : null,
     rotulo: rotulo ?? null,
   };
 }
@@ -262,6 +267,9 @@ export function useSgsstEvidencias(
         // A coluna é excludente com a coordenada no banco: o motivo só vai quando
         // de fato não houve ponto.
         motivo_sem_geo: input.latitude ? null : input.motivo_sem_geo ?? null,
+        // O banco recusa municipio sem coordenada: o nome deriva dela.
+        municipio: input.latitude ? input.municipio ?? null : null,
+        uf: input.latitude ? input.uf ?? null : null,
       } as never;
 
       const { data, error } = await (supabase

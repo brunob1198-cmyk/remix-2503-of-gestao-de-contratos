@@ -1,3 +1,4 @@
+import type { LocalidadeDaFoto } from "@/utils/localidadeDaFoto";
 import {
   classificarFalhaDaFoto,
   mensagemDaFalhaDaFoto,
@@ -48,6 +49,8 @@ export interface FotoParaDocumento {
   capturadaEm?: string | null;
   origem?: OrigemFoto | null;
   motivoSemGeo?: string | null;
+  /** Município e UF apurados no instante da foto. */
+  localidade?: LocalidadeDaFoto | null;
   /** Identifica a que parte do registro a foto pertence, quando há mais de uma. */
   rotulo?: string | null;
 }
@@ -357,6 +360,7 @@ export function blocoDeFotos(
         capturadaEm: foto.capturadaEm,
         origem: foto.origem,
         motivoSemCoordenada: foto.motivoSemGeo,
+        localidade: foto.localidade ?? null,
       });
 
       const imagem = foto.dataUri

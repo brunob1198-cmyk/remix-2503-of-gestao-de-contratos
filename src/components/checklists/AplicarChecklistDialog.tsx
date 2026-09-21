@@ -1,3 +1,4 @@
+import type { LocalidadeDaFoto } from "@/utils/localidadeDaFoto";
 import { useState, useEffect } from "react";
 import { itensDoModeloEmOrdem, secoesOrdenadas } from "@/utils/ordemDoChecklist";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -73,6 +74,8 @@ interface EvidenciaDraft {
   longitude: number | null;
   precisao: number | null;
   motivoSemGeo: string | null;
+  /** Município e UF apurados no instante da foto. */
+  localidade?: LocalidadeDaFoto | null;
 }
 
 interface RespostaDraft {
@@ -513,6 +516,11 @@ export function AplicarChecklistDialog({
       longitude: foto.coordenada?.longitude ?? null,
       precisao: foto.coordenada?.precisao ?? null,
       motivoSemGeo: foto.motivoSemGeo,
+      // O nome do lugar acompanha a coordenada desde a captura: resolver depois
+      // faria uma lista de cinquenta fotos consultar o serviço cinquenta vezes.
+      municipio: foto.localidade?.municipio ?? null,
+      uf: foto.localidade?.uf ?? null,
+      localidade: foto.localidade,
     };
 
     const anexar = (url: string) =>
@@ -1134,6 +1142,7 @@ export function AplicarChecklistDialog({
                                       capturadaEm: ev.capturadaEm,
                                       origem: ev.origem,
                                       motivoSemCoordenada: ev.motivoSemGeo,
+                                      localidade: ev.localidade ?? null,
                                     });
 
                                     return (

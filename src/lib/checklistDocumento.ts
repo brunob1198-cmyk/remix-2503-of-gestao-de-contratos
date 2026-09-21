@@ -1,3 +1,4 @@
+import type { LocalidadeDaFoto } from "@/utils/localidadeDaFoto";
 import { pdfGlobalStyles } from "@/lib/pdfTemplates";
 import { secoesOrdenadas } from "@/utils/ordemDoChecklist";
 import {
@@ -79,6 +80,8 @@ export interface EvidenciaDoDocumento {
   longitude?: number | null;
   precisao?: number | null;
   motivoSemGeo?: string | null;
+  /** Município e UF apurados no instante da foto. */
+  localidade?: LocalidadeDaFoto | null;
 }
 
 export interface RespostaDoDocumento {
@@ -214,6 +217,7 @@ function linhaDoItem(
         capturadaEm: ev.capturadaEm,
         origem: ev.origem,
         motivoSemCoordenada: ev.motivoSemGeo,
+        localidade: ev.localidade ?? null,
       });
 
       const classe = selo.alerta ? "doc-restr" : "doc-neutro";
