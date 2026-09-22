@@ -197,6 +197,56 @@ export default function GerenciarUsuariosPage() {
     setUserPerms((data as PermRow[]) || []);
   };
 
+  /**
+   * Libera (ou revoga) uma das colunas — Ver ou Editar — para TODAS as telas de
+   * uma só vez. Usa upsert com a chave única (user_id, tela) para criar as
+   * linhas que ainda não existem e atualizar as demais numa única chamada,
+   * preservando o valor já gravado na outra coluna.
+   */
+  const toggleAllPerms = async (field: "pode_visualizar" | "pode_editar", value: boolean) => {
+    if (!selectedUser) return;
+
+    const rows = TELAS.map((tela) => {
+      const existing = userPerms.find((p) => p.tela === tela.id);
+      return {
+        user_id: selectedUser.id,
+        tela: tela.id,
+        pode_visualizar:
+          field === "pode_visualizar" ? value : existing?.pode_visualizar ?? false,
+        pode_editar: field === "pode_editar" ? value : existing?.pode_editar ?? false,
+      };
+    });
+
+    const { error } = await supabase
+      .from("user_permissions")
+      .upsert(rows as never, { onConflict: "user_id,tela" });
+
+    if (error) {
+      toast({
+        title: "Não foi possível atualizar todas as telas",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data } = await supabase
+      .from("user_permissions")
+      .select("user_id, tela, pode_visualizar, pode_editar")
+      .eq("user_id", selectedUser.id);
+    setUserPerms((data as PermRow[]) || []);
+
+    toast({
+      title: value
+        ? `Acesso liberado em todas as telas (${field === "pode_visualizar" ? "Ver" : "Editar"})`
+        : `Acesso removido de todas as telas (${field === "pode_visualizar" ? "Ver" : "Editar"})`,
+    });
+  };
+
+  const todasMarcadas = (field: "pode_visualizar" | "pode_editar") =>
+    TELAS.length > 0 &&
+    TELAS.every((tela) => userPerms.find((p) => p.tela === tela.id)?.[field] === true);
+
   const toggleWorkflowPerm = async (field: keyof WorkflowPerms, value: boolean) => {
     if (!selectedUser) return;
     
