@@ -725,6 +725,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           motivo_sem_geo: string | null
+          municipio: string | null
           nome_arquivo: string | null
           origem_captura: string | null
           precisao_metros: number | null
@@ -733,6 +734,7 @@ export type Database = {
           resposta_id: string | null
           tamanho: number | null
           tipo_mime: string | null
+          uf: string | null
         }
         Insert: {
           aplicacao_id: string
@@ -743,6 +745,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           motivo_sem_geo?: string | null
+          municipio?: string | null
           nome_arquivo?: string | null
           origem_captura?: string | null
           precisao_metros?: number | null
@@ -751,6 +754,7 @@ export type Database = {
           resposta_id?: string | null
           tamanho?: number | null
           tipo_mime?: string | null
+          uf?: string | null
         }
         Update: {
           aplicacao_id?: string
@@ -761,6 +765,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           motivo_sem_geo?: string | null
+          municipio?: string | null
           nome_arquivo?: string | null
           origem_captura?: string | null
           precisao_metros?: number | null
@@ -769,6 +774,7 @@ export type Database = {
           resposta_id?: string | null
           tamanho?: number | null
           tipo_mime?: string | null
+          uf?: string | null
         }
         Relationships: [
           {
@@ -1905,10 +1911,12 @@ export type Database = {
           legenda: string | null
           longitude: number | null
           motivo_sem_geo: string | null
+          municipio: string | null
           origem_captura: string | null
           precisao_metros: number | null
           thumb_600_url: string | null
           thumb_url: string | null
+          uf: string | null
           url: string
         }
         Insert: {
@@ -1920,10 +1928,12 @@ export type Database = {
           legenda?: string | null
           longitude?: number | null
           motivo_sem_geo?: string | null
+          municipio?: string | null
           origem_captura?: string | null
           precisao_metros?: number | null
           thumb_600_url?: string | null
           thumb_url?: string | null
+          uf?: string | null
           url: string
         }
         Update: {
@@ -1935,10 +1945,12 @@ export type Database = {
           legenda?: string | null
           longitude?: number | null
           motivo_sem_geo?: string | null
+          municipio?: string | null
           origem_captura?: string | null
           precisao_metros?: number | null
           thumb_600_url?: string | null
           thumb_url?: string | null
+          uf?: string | null
           url?: string
         }
         Relationships: [
@@ -2042,11 +2054,13 @@ export type Database = {
           legenda: string | null
           longitude: number | null
           motivo_sem_geo: string | null
+          municipio: string | null
           ordem: number
           origem_captura: string | null
           precisao_metros: number | null
           thumb_600_url: string | null
           thumb_url: string | null
+          uf: string | null
           url: string
         }
         Insert: {
@@ -2060,11 +2074,13 @@ export type Database = {
           legenda?: string | null
           longitude?: number | null
           motivo_sem_geo?: string | null
+          municipio?: string | null
           ordem?: number
           origem_captura?: string | null
           precisao_metros?: number | null
           thumb_600_url?: string | null
           thumb_url?: string | null
+          uf?: string | null
           url: string
         }
         Update: {
@@ -2078,11 +2094,13 @@ export type Database = {
           legenda?: string | null
           longitude?: number | null
           motivo_sem_geo?: string | null
+          municipio?: string | null
           ordem?: number
           origem_captura?: string | null
           precisao_metros?: number | null
           thumb_600_url?: string | null
           thumb_url?: string | null
+          uf?: string | null
           url?: string
         }
         Relationships: [
@@ -7586,6 +7604,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           motivo_sem_geo: string | null
+          municipio: string | null
           nome_arquivo: string | null
           origem_captura: string | null
           precisao_metros: number | null
@@ -7593,6 +7612,7 @@ export type Database = {
           r2_url: string
           tamanho: number | null
           tipo_mime: string | null
+          uf: string | null
           updated_at: string
         }
         Insert: {
@@ -7607,6 +7627,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           motivo_sem_geo?: string | null
+          municipio?: string | null
           nome_arquivo?: string | null
           origem_captura?: string | null
           precisao_metros?: number | null
@@ -7614,6 +7635,7 @@ export type Database = {
           r2_url: string
           tamanho?: number | null
           tipo_mime?: string | null
+          uf?: string | null
           updated_at?: string
         }
         Update: {
@@ -7628,6 +7650,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           motivo_sem_geo?: string | null
+          municipio?: string | null
           nome_arquivo?: string | null
           origem_captura?: string | null
           precisao_metros?: number | null
@@ -7635,6 +7658,7 @@ export type Database = {
           r2_url?: string
           tamanho?: number | null
           tipo_mime?: string | null
+          uf?: string | null
           updated_at?: string
         }
         Relationships: [
