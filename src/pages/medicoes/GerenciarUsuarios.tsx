@@ -533,6 +533,19 @@ export default function GerenciarUsuariosPage() {
                 <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Ver</span>
                 <span className="flex items-center gap-1"><Pencil className="h-3 w-3" /> Editar</span>
               </div>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 items-center py-2 rounded-md bg-muted/50 px-2">
+                <Label className="text-sm font-semibold">Selecionar todas as telas</Label>
+                <Switch
+                  aria-label="Liberar visualização em todas as telas"
+                  checked={todasMarcadas("pode_visualizar")}
+                  onCheckedChange={(v) => toggleAllPerms("pode_visualizar", v)}
+                />
+                <Switch
+                  aria-label="Liberar edição em todas as telas"
+                  checked={todasMarcadas("pode_editar")}
+                  onCheckedChange={(v) => toggleAllPerms("pode_editar", v)}
+                />
+              </div>
               {TELAS.map((tela) => {
                 const perm = userPerms.find((p) => p.tela === tela.id);
                 return (
