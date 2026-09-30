@@ -379,9 +379,23 @@ export async function migrateTableRecords(
   columnsToMigrate: string[],
   onProgress?: (log: MigrationLog) => void
 ) {
-  const { data: records, error } = await supabase.from(tableName).select(`*`);
-
-  if (error || !records) return;
+  // `select('*')` sem paginação parava silenciosamente no limite padrão de linhas
+  // do PostgREST (1000 por consulta): diario_fotos passa disso fácil num diário de
+  // obra recorrente ao longo de meses, e as linhas além da primeira página nunca
+  // eram sequer tentadas — não apareciam nem como erro nos logs da tela, só
+  // continuavam apontando pra URL antiga do Supabase Storage, que morreu quando o
+  // bucket virou privado (fotos "da mesma época" ficando quebradas ao acaso, sem
+  // nenhum padrão visível, é exatamente essa assinatura).
+  const PAGE_SIZE = 1000;
+  const records: any[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase.from(tableName).select(`*`).range(from, from + PAGE_SIZE - 1);
+    if (error || !data) break;
+    records.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
 
   for (const record of records) {
     let updatedData: any = {};
