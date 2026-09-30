@@ -914,21 +914,21 @@ export default function RdoPage() {
             <div className="flex flex-wrap items-start gap-3">
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3 flex-1">
                 <Card>
-                  <CardContent className="p-4 text-center">
+                  <CardContent className="p-2.5 sm:p-4 text-center">
                     {isLoadingTotais ? (
                       <Skeleton className="h-8 w-16 mx-auto mb-1" />
                     ) : (
-                      <p className="text-2xl font-bold tabular-nums">{totalDias}</p>
+                      <p className="text-base sm:text-xl md:text-2xl font-bold tabular-nums leading-tight break-words">{totalDias}</p>
                     )}
                     <p className="text-xs text-muted-foreground">Dias registrados</p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="p-4 text-center">
+                  <CardContent className="p-2.5 sm:p-4 text-center">
                     {isLoadingTotais ? (
                       <Skeleton className="h-8 w-16 mx-auto mb-1" />
                     ) : (
-                      <p className="text-2xl font-bold tabular-nums">{qtdSitesAtendidos}</p>
+                      <p className="text-base sm:text-xl md:text-2xl font-bold tabular-nums leading-tight break-words">{qtdSitesAtendidos}</p>
                     )}
                     <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                       <Building2 className="h-3 w-3" /> Qtd Sites
@@ -937,11 +937,11 @@ export default function RdoPage() {
                 </Card>
                 {!isCliente && (
                   <Card>
-                    <CardContent className="p-4 text-center">
+                    <CardContent className="p-2.5 sm:p-4 text-center">
                       {isLoadingTotais ? (
                         <Skeleton className="h-8 w-24 mx-auto mb-1" />
                       ) : (
-                        <p className="text-2xl font-bold tabular-nums">{formatCurrency(totalProd)}</p>
+                        <p className="text-base sm:text-xl md:text-2xl font-bold tabular-nums leading-tight break-words">{formatCurrency(totalProd)}</p>
                       )}
                       <p className="text-xs text-muted-foreground">Produção total</p>
                     </CardContent>
@@ -949,11 +949,11 @@ export default function RdoPage() {
                 )}
                 {!isCliente && (
                   <Card>
-                    <CardContent className="p-4 text-center">
+                    <CardContent className="p-2.5 sm:p-4 text-center">
                       {isLoadingTotais ? (
                         <Skeleton className="h-8 w-24 mx-auto mb-1" />
                       ) : (
-                        <p className="text-2xl font-bold tabular-nums">{formatCurrency(mediaPorDia)}</p>
+                        <p className="text-base sm:text-xl md:text-2xl font-bold tabular-nums leading-tight break-words">{formatCurrency(mediaPorDia)}</p>
                       )}
                       <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                         <TrendingUp className="h-3 w-3" /> Média R$/Dia
@@ -962,11 +962,11 @@ export default function RdoPage() {
                   </Card>
                 )}
                 <Card>
-                  <CardContent className="p-4 text-center">
+                  <CardContent className="p-2.5 sm:p-4 text-center">
                     {isLoadingTotais ? (
                       <Skeleton className="h-8 w-16 mx-auto mb-1" />
                     ) : (
-                      <p className="text-2xl font-bold tabular-nums">{totalFotos}</p>
+                      <p className="text-base sm:text-xl md:text-2xl font-bold tabular-nums leading-tight break-words">{totalFotos}</p>
                     )}
                     <p className="text-xs text-muted-foreground">Fotos</p>
                   </CardContent>
@@ -1412,17 +1412,17 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
             <CardContent>
               <div className="space-y-2">
                 {diario.producoes.map(p => (
-                  <div key={p.id} className="flex items-center py-1.5 border-b border-dashed last:border-0 gap-3">
+                  <div key={p.id} className="flex flex-col sm:flex-row sm:items-center py-2 border-b border-dashed last:border-0 gap-1 sm:gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">
+                      <p className="text-sm font-medium break-words">
                         {p.item_lpu?.codigo} — {p.item_lpu?.descricao}
                       </p>
                     </div>
-                    <span className="text-sm tabular-nums text-muted-foreground shrink-0 text-right min-w-[80px]">
+                    <span className="text-sm tabular-nums text-muted-foreground sm:shrink-0 sm:text-right sm:min-w-[80px]">
                       {Number(p.quantidade)} {p.item_lpu?.unidade}
                     </span>
                     {!isCliente && (
-                      <span className="text-sm font-semibold tabular-nums shrink-0 text-right min-w-[100px]">
+                      <span className="text-sm font-semibold tabular-nums sm:shrink-0 sm:text-right sm:min-w-[100px]">
                         {formatCurrency(Number(p.valor_total))}
                       </span>
                     )}
@@ -1543,7 +1543,7 @@ function DayDetail({ diario, isCliente, showSite, onPhotoClick, onDownloadDia, d
                     <span className="text-xs font-bold text-foreground">{label}</span>
                     <Badge variant="secondary" className="text-[10px] ml-auto shrink-0">{photos.length}</Badge>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {photos.map(f => (
                       <div key={f.id} className="rounded-lg overflow-hidden border shadow-sm">
                         <button
