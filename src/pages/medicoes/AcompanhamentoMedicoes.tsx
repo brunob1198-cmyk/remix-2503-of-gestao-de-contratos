@@ -160,12 +160,30 @@ export default function AcompanhamentoMedicoesPage() {
         for (const lId of medicao.lancamentoIds) {
           const l = lancamentos.find(x => x.id === lId);
           if (!l) continue;
-          const qtdAprovada = edits.status === "aprovado" ? Number(l.quantidade) : 0;
-          const pendente = Number(l.quantidade) - qtdAprovada;
+
+          const aprovadaAtual = Number(l.quantidade_aprovada || 0);
+          const totalLancado = Number(l.quantidade);
+          // Uma revisão parcial anterior (modal "Revisão de Medição") já decidiu quanto
+          // fica aprovado x rejeitado — sinal disso é ter quantidade_aprovada estritamente
+          // entre 0 e o total lançado. Trocar o status por aqui, pelo dropdown da tabela,
+          // deve só confirmar o status; redecidir as quantidades é o que fazia o valor
+          // voltar ao total original ao aprovar uma medição já revisada parcialmente.
+          const jaTemRevisaoParcial = aprovadaAtual > 0 && aprovadaAtual < totalLancado;
+
+          const qtdAprovada = jaTemRevisaoParcial
+            ? aprovadaAtual
+            : (edits.status === "aprovado" ? totalLancado : 0);
+          const qtdRejeitada = jaTemRevisaoParcial
+            ? Number(l.quantidade_rejeitada || 0)
+            : (edits.status === "rejeitado" ? totalLancado - qtdAprovada : 0);
+          const qtdPendente = jaTemRevisaoParcial
+            ? Number((l as any).quantidade_pendente || 0)
+            : totalLancado - qtdAprovada;
+
           await supabase.from("lancamentos_medicao").update({
             quantidade_aprovada: qtdAprovada,
-            quantidade_rejeitada: edits.status === "rejeitado" ? pendente : 0,
-            quantidade_pendente: pendente,
+            quantidade_rejeitada: qtdRejeitada,
+            quantidade_pendente: qtdPendente,
             data_resposta: now,
             status: edits.status,
           }).eq("id", l.id);
