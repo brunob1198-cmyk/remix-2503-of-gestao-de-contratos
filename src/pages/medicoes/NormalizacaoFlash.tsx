@@ -243,17 +243,16 @@ function EditableCostCenter({
     const showRed = hasCostCenter && isInSaas === false;
     return (
       <div className="flex items-center gap-1 min-w-0">
-        <Tooltip>
+        <Tooltip delayDuration={100}>
           <TooltipTrigger asChild>
-            <span className={cn("block truncate flex-1", showRed ? "text-red-600 font-medium" : "text-muted-foreground")}>
+            <span className={cn("block truncate flex-1 cursor-help", showRed ? "text-red-600 font-medium" : "text-muted-foreground")}>
               {row.flash_cost_center}
             </span>
           </TooltipTrigger>
-          {showRed && (
-            <TooltipContent>
-              <p>Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>
-            </TooltipContent>
-          )}
+          <TooltipContent side="top" align="start" className="max-w-[480px] whitespace-pre-wrap break-words text-xs leading-relaxed">
+            <p>{row.flash_cost_center}</p>
+            {showRed && <p className="text-red-400 mt-1">Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>}
+          </TooltipContent>
         </Tooltip>
         {costCenterOrigemBadge(row.flash_cost_center_origem)}
       </div>
@@ -266,26 +265,24 @@ function EditableCostCenter({
   return (
     <div className="flex items-center gap-1 min-w-0">
       <Popover open={open} onOpenChange={setOpen}>
-        <Tooltip>
+        <Tooltip delayDuration={100}>
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <button
                 type="button"
                 className="flex items-center gap-1 flex-1 min-w-0 group text-left outline-none"
-                title="Clique para editar o centro de custo"
               >
-                <span className={cn("truncate flex-1", showRed && "text-red-600 font-medium")}>
+                <span className={cn("truncate flex-1 cursor-help", showRed && "text-red-600 font-medium")}>
                   {row.flash_cost_center}
                 </span>
                 <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
               </button>
             </PopoverTrigger>
           </TooltipTrigger>
-          {showRed && (
-            <TooltipContent>
-              <p>Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>
-            </TooltipContent>
-          )}
+          <TooltipContent side="top" align="start" className="max-w-[480px] whitespace-pre-wrap break-words text-xs leading-relaxed">
+            <p>{row.flash_cost_center} <span className="text-muted-foreground">(clique para editar)</span></p>
+            {showRed && <p className="text-red-400 mt-1">Centro de custo não cadastrado no SaaS (portal gestão de contratos)</p>}
+          </TooltipContent>
         </Tooltip>
         <PopoverContent className="w-[300px] p-0" align="start">
         <Command>
@@ -1804,7 +1801,7 @@ export default function NormalizacaoFlashPage() {
                               />
                             </div>
                           </TableHead>
-                          <TableHead className="w-[150px]">
+                          <TableHead className="w-[220px]">
                             <div className="flex items-center gap-1">
                               <button
                                 type="button"
@@ -1957,7 +1954,7 @@ export default function NormalizacaoFlashPage() {
                               <TableCell className="text-xs truncate w-[150px]">
                                 {row.flash_category}
                               </TableCell>
-                              <TableCell className="text-xs w-[150px]">
+                              <TableCell className="text-xs w-[220px]">
                                 <EditableCostCenter
                                   row={row}
                                   disabled={isEnviado}
