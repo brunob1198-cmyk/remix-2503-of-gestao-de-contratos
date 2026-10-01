@@ -108,24 +108,23 @@ function categorizarDespesa(categoriaErp: string, descricao: string): string {
     desc.includes("mão de obra") || desc.includes("serviço de") || desc.includes("obra")
   ) return "Mão de Obra";
 
-  // Equipamentos
+  // Locação/manutenção de maquinário vai para "Direto": é custo direto de campo, e
+  // "Equipamentos" não é uma categoria da Análise de Custos e Margens (a coluna foi
+  // removida de lá) - o que caía aqui ficava fora de qualquer coluna, mesmo contando
+  // no total, e parecia número errado para quem via a classificação na Auditoria ERP.
   if (
-    map.includes("máquina") || map.includes("andaime") || map.includes("locação") || 
-    map.includes("aluguel de máquinas") || map.includes("ferramenta elétrica") || 
+    map.includes("máquina") || map.includes("andaime") || map.includes("locação") ||
+    map.includes("aluguel de máquinas") || map.includes("ferramenta elétrica") ||
     map.includes("manutenção de equipamento") || map.includes("betoneira") ||
     map.includes("munck") || map.includes("escavadeira")
-  ) return "Equipamentos";
+  ) return "Direto";
 
   // Transporte
   if (
-    map.includes("transporte") || map.includes("frete") || map.includes("carreto") || 
+    map.includes("transporte") || map.includes("frete") || map.includes("carreto") ||
     map.includes("veículo") || map.includes("pedágio") || map.includes("estacionamento") ||
     map.includes("combustível") || map.includes("viagem") || map.includes("hospedagem")
-  ) {
-    // If it's specifically for machines, it's Equipamentos, otherwise Transporte
-    if (map.includes("máquina") || desc.includes("máquina")) return "Equipamentos";
-    return "Transporte";
-  }
+  ) return "Transporte";
 
   // Direto (anteriormente Indiretos)
   if (
@@ -136,11 +135,15 @@ function categorizarDespesa(categoriaErp: string, descricao: string): string {
     map.includes("taxa") || map.includes("imposto") || map.includes("alvará") || map.includes("iss")
   ) return "Direto";
 
-  // Financeiros (Fallback for specific finance cases)
+  // Tarifa/juros/multa bancária vai para "Gerência": é custo administrativo, não custo
+  // direto de obra - igual já era o tratamento de "Financeiros" na Análise de Custos e
+  // Margens (excluída do Custo Direto). A diferença é que "Financeiros" não tinha coluna
+  // nenhuma lá, então o valor desaparecia de TODO total, direto ou gerência; "Gerência"
+  // já é somada e exibida, então o valor passa a aparecer em vez de sumir.
   if (
-    map.includes("financeiro") || map.includes("tarifa") || map.includes("juros") || 
+    map.includes("financeiro") || map.includes("tarifa") || map.includes("juros") ||
     map.includes("multa") || map.includes("banco")
-  ) return "Financeiros";
+  ) return "Gerência";
 
   return "Direto";
 }
