@@ -24,13 +24,15 @@ interface CustosErpProps {
   periodoFim: Date;
 }
 
+// "Equipamentos" e "Financeiros" foram retiradas: nenhuma das duas tem coluna/total na
+// Análise de Custos e Margens (a coluna "Equipamentos" foi removida de lá e "Financeiros"
+// nunca teve uma), então classificar algo nessas categorias fazia o valor sumir dos
+// números exibidos ali, parecendo erro de conta.
 const CATEGORIAS_PADRAO = [
   "Mão de Obra",
   "Materiais",
   "Transporte",
-  "Equipamentos",
   "Direto",
-  "Financeiros",
   "Gerência",
 ];
 
